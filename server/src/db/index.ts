@@ -4,7 +4,15 @@ import path from 'path'
 
 import * as schema from './schema'
 
-const dbPath = path.join(import.meta.dir, '../../data/jarvis.db')
+// In a compiled Bun binary, Bun.main starts with '$bunfs://' (virtual bundle FS).
+// import.meta.dir then points to the exe's directory — two levels up is wrong.
+// Fall back to DB_PATH env var for explicit control, or detect context automatically.
+const isCompiledBinary = Bun.main.startsWith('$bunfs://')
+const dbPath =
+	process.env.DB_PATH ??
+	(isCompiledBinary
+		? path.join(path.dirname(process.execPath), 'data', 'jarvis.db')
+		: path.join(import.meta.dir, '../../data/jarvis.db'))
 
 const sqlite = new Database(dbPath, { create: true })
 

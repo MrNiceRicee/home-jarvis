@@ -10,4 +10,7 @@ import { treaty } from '@elysiajs/eden'
  *   const { data, error } = await api.api.devices.get()
  *   const { data, error } = await api.api.integrations.post({ body: { brand, config } })
  */
-export const api = treaty<App>('localhost:3001')
+// In dev (Vite), the server runs on :3001. In production, client is served from
+// the same Elysia server, so we use the current page's host.
+const apiHost = import.meta.env.DEV ? 'localhost:3001' : window.location.host
+export const api = treaty<App>(apiHost)
