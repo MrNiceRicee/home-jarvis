@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-bun.lockb
 
 # Database
 server/data/*.db
@@ -36,3 +35,12 @@ logs/
 .idea/
 *.swp
 *.swo
+
+# Turbo — local build cache (binary artifacts)
+.turbo/
+
+# Claude Code — user-specific operational data
+# (settings.json and CLAUDE.md are intentionally committable for team sharing)
+.claude/settings.local.json
+.claude/cache/
+.claude/preferences/
