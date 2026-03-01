@@ -6,6 +6,8 @@ import type { DB } from '../db'
 import { devices, integrations } from '../db/schema'
 import { createAdapter } from '../integrations/registry'
 import { eventBus } from '../lib/events'
+import { log } from '../lib/logger'
+import { parseJson } from '../lib/parse-json'
 
 interface PollConfig {
 	/** State poll interval in ms (default 60s) */
@@ -37,12 +39,18 @@ export function startPolling(
 	stopPolling(integrationId) // clear any existing timers
 
 	const pollCfg = DEFAULTS[brand] ?? { stateIntervalMs: 60_000, discoverIntervalMs: 5 * 60_000 }
+	log.info('poller start', { brand, integrationId, discoverIntervalMs: pollCfg.discoverIntervalMs })
 
 	// Run discovery immediately on start
-	runDiscovery(db, integrationId, brand, config).catch(console.error)
+	runDiscovery(db, integrationId, brand, config).catch((err: unknown) => {
+		log.error('poller runDiscovery unexpected error', { brand, error: err instanceof Error ? err.message : String(err) })
+	})
 
 	const discoverTimer = setInterval(
-		() => runDiscovery(db, integrationId, brand, config).catch(console.error),
+		() =>
+			runDiscovery(db, integrationId, brand, config).catch((err: unknown) => {
+				log.error('poller runDiscovery unexpected error', { brand, error: err instanceof Error ? err.message : String(err) })
+			}),
 		pollCfg.discoverIntervalMs,
 	)
 	timers.set(`${integrationId}:discover`, discoverTimer)
@@ -50,13 +58,16 @@ export function startPolling(
 
 /** Stop all timers for an integration */
 export function stopPolling(integrationId: string) {
+	let stopped = 0
 	for (const key of [`${integrationId}:discover`, `${integrationId}:state`]) {
 		const t = timers.get(key)
 		if (t) {
 			clearInterval(t)
 			timers.delete(key)
+			stopped++
 		}
 	}
+	if (stopped > 0) log.info('poller stop', { integrationId })
 }
 
 /** Run device discovery + upsert results into DB */
@@ -67,17 +78,22 @@ async function runDiscovery(
 	config: Record<string, string>,
 ) {
 	const adapterResult = createAdapter(brand, config)
-	if (adapterResult.isErr()) return // Adapter not yet implemented — skip silently
+	if (adapterResult.isErr()) {
+		log.debug('poller adapter unavailable', { brand }) // Adapter not yet implemented — skip silently
+		return
+	}
 
 	const adapter = adapterResult.value
 
+	log.debug('poller discovery run', { brand })
 	const discoveredResult = await adapter.discover()
 	if (discoveredResult.isErr()) {
-		console.error(`[poller] ${brand} discovery failed:`, discoveredResult.error)
+		log.error('poller discovery failed', { brand, error: discoveredResult.error.message })
 		return
 	}
 
 	const discovered = discoveredResult.value
+	log.info('poller discovery ok', { brand, deviceCount: discovered.length })
 
 	const now = Date.now()
 	const seenExternalIds = new Set<string>()
@@ -100,6 +116,8 @@ async function runDiscovery(
 				})
 				.where(eq(devices.id, existing.id))
 				.run()
+
+			log.debug('poller device updated', { brand, deviceId: existing.id, deviceName: d.name, online: d.online })
 
 			eventBus.publish({
 				type: 'device:update',
@@ -128,6 +146,8 @@ async function runDiscovery(
 				})
 				.run()
 
+			log.info('poller device discovered', { brand, deviceId: id, deviceName: d.name, type: d.type })
+
 			eventBus.publish({
 				type: 'device:update',
 				deviceId: id,
@@ -149,6 +169,8 @@ async function runDiscovery(
 				.where(eq(devices.id, device.id))
 				.run()
 
+			log.warn('poller device offline', { brand, deviceId: device.id, deviceName: device.name })
+
 			eventBus.publish({
 				type: 'device:offline',
 				deviceId: device.id,
@@ -165,12 +187,10 @@ async function runDiscovery(
 /** Start polling for ALL enabled integrations (called on server startup) */
 export async function startAllPolling(db: DB) {
 	const allIntegrations = db.select().from(integrations).all()
-	for (const integration of allIntegrations) {
-		if (!integration.enabled) continue
-		let config: Record<string, string> = {}
-		try {
-			config = JSON.parse(integration.config)
-		} catch {}
+	const enabled = allIntegrations.filter((i) => i.enabled)
+	log.info('startAllPolling', { total: allIntegrations.length, enabled: enabled.length, brands: enabled.map((i) => i.brand) })
+	for (const integration of enabled) {
+		const config = parseJson<Record<string, string>>(integration.config).unwrapOr({})
 		startPolling(db, integration.id, integration.brand, config)
 	}
 }

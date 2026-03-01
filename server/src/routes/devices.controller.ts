@@ -1,10 +1,16 @@
 import { eq } from 'drizzle-orm'
 import Elysia, { t } from 'elysia'
 
+import type { DeviceState } from '../integrations/types'
+
 import { db } from '../db'
 import { devices, integrations } from '../db/schema'
 import { createAdapter } from '../integrations/registry'
 import { eventBus } from '../lib/events'
+import { log } from '../lib/logger'
+import { parseJson } from '../lib/parse-json'
+
+let discoveryInFlight = false
 
 export const devicesController = new Elysia({ prefix: '/api/devices' })
 	.decorate('db', db)
@@ -14,25 +20,46 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 		const rows = db.select().from(devices).all()
 		return rows.map((d) => ({
 			...d,
-			state: JSON.parse(d.state),
+			state: parseJson<DeviceState>(d.state).unwrapOr({}),
 		}))
 	})
 
 	/** Trigger manual discovery for all enabled integrations */
 	.post('/discover', async ({ db }) => {
+		if (discoveryInFlight) {
+			log.warn('discover skipped', { reason: 'already in progress' })
+			return new Response(JSON.stringify({ error: 'Discovery already in progress' }), { status: 429 })
+		}
 		const allIntegrations = db.select().from(integrations).all()
 		const enabled = allIntegrations.filter((i) => i.enabled)
 
+		log.info('discover started', { integrationCount: enabled.length, brands: enabled.map((i) => i.brand) })
+
 		// Kick off discovery in background — don't await
+		discoveryInFlight = true
 		Promise.all(
 			enabled.map(async (integration) => {
-				const config = JSON.parse(integration.config) as Record<string, string>
+				const config = parseJson<Record<string, string>>(integration.config).unwrapOr({})
 				const adapterResult = createAdapter(integration.brand, config)
-				if (adapterResult.isErr()) return // not yet implemented
+				if (adapterResult.isErr()) {
+					log.warn('discover adapter unavailable', { brand: integration.brand })
+					return
+				}
 				const result = await adapterResult.value.discover()
-				if (result.isErr()) console.error(`[discover] ${integration.brand} failed:`, result.error)
+				if (result.isErr()) {
+					log.error('discover failed', { brand: integration.brand, error: result.error.message })
+				} else {
+					log.info('discover succeeded', { brand: integration.brand, deviceCount: result.value.length })
+				}
 			}),
-		).catch(console.error)
+		)
+			.catch((err: unknown) => {
+				log.error('discover unexpected error', { error: err instanceof Error ? err.message : String(err) })
+			})
+			.finally(() => {
+				discoveryInFlight = false
+				log.info('discover finished')
+			})
 
 		return { ok: true, message: `Discovery triggered for ${enabled.length} integration(s)` }
 	})
@@ -42,30 +69,43 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 		'/:id/state',
 		async ({ db, params, body }) => {
 			const device = db.select().from(devices).where(eq(devices.id, params.id)).get()
-			if (!device)
+			if (!device) {
+				log.warn('setState device not found', { deviceId: params.id })
 				return new Response(JSON.stringify({ error: 'Device not found' }), { status: 404 })
+			}
+
+			if (!device.integrationId) {
+				log.warn('setState no integration', { deviceId: params.id, deviceName: device.name })
+				return new Response(JSON.stringify({ error: 'Device has no associated integration' }), { status: 422 })
+			}
 
 			const integration = db
 				.select()
 				.from(integrations)
-				.where(eq(integrations.id, device.integrationId!))
+				.where(eq(integrations.id, device.integrationId))
 				.get()
-			if (!integration)
+			if (!integration) {
+				log.warn('setState integration not found', { deviceId: params.id, integrationId: device.integrationId })
 				return new Response(JSON.stringify({ error: 'Integration not found' }), { status: 404 })
+			}
 
-			const config = JSON.parse(integration.config) as Record<string, string>
+			log.info('setState', { deviceId: params.id, deviceName: device.name, brand: device.brand, state: body })
+
+			const config = parseJson<Record<string, string>>(integration.config).unwrapOr({})
 
 			const adapterResult = createAdapter(integration.brand, config)
 			if (adapterResult.isErr()) {
+				log.error('setState adapter error', { brand: integration.brand, error: adapterResult.error.message })
 				return new Response(JSON.stringify({ error: adapterResult.error.message }), { status: 500 })
 			}
 
 			const setResult = await adapterResult.value.setState(device.externalId, body)
 			if (setResult.isErr()) {
+				log.error('setState failed', { deviceId: params.id, deviceName: device.name, brand: device.brand, error: setResult.error.message })
 				return new Response(JSON.stringify({ error: setResult.error.message }), { status: 500 })
 			}
 
-			const currentState = JSON.parse(device.state) as Record<string, unknown>
+			const currentState = parseJson<Record<string, unknown>>(device.state).unwrapOr({})
 			const newState = { ...currentState, ...body }
 			const now = Date.now()
 
@@ -82,6 +122,7 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 				timestamp: now,
 			})
 
+			log.info('setState ok', { deviceId: params.id, deviceName: device.name, brand: device.brand })
 			return { ...device, state: newState }
 		},
 		{
@@ -90,6 +131,10 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 				brightness: t.Optional(t.Number()),
 				colorTemp: t.Optional(t.Number()),
 				fanSpeed: t.Optional(t.Number()),
+				targetTemperature: t.Optional(t.Number()),
+				mode: t.Optional(t.String()),
+				volume: t.Optional(t.Number()),
+				status: t.Optional(t.String()),
 			}),
 		},
 	)
@@ -99,15 +144,20 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 		'/:id/homekit',
 		async ({ db, params, body }) => {
 			const device = db.select().from(devices).where(eq(devices.id, params.id)).get()
-			if (!device)
+			if (!device) {
+				log.warn('setHomeKit device not found', { deviceId: params.id })
 				return new Response(JSON.stringify({ error: 'Device not found' }), { status: 404 })
+			}
 
 			if (device.brand === 'aqara') {
+				log.warn('setHomeKit aqara native', { deviceId: params.id, deviceName: device.name })
 				return new Response(
 					JSON.stringify({ error: 'Aqara supports HomeKit natively. Add via the Apple Home app.' }),
 					{ status: 400 },
 				)
 			}
+
+			log.info('setHomeKit', { deviceId: params.id, deviceName: device.name, enabled: body.enabled })
 
 			const now = Date.now()
 			db.update(devices)
