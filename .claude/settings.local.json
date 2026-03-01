@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(bunx drizzle-kit:*)",
-      "WebFetch(domain:react-aria.adobe.com)"
-    ]
-  }
-}

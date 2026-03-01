@@ -1,30 +1,40 @@
 {
-  "name": "home-jarvis-server",
-  "module": "src/index.ts",
-  "type": "module",
-  "private": true,
-  "scripts": {
-    "dev": "bun --hot src/index.ts",
-    "start": "bun src/index.ts",
-    "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
-  },
-  "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
-    "@types/bun": "latest",
-    "@types/qrcode": "^1.5.6",
-    "better-sqlite3": "^12.6.2",
-    "drizzle-kit": "^0.31.9"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
-  },
-  "dependencies": {
-    "@elysiajs/cors": "^1.4.1",
-    "@elysiajs/static": "^1.4.7",
-    "@homebridge/hap-nodejs": "^2.1.0",
-    "drizzle-orm": "^0.45.1",
-    "elysia": "^1.4.26",
-    "qrcode": "^1.5.4"
-  }
+	"name": "home-jarvis-server",
+	"module": "src/index.ts",
+	"exports": {
+		".": "./src/index.ts",
+		"./src/db/schema": "./src/db/schema.ts",
+		"./src/integrations/types": "./src/integrations/types.ts",
+		"./src/discovery/local-scanner": "./src/discovery/local-scanner.ts"
+	},
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"dev": "bun --watch src/index.ts",
+		"start": "bun src/index.ts",
+		"lint": "eslint .",
+		"lint:fix": "eslint --fix .",
+		"typecheck": "tsc --noEmit",
+		"db:push": "drizzle-kit push",
+		"db:studio": "drizzle-kit studio"
+	},
+	"devDependencies": {
+		"@types/better-sqlite3": "^7.6.13",
+		"@types/bun": "latest",
+		"@types/qrcode": "^1.5.6",
+		"better-sqlite3": "^12.6.2",
+		"drizzle-kit": "^0.31.9"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@elysiajs/cors": "^1.4.1",
+		"@elysiajs/static": "^1.4.7",
+		"@homebridge/hap-nodejs": "^2.1.0",
+		"drizzle-orm": "^0.45.1",
+		"elysia": "^1.4.26",
+		"neverthrow": "^8.2.0",
+		"qrcode": "^1.5.4"
+	}
 }

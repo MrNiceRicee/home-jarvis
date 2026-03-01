@@ -1,21 +1,30 @@
 {
-  "$schema": "https://turbo.build/schema.json",
-  "ui": "tui",
-  "tasks": {
-    "dev": {
-      "cache": false,
-      "persistent": true
-    },
-    "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
-    },
-    "db:push": {
-      "cache": false
-    },
-    "db:studio": {
-      "cache": false,
-      "persistent": true
-    }
-  }
+	"$schema": "https://turbo.build/schema.json",
+	"ui": "tui",
+	"tasks": {
+		"lint": {
+			"inputs": ["**/*.{ts,tsx}", "eslint.config.*", "tsconfig.json", "../eslint.config.base.ts"]
+		},
+		"lint:fix": {
+			"cache": false
+		},
+		"typecheck": {
+			"inputs": ["**/*.{ts,tsx}", "tsconfig*.json"]
+		},
+		"dev": {
+			"cache": false,
+			"persistent": true
+		},
+		"build": {
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**"]
+		},
+		"db:push": {
+			"cache": false
+		},
+		"db:studio": {
+			"cache": false,
+			"persistent": true
+		}
+	}
 }
