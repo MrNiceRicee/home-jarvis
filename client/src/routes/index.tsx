@@ -1,89 +1,128 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { useDeviceStream } from '../hooks/useDeviceStream'
-import { DeviceCard } from '../components/DeviceCard'
-import { Link } from '@tanstack/react-router'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { createFileRoute, Link } from '@tanstack/react-router'
+
 import type { Device, DeviceState } from '../types'
+
+import { DeviceCard } from '../components/DeviceCard'
+import { useDeviceStream } from '../hooks/useDeviceStream'
+import { api } from '../lib/api'
 
 export const Route = createFileRoute('/')({ component: Dashboard })
 
 function Dashboard() {
-  const { devices, status } = useDeviceStream()
+	const queryClient = useQueryClient()
+	const { status } = useDeviceStream()
 
-  // Group by brand
-  const grouped = devices.reduce<Record<string, Device[]>>((acc, d) => {
-    ;(acc[d.brand] ??= []).push(d)
-    return acc
-  }, {})
+	const { data: devices = [] } = useQuery<Device[]>({
+		queryKey: ['devices'],
+		queryFn: () => [],
+		staleTime: Infinity,
+		gcTime: Infinity,
+	})
 
-  async function handleHomekitToggle(deviceId: string, enabled: boolean) {
-    await fetch(`/api/devices/${deviceId}/homekit`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ enabled }),
-    })
-  }
+	const discoverMutation = useMutation({
+		mutationFn: () => api.api.devices.discover.post({}),
+	})
 
-  async function handleStateChange(deviceId: string, state: Partial<DeviceState>) {
-    await fetch(`/api/devices/${deviceId}/state`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(state),
-    })
-  }
+	const homekitMutation = useMutation({
+		mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) => {
+			await api.api.devices({ id }).homekit.patch({ enabled })
+		},
+	})
 
-  if (devices.length === 0 && status === 'connected') {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 text-center">
-        <span className="text-5xl mb-4">🏠</span>
-        <h2 className="text-lg font-semibold text-gray-900 mb-1">No devices yet</h2>
-        <p className="text-sm text-gray-500 mb-6">Add an integration to start discovering your smart home devices.</p>
-        <Link
-          to="/integrations"
-          className="px-4 py-2 bg-gray-900 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors"
-        >
-          Add Integration →
-        </Link>
-      </div>
-    )
-  }
+	const stateMutation = useMutation({
+		mutationFn: async ({ id, state }: { id: string; state: Partial<DeviceState> }) => {
+			await api.api.devices({ id }).state.patch(state)
+		},
+		onMutate: ({ id, state }) => {
+			// Optimistic update — SSE will confirm the real state shortly
+			queryClient.setQueryData(['devices'], (prev: Device[] = []) =>
+				prev.map((d) => (d.id === id ? { ...d, state: { ...d.state, ...state } } : d)),
+			)
+		},
+	})
 
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
-          <p className="text-sm text-gray-400 mt-0.5">{devices.length} device{devices.length !== 1 ? 's' : ''}</p>
-        </div>
-        <StreamStatusBadge status={status} />
-      </div>
+	// Group by brand
+	const grouped = devices.reduce<Record<string, Device[]>>((acc, d) => {
+		const existing = acc[d.brand]
+		if (existing) {
+			existing.push(d)
+		} else {
+			acc[d.brand] = [d]
+		}
+		return acc
+	}, {})
 
-      {Object.entries(grouped).map(([brand, brandDevices]) => (
-        <section key={brand} className="mb-8">
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">{brand}</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {brandDevices.map(device => (
-              <DeviceCard
-                key={device.id}
-                device={device}
-                onHomekitToggle={handleHomekitToggle}
-                onStateChange={handleStateChange}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
-    </div>
-  )
+	if (devices.length === 0 && status === 'connected') {
+		return (
+			<div className="flex flex-col items-center justify-center py-24 text-center">
+				<span className="text-5xl mb-4">🏠</span>
+				<h2 className="text-lg font-semibold text-gray-900 mb-1">No devices yet</h2>
+				<p className="text-sm text-gray-500 mb-6">
+					Add an integration to start discovering your smart home devices.
+				</p>
+				<Link
+					to="/integrations"
+					className="px-4 py-2 bg-gray-900 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors"
+				>
+					Add Integration →
+				</Link>
+			</div>
+		)
+	}
+
+	return (
+		<div>
+			<div className="flex items-center justify-between mb-6">
+				<div>
+					<h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
+					<p className="text-sm text-gray-400 mt-0.5">
+						{devices.length} device{devices.length !== 1 ? 's' : ''}
+					</p>
+				</div>
+				<div className="flex items-center gap-2">
+					<button
+						type="button"
+						onClick={() => { void discoverMutation.mutateAsync() }}
+						disabled={discoverMutation.isPending}
+						className="text-xs px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-40 transition-colors"
+					>
+						{discoverMutation.isPending ? 'Discovering…' : 'Discover Now'}
+					</button>
+					<StreamStatusBadge status={status} />
+				</div>
+			</div>
+
+			{Object.entries(grouped).map(([brand, brandDevices]) => (
+				<section key={brand} className="mb-8">
+					<h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+						{brand}
+					</h2>
+					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+						{brandDevices.map((device) => (
+							<DeviceCard
+								key={device.id}
+								device={device}
+								onHomekitToggle={(id, enabled) => homekitMutation.mutateAsync({ id, enabled })}
+								onStateChange={(id, state) => stateMutation.mutateAsync({ id, state })}
+							/>
+						))}
+					</div>
+				</section>
+			))}
+		</div>
+	)
 }
 
-function StreamStatusBadge({ status }: { status: string }) {
-  if (status === 'connected') return null
-  return (
-    <span className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full
+function StreamStatusBadge({ status }: Readonly<{ status: string }>) {
+	if (status === 'connected') return null
+	return (
+		<span
+			className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full
       ${status === 'reconnecting' ? 'bg-amber-50 text-amber-700' : 'bg-gray-100 text-gray-500'}`}
-    >
-      <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-      {status === 'reconnecting' ? 'Reconnecting…' : 'Connecting…'}
-    </span>
-  )
+		>
+			<span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+			{status === 'reconnecting' ? 'Reconnecting…' : 'Connecting…'}
+		</span>
+	)
 }

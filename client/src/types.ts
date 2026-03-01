@@ -1,105 +1,48 @@
+import type { Device as ServerDevice, Integration, HomekitConfig } from 'home-jarvis-server/src/db/schema'
+import type { DetectedDevice } from 'home-jarvis-server/src/discovery/local-scanner'
+import type { DeviceState, DeviceType, IntegrationMeta, CredentialField } from 'home-jarvis-server/src/integrations/types'
+
+// Re-export server types so consumers import from a single location: '../types'
+export type { Integration, HomekitConfig, DeviceState, DeviceType, IntegrationMeta, CredentialField, DetectedDevice }
+
 // ─── Device ──────────────────────────────────────────────────────────────────
+// Server schema's Device has state: string (JSON blob). The API parses it
+// before sending, so the over-the-wire type has state: DeviceState.
+export type Device = Omit<ServerDevice, 'state'> & { state: DeviceState }
 
-export type DeviceType = 'light' | 'switch' | 'thermostat' | 'air_purifier' | 'sensor'
-
-export interface DeviceState {
-  on?: boolean
-  brightness?: number      // 0–100
-  colorTemp?: number       // Kelvin
-  color?: { r: number; g: number; b: number }
-  temperature?: number     // Celsius
-  humidity?: number
-  fanSpeed?: number        // 0–100
-  airQuality?: number
-  targetTemperature?: number
-  mode?: string
-  [key: string]: unknown
-}
-
-export interface Device {
-  id: string
-  integrationId: string | null
-  brand: string
-  externalId: string
-  name: string
-  type: DeviceType
-  state: DeviceState
-  online: boolean
-  homekitEnabled: boolean
-  homekitUuid: string | null
-  lastSeen: number | null
-  createdAt: number
-  updatedAt: number
-}
-
-// ─── Integration ─────────────────────────────────────────────────────────────
-
-export interface Integration {
-  id: string
-  brand: string
-  config: string   // JSON — never expose raw to UI
-  enabled: boolean
-  createdAt: number
-  updatedAt: number
-}
-
-export interface CredentialField {
-  key: string
-  label: string
-  type: 'text' | 'password' | 'url'
-  placeholder?: string
-  hint?: string
-}
-
-export interface IntegrationMeta {
-  brand: string
-  displayName: string
-  fields: CredentialField[]
-  oauthFlow?: boolean
-}
+// ─── Client-only composites ───────────────────────────────────────────────────
 
 export interface IntegrationsResponse {
-  configured: Integration[]
-  available: IntegrationMeta[]
+	configured: Integration[]
+	available: IntegrationMeta[]
 }
 
 // ─── SSE Events ──────────────────────────────────────────────────────────────
 
 export interface SnapshotEvent {
-  type: 'snapshot'
-  devices: Device[]
-  timestamp: number
+	type: 'snapshot'
+	devices: Device[]
+	timestamp: number
 }
 
 export interface DeviceUpdateEvent {
-  type: 'device:update'
-  deviceId: string
-  brand?: string
-  state?: DeviceState
-  online?: boolean
-  timestamp: number
+	type: 'device:update'
+	deviceId: string
+	brand?: string
+	state?: DeviceState
+	online?: boolean
+	timestamp: number
 }
 
 export interface DeviceOfflineEvent {
-  type: 'device:offline'
-  deviceId: string
-  timestamp: number
+	type: 'device:offline'
+	deviceId: string
+	timestamp: number
 }
 
 export interface HeartbeatEvent {
-  type: 'heartbeat'
-  timestamp: number
+	type: 'heartbeat'
+	timestamp: number
 }
 
 export type SSEEvent = SnapshotEvent | DeviceUpdateEvent | DeviceOfflineEvent | HeartbeatEvent
-
-// ─── HomeKit ─────────────────────────────────────────────────────────────────
-
-export interface HomekitConfig {
-  id: string
-  pin: string
-  username: string
-  port: number
-  paired: boolean
-  createdAt: number
-}
