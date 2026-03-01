@@ -7,6 +7,7 @@ import { integrations } from '../db/schema'
 import { startPolling, stopPolling } from '../discovery/cloud-poller'
 import { discoverHueBridges, createHueApiKey } from '../integrations/hue/adapter'
 import { INTEGRATION_META, createAdapter } from '../integrations/registry'
+import { jsonError } from '../lib/json-response'
 import { log } from '../lib/logger'
 
 export const integrationsController = new Elysia({ prefix: '/api/integrations' })
@@ -31,7 +32,7 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 			const meta = INTEGRATION_META[brand]
 			if (!meta) {
 				log.warn('addIntegration unknown brand', { brand })
-				return new Response(JSON.stringify({ error: `Unknown brand: ${brand}` }), { status: 400 })
+				return jsonError(400, `Unknown brand: ${brand}`)
 			}
 
 			// Skip validation for OAuth brands (LG) — token comes from callback
@@ -40,12 +41,12 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 				const adapterResult = createAdapter(brand, config)
 				if (adapterResult.isErr()) {
 					log.error('addIntegration adapter error', { brand, error: adapterResult.error.message })
-					return new Response(JSON.stringify({ error: adapterResult.error.message }), { status: 400 })
+					return jsonError(400, adapterResult.error.message)
 				}
 				const credResult = await adapterResult.value.validateCredentials(config)
 				if (credResult.isErr()) {
 					log.warn('addIntegration credential validation failed', { brand, error: credResult.error.message })
-					return new Response(JSON.stringify({ error: credResult.error.message }), { status: 422 })
+					return jsonError(422, credResult.error.message)
 				}
 				log.info('addIntegration credentials valid', { brand })
 			}
@@ -99,7 +100,7 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 		const integration = db.select().from(integrations).where(eq(integrations.id, params.id)).get()
 		if (!integration) {
 			log.warn('removeIntegration not found', { integrationId: params.id })
-			return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 })
+			return jsonError(404, 'Not found')
 		}
 
 		log.info('removeIntegration', { brand: integration.brand, integrationId: params.id })
@@ -141,7 +142,7 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 				},
 				(e) => {
 					log.warn('hue link failed', { bridgeIp, error: e.message })
-					return new Response(JSON.stringify({ error: e.message }), { status: 422 })
+					return jsonError(422, e.message)
 				},
 			)
 		},
