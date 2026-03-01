@@ -1,0 +1,10 @@
+{
+  "name": "home-jarvis",
+  "private": true,
+  "scripts": {
+    "dev": "bun run --cwd server dev & bun run --cwd client dev",
+    "build": "bun run --cwd client build",
+    "db:push": "bun run --cwd server db:push",
+    "db:studio": "bun run --cwd server db:studio"
+  }
+}
