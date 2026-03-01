@@ -15,6 +15,9 @@ dist/
 client/dist/
 server/dist/
 
+# TanStack Router — auto-generated at build time
+client/src/routeTree.gen.ts
+
 # Environment
 .env
 .env.local
