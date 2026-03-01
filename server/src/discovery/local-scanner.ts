@@ -169,13 +169,14 @@ function scanMdns(
 	displayName: string,
 	detailsKey: string,
 	timeoutMs = 3000,
+	protocol: 'tcp' | 'udp' = 'tcp',
 ): Promise<DetectedDevice[]> {
 	return new Promise((resolve) => {
 		const found: DetectedDevice[] = []
 		try {
 			// eslint-disable-next-line @typescript-eslint/no-require-imports
 			const bonjour = require('bonjour-hap')()
-			const browser = bonjour.find({ type: serviceType })
+			const browser = bonjour.find({ type: serviceType, protocol })
 
 			browser.on('up', (service: BonjourService) => {
 				const ip = service.addresses?.[0] ?? service.host
@@ -208,7 +209,7 @@ export async function runLocalScan(): Promise<DetectedDevice[]> {
 	const results = await Promise.allSettled([
 		scanHue(),
 		scanGovee(),
-		scanMdns('miio', 'aqara', 'Aqara Hub', 'ip'),
+		scanMdns('miio', 'aqara', 'Aqara Hub', 'ip', 3000, 'udp'),
 		scanMdns('elg', 'elgato', 'Elgato Key Light', 'ip'),
 	])
 

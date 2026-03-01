@@ -34,8 +34,10 @@ function Integrations() {
 	} = useQuery({
 		queryKey: ['scan'],
 		queryFn: fetchScan,
-		staleTime: 0,
+		staleTime: Infinity,
+		gcTime: 0,
 		retry: false,
+		refetchOnWindowFocus: false,
 	})
 
 	const addMutation = useMutation({
