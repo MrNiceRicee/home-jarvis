@@ -4,6 +4,9 @@
   "workspaces": {
     "": {
       "name": "home-jarvis",
+      "dependencies": {
+        "@elysiajs/eden": "^1.4.8",
+      },
       "devDependencies": {
         "turbo": "latest",
       },
@@ -12,7 +15,9 @@
       "name": "client",
       "version": "0.0.0",
       "dependencies": {
+        "@elysiajs/eden": "^1.4.8",
         "@tanstack/react-router": "^1.163.3",
+        "home-jarvis-server": "workspace:*",
         "react": "^19.2.0",
         "react-aria-components": "^1.15.1",
         "react-dom": "^19.2.0",
@@ -106,6 +111,8 @@
     "@drizzle-team/brocli": ["@drizzle-team/brocli@0.10.2", "", {}, "sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w=="],
 
     "@elysiajs/cors": ["@elysiajs/cors@1.4.1", "", { "peerDependencies": { "elysia": ">= 1.4.0" } }, "sha512-lQfad+F3r4mNwsxRKbXyJB8Jg43oAOXjRwn7sKUL6bcOW3KjUqUimTS+woNpO97efpzjtDE0tEjGk9DTw8lqTQ=="],
+
+    "@elysiajs/eden": ["@elysiajs/eden@1.4.8", "", { "peerDependencies": { "elysia": ">=1.4.19" } }, "sha512-a7oct2kFa49tH+GawZtSUCZR2rQgucNYgGLz8alXUqb4IrU3PASA0T4zXJw4MhdV1Xb6vyiR7p7kkqJcVjgbkA=="],
 
     "@elysiajs/static": ["@elysiajs/static@1.4.7", "", { "peerDependencies": { "elysia": ">= 1.4.0" } }, "sha512-Go4kIXZ0G3iWfkAld07HmLglqIDMVXdyRKBQK/sVEjtpDdjHNb+rUIje73aDTWpZYg4PEVHUpi9v4AlNEwrQug=="],
 

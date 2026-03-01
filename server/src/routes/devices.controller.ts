@@ -9,7 +9,7 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
   .decorate('db', db)
 
   /** List all devices with their current state */
-  .get('/', ({ db }) => {
+  .get('', ({ db }) => {
     const rows = db.select().from(devices).all()
     return rows.map(d => ({
       ...d,

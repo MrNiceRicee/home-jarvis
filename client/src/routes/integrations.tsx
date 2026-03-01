@@ -11,7 +11,11 @@ function Integrations() {
 
   async function load() {
     const res = await fetch('/api/integrations')
-    setData(await res.json() as IntegrationsResponse)
+    const json = await res.json()
+    // Guard against unexpected response shape (e.g. trailing-slash routing quirk)
+    if (json && typeof json === 'object' && !Array.isArray(json)) {
+      setData(json as IntegrationsResponse)
+    }
     setLoading(false)
   }
 
@@ -31,7 +35,7 @@ function Integrations() {
   }
 
   async function handleRemove(brand: string) {
-    const integration = data?.configured.find(i => i.brand === brand)
+    const integration = data?.configured?.find(i => i.brand === brand)
     if (!integration) return
     await fetch(`/api/integrations/${integration.id}`, { method: 'DELETE' })
     await load()
@@ -45,7 +49,7 @@ function Integrations() {
     )
   }
 
-  const configuredBrands = new Set(data?.configured.map(i => i.brand) ?? [])
+  const configuredBrands = new Set(data?.configured?.map(i => i.brand) ?? [])
 
   return (
     <div>

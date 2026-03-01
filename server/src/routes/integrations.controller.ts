@@ -11,7 +11,7 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
   .decorate('db', db)
 
   /** List all configured integrations + available brand metadata */
-  .get('/', ({ db }) => {
+  .get('', ({ db }) => {
     const configured = db.select().from(integrations).all()
     return {
       configured,

@@ -14,5 +14,8 @@
   },
   "devDependencies": {
     "turbo": "latest"
+  },
+  "dependencies": {
+    "@elysiajs/eden": "^1.4.8"
   }
 }
