@@ -1,10 +1,18 @@
 {
   "name": "home-jarvis",
   "private": true,
+  "packageManager": "bun@1.3.10",
+  "workspaces": [
+    "server",
+    "client"
+  ],
   "scripts": {
-    "dev": "bun run --cwd server dev & bun run --cwd client dev",
-    "build": "bun run --cwd client build",
-    "db:push": "bun run --cwd server db:push",
-    "db:studio": "bun run --cwd server db:studio"
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "db:push": "turbo db:push",
+    "db:studio": "turbo db:studio"
+  },
+  "devDependencies": {
+    "turbo": "latest"
   }
 }
