@@ -3,7 +3,19 @@ import type { ResultAsync } from 'neverthrow'
 
 import type { Device } from '../db/schema'
 
-export type DeviceType = 'light' | 'switch' | 'thermostat' | 'air_purifier' | 'sensor'
+export type DeviceType =
+	| 'light'
+	| 'switch'
+	| 'thermostat'
+	| 'air_purifier'
+	| 'sensor'
+	| 'vacuum'
+	| 'washer_dryer'
+	| 'dishwasher'
+	| 'oven'
+	| 'fridge'
+	| 'tv'
+	| 'media_player'
 
 export interface DeviceState {
 	on?: boolean
@@ -16,6 +28,25 @@ export interface DeviceState {
 	airQuality?: number // 0–5 (AQI category)
 	targetTemperature?: number
 	mode?: string // thermostat mode: 'heat' | 'cool' | 'auto' | 'off'
+
+	// Vacuum
+	status?: string // 'cleaning' | 'docked' | 'returning' | 'paused' | 'error'
+	battery?: number // 0–100
+
+	// Media / TV
+	volume?: number // 0–100
+	playing?: boolean
+	track?: string // currently playing track name
+
+	// Appliances (washer, dishwasher, oven)
+	cycleStatus?: string // 'running' | 'paused' | 'done' | 'idle'
+	timeRemaining?: number // minutes
+	doorLocked?: boolean
+
+	// Fridge
+	targetCoolTemp?: number // fridge target °C
+	targetFreezeTemp?: number // freezer target °C
+
 	[key: string]: unknown // brand-specific extras
 }
 
