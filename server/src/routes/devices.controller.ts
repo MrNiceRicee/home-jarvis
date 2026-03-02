@@ -7,6 +7,7 @@ import { db } from '../db'
 import { devices, integrations } from '../db/schema'
 import { createAdapter } from '../integrations/registry'
 import { eventBus } from '../lib/events'
+import { jsonError } from '../lib/json-response'
 import { log } from '../lib/logger'
 import { parseJson } from '../lib/parse-json'
 
@@ -28,7 +29,7 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 	.post('/discover', async ({ db }) => {
 		if (discoveryInFlight) {
 			log.warn('discover skipped', { reason: 'already in progress' })
-			return new Response(JSON.stringify({ error: 'Discovery already in progress' }), { status: 429 })
+			return jsonError(429, 'Discovery already in progress')
 		}
 		const allIntegrations = db.select().from(integrations).all()
 		const enabled = allIntegrations.filter((i) => i.enabled)
@@ -71,12 +72,12 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 			const device = db.select().from(devices).where(eq(devices.id, params.id)).get()
 			if (!device) {
 				log.warn('setState device not found', { deviceId: params.id })
-				return new Response(JSON.stringify({ error: 'Device not found' }), { status: 404 })
+				return jsonError(404, 'Device not found')
 			}
 
 			if (!device.integrationId) {
 				log.warn('setState no integration', { deviceId: params.id, deviceName: device.name })
-				return new Response(JSON.stringify({ error: 'Device has no associated integration' }), { status: 422 })
+				return jsonError(422, 'Device has no associated integration')
 			}
 
 			const integration = db
@@ -86,7 +87,7 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 				.get()
 			if (!integration) {
 				log.warn('setState integration not found', { deviceId: params.id, integrationId: device.integrationId })
-				return new Response(JSON.stringify({ error: 'Integration not found' }), { status: 404 })
+				return jsonError(404, 'Integration not found')
 			}
 
 			log.info('setState', { deviceId: params.id, deviceName: device.name, brand: device.brand, state: body })
@@ -96,13 +97,13 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 			const adapterResult = createAdapter(integration.brand, config)
 			if (adapterResult.isErr()) {
 				log.error('setState adapter error', { brand: integration.brand, error: adapterResult.error.message })
-				return new Response(JSON.stringify({ error: adapterResult.error.message }), { status: 500 })
+				return jsonError(500, adapterResult.error.message)
 			}
 
 			const setResult = await adapterResult.value.setState(device.externalId, body)
 			if (setResult.isErr()) {
 				log.error('setState failed', { deviceId: params.id, deviceName: device.name, brand: device.brand, error: setResult.error.message })
-				return new Response(JSON.stringify({ error: setResult.error.message }), { status: 500 })
+				return jsonError(500, setResult.error.message)
 			}
 
 			const currentState = parseJson<Record<string, unknown>>(device.state).unwrapOr({})
@@ -146,15 +147,12 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 			const device = db.select().from(devices).where(eq(devices.id, params.id)).get()
 			if (!device) {
 				log.warn('setHomeKit device not found', { deviceId: params.id })
-				return new Response(JSON.stringify({ error: 'Device not found' }), { status: 404 })
+				return jsonError(404, 'Device not found')
 			}
 
 			if (device.brand === 'aqara') {
 				log.warn('setHomeKit aqara native', { deviceId: params.id, deviceName: device.name })
-				return new Response(
-					JSON.stringify({ error: 'Aqara supports HomeKit natively. Add via the Apple Home app.' }),
-					{ status: 400 },
-				)
+				return jsonError(400, 'Aqara supports HomeKit natively. Add via the Apple Home app.')
 			}
 
 			log.info('setHomeKit', { deviceId: params.id, deviceName: device.name, enabled: body.enabled })
