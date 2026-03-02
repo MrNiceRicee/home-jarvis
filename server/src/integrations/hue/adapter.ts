@@ -173,17 +173,21 @@ export function discoverHueBridges(): ResultAsync<HueBridgeInfo[], Error> {
 
 type HueLinkResponse = Array<{
 	success?: { username: string }
-	error?: { description: string }
+	error?: { type?: number; description: string }
 }>
 
-/** Create an API key by POST-ing to the bridge (user must press the button first) */
-export function createHueApiKey(bridgeIp: string): ResultAsync<string, Error> {
+/**
+ * Create an API key by POST-ing to the bridge.
+ * Retries automatically for ~30s so the user can press the button after clicking "Link Bridge".
+ */
+export function createHueApiKey(bridgeIp: string, _retriesLeft = 12): ResultAsync<string, Error> {
+	const retriesLeft = _retriesLeft
 	return ResultAsync.fromPromise(
 		fetch(`http://${bridgeIp}/api`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ devicetype: 'home-jarvis#server' }),
-			signal: AbortSignal.timeout(10_000),
+			signal: AbortSignal.timeout(5_000),
 		}),
 		(e) => new Error(`Could not reach bridge: ${(e as Error).message}`),
 	)
@@ -195,6 +199,13 @@ export function createHueApiKey(bridgeIp: string): ResultAsync<string, Error> {
 		)
 		.andThen((data) => {
 			if (!Array.isArray(data) || !data[0]) return err(new Error('Unexpected response from bridge'))
+			// Error 101 = link button not pressed — retry if we have attempts left
+			if (data[0].error?.type === 101 && retriesLeft > 0) {
+				return ResultAsync.fromPromise(
+					new Promise<void>((r) => setTimeout(r, 2_500)),
+					() => new Error('Retry aborted'),
+				).andThen(() => createHueApiKey(bridgeIp, retriesLeft - 1))
+			}
 			if (data[0].error) return err(new Error(data[0].error.description))
 			if (!data[0].success?.username) return err(new Error('No username in response'))
 			return ok(data[0].success.username)

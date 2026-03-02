@@ -2,6 +2,7 @@ import { type Result, err, ok } from 'neverthrow'
 
 import type { DeviceAdapter, IntegrationMeta } from './types'
 
+import { ElgatoAdapter } from './elgato/adapter'
 import { HueAdapter } from './hue/adapter'
 
 /** All supported integrations and their credential form metadata */
@@ -103,12 +104,26 @@ export const INTEGRATION_META: Record<string, IntegrationMeta> = {
 			},
 		],
 	},
+	elgato: {
+		brand: 'elgato',
+		displayName: 'Elgato Key Light',
+		fields: [
+			{
+				key: 'ip',
+				label: 'IP Address',
+				type: 'text',
+				placeholder: '192.168.1.x',
+				hint: 'Found automatically via Scan',
+			},
+		],
+	},
 }
 
 /** Create an adapter instance from a brand + config stored in DB */
 export function createAdapter(brand: string, config: Record<string, string>): Result<DeviceAdapter, Error> {
-	// eslint-disable-next-line sonarjs/no-small-switch -- more cases coming in Phase 3–4
 	switch (brand) {
+		case 'elgato':
+			return ok(new ElgatoAdapter(config))
 		case 'hue':
 			return ok(new HueAdapter(config))
 		// Phase 3–4 adapters are stubs until implemented
