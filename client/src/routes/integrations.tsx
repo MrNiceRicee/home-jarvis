@@ -11,12 +11,12 @@ export const Route = createFileRoute('/integrations')({ component: Integrations 
 async function fetchIntegrations(): Promise<IntegrationsResponse> {
 	const { data, error } = await api.api.integrations.get()
 	if (error) throw new Error((error.value as { message?: string })?.message ?? 'Failed to fetch integrations')
-	return (data as IntegrationsResponse) ?? { configured: [], available: [] }
+	return data ?? { configured: [], available: [] }
 }
 
 async function fetchScan(): Promise<DetectedDevice[]> {
 	const { data } = await api.api.scan.get()
-	return Array.isArray(data) ? (data as DetectedDevice[]) : []
+	return Array.isArray(data) ? data : []
 }
 
 function Integrations() {
