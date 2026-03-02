@@ -5,6 +5,6 @@ export default defineConfig({
 	out: './drizzle',
 	dialect: 'sqlite',
 	dbCredentials: {
-		url: './data/jarvis.db',
+		url: process.env.DB_PATH ?? './data/jarvis.db',
 	},
 })

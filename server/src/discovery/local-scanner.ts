@@ -210,7 +210,7 @@ export async function runLocalScan(): Promise<DetectedDevice[]> {
 		scanHue(),
 		scanGovee(),
 		scanMdns('miio', 'aqara', 'Aqara Hub', 'ip', 3000, 'udp'),
-		scanMdns('elg', 'elgato', 'Elgato Key Light', 'ip'),
+		scanMdns('elg', 'elgato', 'Elgato Key Light', 'ip', 5000),
 	])
 
 	return results

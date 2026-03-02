@@ -15,9 +15,11 @@ export function useDeviceStream() {
 	const connect = useCallback(() => {
 		if (esRef.current) esRef.current.close()
 
-		// Connect directly to the API port — Vite's proxy buffers streaming responses
-		// and corrupts the Content-Type for SSE. CORS is enabled on the server.
-		const es = new EventSource('http://localhost:3001/api/events')
+		// In dev, connect directly to the API port — Vite's proxy buffers streaming
+		// responses and corrupts the Content-Type for SSE. In production the client
+		// is served from the same origin as the API so we use a relative URL.
+		const sseUrl = import.meta.env.DEV ? 'http://localhost:3001/api/events' : '/api/events'
+		const es = new EventSource(sseUrl)
 		esRef.current = es
 
 		es.onopen = () => {
