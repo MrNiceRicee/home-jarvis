@@ -8,7 +8,7 @@ Personal IoT hub — discover, control, and bridge smart home devices to HomeKit
 - **Auto-detection**: mDNS and UDP LAN scanning for local devices (Hue, Govee, Elgato, Aqara)
 - **Real-time UI**: SSE-based live state — no polling, no page refresh
 - **HomeKit bridge**: Expose non-HomeKit devices to Apple Home (Phase 5)
-- **Single binary**: Production build is one `jarvis.exe` — no Node, no runtime required
+- **Single binary**: Production build is one `./jarvis` — no Node, no runtime required
 
 ## Stack
 
@@ -37,6 +37,8 @@ bun install
 bun run db:push          # create SQLite schema
 bun run dev              # server :3001 + client :5173 concurrently
 ```
+
+Open `http://localhost:3001` (production) or `http://localhost:5173` (dev with hot reload).
 
 ### Commands
 
@@ -90,27 +92,27 @@ scripts/gen-client-manifest.ts
     (all HTML/CSS/JS/assets embedded as string literals)
       ↓
 bun build --compile server/src/index.ts
-  → dist/jarvis[.exe]
+  → dist/jarvis
     (Bun runtime + server code + embedded client — one file)
 ```
 
 In production the server serves the embedded client files from `GET /*`, with immutable cache headers for hashed assets and SPA fallback to `index.html` for client-side routes. In development the stub manifest (`hasClientAssets = false`) makes that route a no-op — Vite serves the client normally.
 
-### Build for the current platform
+### Build
 
 ```bash
 bun run build:prod
 # → dist/jarvis
 ```
 
-### Cross-compile for Windows (from Linux/WSL2)
+### Run
 
 ```bash
-bun run build:win
-# → dist/jarvis.exe
+./dist/jarvis
+# Open http://localhost:3001
 ```
 
-Copy `dist/jarvis.exe` to Windows and run it — no installation required.
+The `data/` directory and database are auto-created next to the binary on first run.
 
 ### Environment variables
 
@@ -120,42 +122,72 @@ Copy `dist/jarvis.exe` to Windows and run it — no installation required.
 | `DB_PATH` | auto (see below) | Absolute path to SQLite database file |
 
 **DB path resolution:**
-- **Development** (`bun run dev`): `./data/jarvis.db` relative to the repo root
+- **Development** (`bun run dev`): `server/data/jarvis.db` relative to the repo root
 - **Compiled binary**: `./data/jarvis.db` relative to the directory containing the executable
 - **Override**: `DB_PATH=/absolute/path/to/jarvis.db ./jarvis`
 
 ---
 
-## Windows Deployment
+## macOS Deployment
 
-1. Build from WSL2: `bun run build:win`
-2. Copy `dist/jarvis.exe` to a folder on Windows, e.g. `C:\jarvis\`
-3. Run it — the database auto-creates at `C:\jarvis\data\jarvis.db`
-4. Open `http://localhost:3001` in a browser
-
-To run on startup, create a Task Scheduler entry or place a `.bat` in `shell:startup`:
-
-```bat
-@echo off
-start "" /B "C:\jarvis\jarvis.exe"
-```
-
-### Sharing the database between WSL dev and Windows production
-
-Both environments are on the same machine. Point the dev server at the Windows path:
+### Run directly
 
 ```bash
-# In ~/.zshrc or a .env file
-export DB_PATH=/mnt/c/jarvis/data/jarvis.db
+bun run build:prod
+cp dist/jarvis ~/Applications/jarvis/
+~/Applications/jarvis/jarvis
 ```
 
-Or symlink:
+The database auto-creates at `~/Applications/jarvis/data/jarvis.db`.
+
+### Run on login with launchd
+
+Create `~/Library/LaunchAgents/com.home-jarvis.plist`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.home-jarvis</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/YOUR_USERNAME/Applications/jarvis/jarvis</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/YOUR_USERNAME/Applications/jarvis</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/Users/YOUR_USERNAME/Applications/jarvis/logs/jarvis.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/YOUR_USERNAME/Applications/jarvis/logs/jarvis.log</string>
+</dict>
+</plist>
+```
+
 ```bash
-mkdir -p data
-ln -sf /mnt/c/jarvis/data/jarvis.db data/jarvis.db
+mkdir -p ~/Applications/jarvis/logs
+launchctl load ~/Library/LaunchAgents/com.home-jarvis.plist
 ```
 
-Now dev and production share one database — no sync required.
+### Sharing the database between dev and production
+
+Both point at the same file — no sync needed:
+
+```bash
+# In ~/.zshrc
+export DB_PATH=~/Applications/jarvis/data/jarvis.db
+```
+
+Then `bun run dev` and the production binary use the same database. To push schema changes:
+
+```bash
+DB_PATH=~/Applications/jarvis/data/jarvis.db bun run db:push
+```
 
 ---
 
@@ -173,7 +205,7 @@ Now dev and production share one database — no sync required.
 | Resideo (Honeywell) | Manual | API key + OAuth token |
 | VeSync (Levoit) | Manual | Email + password |
 
-> **Note:** mDNS/UDP auto-detection requires the server to run natively on the same LAN segment. It does not work inside WSL2 due to multicast limitations — use "Scan" from a native Linux or Windows host, or enter the IP manually.
+> **Note:** mDNS/UDP auto-detection works on macOS (Bonjour built-in) and Linux (avahi). It does not work inside WSL2 due to multicast limitations — run from a native host or enter the device IP manually.
 
 ### Adding an integration
 
