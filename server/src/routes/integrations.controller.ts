@@ -7,6 +7,7 @@ import { integrations } from '../db/schema'
 import { startPolling, stopPolling } from '../discovery/cloud-poller'
 import { discoverHueBridges, createHueApiKey } from '../integrations/hue/adapter'
 import { INTEGRATION_META, createAdapter } from '../integrations/registry'
+import { log } from '../lib/logger'
 
 export const integrationsController = new Elysia({ prefix: '/api/integrations' })
 	.decorate('db', db)
@@ -15,7 +16,8 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 	.get('', ({ db }) => {
 		const configured = db.select().from(integrations).all()
 		return {
-			configured,
+			// Omit config blob (contains API keys/passwords) — client only needs id, brand, enabled
+			configured: configured.map(({ config: _config, ...rest }) => rest),
 			available: Object.values(INTEGRATION_META),
 		}
 	})
@@ -27,19 +29,25 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 			const { brand, config } = body
 
 			const meta = INTEGRATION_META[brand]
-			if (!meta)
+			if (!meta) {
+				log.warn('addIntegration unknown brand', { brand })
 				return new Response(JSON.stringify({ error: `Unknown brand: ${brand}` }), { status: 400 })
+			}
 
 			// Skip validation for OAuth brands (LG) — token comes from callback
 			if (!meta.oauthFlow) {
+				log.info('addIntegration validating credentials', { brand })
 				const adapterResult = createAdapter(brand, config)
 				if (adapterResult.isErr()) {
+					log.error('addIntegration adapter error', { brand, error: adapterResult.error.message })
 					return new Response(JSON.stringify({ error: adapterResult.error.message }), { status: 400 })
 				}
 				const credResult = await adapterResult.value.validateCredentials(config)
 				if (credResult.isErr()) {
+					log.warn('addIntegration credential validation failed', { brand, error: credResult.error.message })
 					return new Response(JSON.stringify({ error: credResult.error.message }), { status: 422 })
 				}
+				log.info('addIntegration credentials valid', { brand })
 			}
 
 			// Upsert — if brand already exists, update config
@@ -56,6 +64,7 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 				stopPolling(existing.id)
 				startPolling(db, existing.id, brand, config)
 
+				log.info('addIntegration updated', { brand, integrationId: existing.id })
 				return db.select().from(integrations).where(eq(integrations.brand, brand)).get()
 			}
 
@@ -74,6 +83,7 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 			// Start polling
 			startPolling(db, id, brand, config)
 
+			log.info('addIntegration created', { brand, integrationId: id })
 			return db.select().from(integrations).where(eq(integrations.id, id)).get()
 		},
 		{
@@ -87,21 +97,33 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 	/** Remove an integration and all its devices */
 	.delete('/:id', ({ db, params }) => {
 		const integration = db.select().from(integrations).where(eq(integrations.id, params.id)).get()
-		if (!integration) return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 })
+		if (!integration) {
+			log.warn('removeIntegration not found', { integrationId: params.id })
+			return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 })
+		}
 
+		log.info('removeIntegration', { brand: integration.brand, integrationId: params.id })
 		stopPolling(params.id)
 		// TODO Phase 5: also remove HomeKit accessories for devices from this integration
 
 		db.delete(integrations).where(eq(integrations.id, params.id)).run()
+		log.info('removeIntegration ok', { brand: integration.brand })
 		return { ok: true }
 	})
 
 	/** Hue-specific: discover bridges on local network */
 	.get('/hue/discover-bridges', async () => {
+		log.info('hue discoverBridges')
 		const result = await discoverHueBridges()
 		return result.match(
-			(bridges) => bridges,
-			() => [],
+			(bridges) => {
+				log.info('hue discoverBridges ok', { count: bridges.length, ips: bridges.map((b) => b.internalipaddress) })
+				return bridges
+			},
+			(err) => {
+				log.warn('hue discoverBridges failed', { error: err.message })
+				return []
+			},
 		)
 	})
 
@@ -110,10 +132,17 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 		'/hue/link',
 		async ({ body }) => {
 			const { bridgeIp } = body
+			log.info('hue link', { bridgeIp })
 			const result = await createHueApiKey(bridgeIp)
 			return result.match(
-				(apiKey) => ({ apiKey }),
-				(e) => new Response(JSON.stringify({ error: e.message }), { status: 422 }),
+				(apiKey) => {
+					log.info('hue link ok', { bridgeIp })
+					return { apiKey }
+				},
+				(e) => {
+					log.warn('hue link failed', { bridgeIp, error: e.message })
+					return new Response(JSON.stringify({ error: e.message }), { status: 422 })
+				},
 			)
 		},
 		{
