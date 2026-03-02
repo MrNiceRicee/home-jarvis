@@ -1,7 +1,8 @@
 import { Database } from 'bun:sqlite'
 import { drizzle } from 'drizzle-orm/bun-sqlite'
-import * as schema from './schema'
 import path from 'path'
+
+import * as schema from './schema'
 
 const dbPath = path.join(import.meta.dir, '../../data/jarvis.db')
 
