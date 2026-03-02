@@ -1,18 +1,23 @@
 import { Database } from 'bun:sqlite'
 import { drizzle } from 'drizzle-orm/bun-sqlite'
+import { mkdirSync } from 'node:fs'
 import path from 'path'
 
 import * as schema from './schema'
 
-// In a compiled Bun binary, Bun.main starts with '$bunfs://' (virtual bundle FS).
-// import.meta.dir then points to the exe's directory — two levels up is wrong.
-// Fall back to DB_PATH env var for explicit control, or detect context automatically.
-const isCompiledBinary = Bun.main.startsWith('$bunfs://')
+// In a compiled Bun binary:
+//   - Linux/macOS: Bun.main starts with '$bunfs://'
+//   - Windows:     Bun.main starts with 'B:/~BUN/' (virtual drive letter for the bundle FS)
+// Both indicate we're running from a compiled exe, not source.
+const isCompiledBinary = Bun.main.startsWith('$bunfs://') || Bun.main.includes('~BUN')
 const dbPath =
 	process.env.DB_PATH ??
 	(isCompiledBinary
 		? path.join(path.dirname(process.execPath), 'data', 'jarvis.db')
 		: path.join(import.meta.dir, '../../data/jarvis.db'))
+
+// Ensure the data directory exists — SQLite cannot create a file whose parent dir is missing.
+mkdirSync(path.dirname(dbPath), { recursive: true })
 
 const sqlite = new Database(dbPath, { create: true })
 
