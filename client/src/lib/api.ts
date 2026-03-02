@@ -12,5 +12,5 @@ import { treaty } from '@elysiajs/eden'
  */
 // In dev (Vite), the server runs on :3001. In production, client is served from
 // the same Elysia server, so we use the current page's host.
-const apiHost = import.meta.env.DEV ? 'localhost:3001' : window.location.host
+const apiHost = import.meta.env.DEV ? 'localhost:3001' : ''
 export const api = treaty<App>(apiHost)
