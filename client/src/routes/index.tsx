@@ -1,9 +1,11 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link, createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
 
 import type { Device, DeviceState } from '../types'
 
 import { DeviceCard } from '../components/DeviceCard'
+import { LightMultiSelectBar } from '../components/LightMultiSelectBar'
 import { useDeviceStream } from '../hooks/useDeviceStream'
 import { api } from '../lib/api'
 
@@ -19,6 +21,20 @@ function Dashboard() {
 		staleTime: Infinity,
 		gcTime: Infinity,
 	})
+
+	const [selectedLightIds, setSelectedLightIds] = useState<Set<string>>(new Set())
+
+	function toggleLightSelect(id: string) {
+		setSelectedLightIds((prev) => {
+			const next = new Set(prev)
+			if (next.has(id)) {
+				next.delete(id)
+			} else {
+				next.add(id)
+			}
+			return next
+		})
+	}
 
 	const discoverMutation = useMutation({
 		mutationFn: () => api.api.devices.discover.post({}),
@@ -41,6 +57,10 @@ function Dashboard() {
 			)
 		},
 	})
+
+	async function handleStateChange(id: string, state: Partial<DeviceState>) {
+		await stateMutation.mutateAsync({ id, state })
+	}
 
 	// Group by brand
 	const grouped = devices.reduce<Record<string, Device[]>>((acc, d) => {
@@ -104,12 +124,23 @@ function Dashboard() {
 								key={device.id}
 								device={device}
 								onHomekitToggle={(id, enabled) => homekitMutation.mutateAsync({ id, enabled })}
-								onStateChange={(id, state) => stateMutation.mutateAsync({ id, state })}
+								onStateChange={handleStateChange}
+								isSelected={device.type === 'light' ? selectedLightIds.has(device.id) : undefined}
+								onToggleSelect={
+									device.type === 'light' ? () => toggleLightSelect(device.id) : undefined
+								}
 							/>
 						))}
 					</div>
 				</section>
 			))}
+
+			<LightMultiSelectBar
+				selectedIds={selectedLightIds}
+				devices={devices}
+				onClear={() => setSelectedLightIds(new Set())}
+				onStateChange={handleStateChange}
+			/>
 		</div>
 	)
 }

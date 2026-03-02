@@ -13,7 +13,8 @@ export type Device = Omit<ServerDevice, 'state'> & { state: DeviceState }
 // ─── Client-only composites ───────────────────────────────────────────────────
 
 export interface IntegrationsResponse {
-	configured: Integration[]
+	// config blob is stripped server-side (contains credentials)
+	configured: Omit<Integration, 'config'>[]
 	available: IntegrationMeta[]
 }
 
