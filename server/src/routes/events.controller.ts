@@ -22,7 +22,7 @@ export const eventsController = new Elysia({ prefix: '/api' })
 	 * - Content-Type: text/event-stream is set automatically
 	 * - Generator is cancelled automatically when the client disconnects
 	 */
-	.get('/events', async function* ({ set, request }) {
+	.get('/events', async function* ({ set }) {
 		// eslint-disable-next-line sonarjs/pseudo-random -- log correlation ID only, not security-sensitive
 		const clientId = Math.random().toString(36).slice(2, 8)
 		log.info('sse connect', { clientId })
@@ -56,16 +56,17 @@ export const eventsController = new Elysia({ prefix: '/api' })
 		eventBus.on('device:update', handler)
 
 		try {
-			while (!request.signal.aborted) {
+			// Loop forever — Elysia calls generator.return() on client disconnect,
+			// which jumps to the finally block for cleanup.
+			while (true) {
 				const item = queue.shift()
 				if (item !== undefined) {
 					yield sse({ data: item })
 					continue
 				}
-				// Park until a new event arrives or client disconnects
+				// Park until a device event or heartbeat arrives
 				await new Promise<void>((resolve) => {
 					notify = resolve
-					request.signal.addEventListener('abort', () => resolve(), { once: true })
 				})
 			}
 		} finally {
