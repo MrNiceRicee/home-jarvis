@@ -31,7 +31,15 @@ export function LightMultiSelectBar({
 	}
 
 	return (
-		<div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl border border-white/60 ring-1 ring-gray-200/50 px-4 py-3 flex items-center gap-3 flex-wrap max-w-[92vw]">
+		<div
+			className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 rounded-2xl px-4 py-3 flex items-center gap-3 flex-wrap max-w-[92vw]"
+			style={{
+				background: 'linear-gradient(to bottom, rgba(255,255,255,0.92), rgba(255,255,255,0.85))',
+				backdropFilter: 'blur(16px) saturate(1.5)',
+				boxShadow: '0 4px 24px rgba(0,0,0,0.1), 0 1px 4px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)',
+				border: '1px solid rgba(255,255,255,0.6)',
+			}}
+		>
 			{/* Count + clear */}
 			<div className="flex items-center gap-1.5 shrink-0">
 				<span className="text-xs font-semibold text-gray-700">

@@ -3,6 +3,8 @@ import { Button } from 'react-aria-components'
 
 import type { Device, DeviceState } from '../../types'
 
+import { cn } from '../../lib/cn'
+
 interface GenericCardProps {
 	device: Device
 	onStateChange?: (deviceId: string, state: Partial<DeviceState>) => Promise<void>
@@ -36,7 +38,7 @@ export function GenericCard({ device, onStateChange }: Readonly<GenericCardProps
 		<div className="space-y-2">
 			{isSwitch && (
 				<div className="flex items-center gap-2 mb-2">
-					<span className={`text-xs font-medium ${isOn ? 'text-amber-600' : 'text-gray-400'}`}>
+					<span className={cn('text-xs font-medium', isOn ? 'text-amber-600' : 'text-gray-400')}>
 						{isOn ? 'On' : 'Off'}
 					</span>
 				</div>
@@ -46,11 +48,13 @@ export function GenericCard({ device, onStateChange }: Readonly<GenericCardProps
 				<Button
 					onPress={handlePowerToggle}
 					isDisabled={toggling}
-					className={`w-full py-1.5 rounded-lg text-xs font-medium transition-colors cursor-default
-            ${isOn
-						? 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 pressed:bg-amber-200'
-						: 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200 pressed:bg-gray-300'
-					} disabled:opacity-40`}
+					className={cn(
+						'w-full py-1.5 rounded-lg text-xs font-medium transition-colors cursor-default',
+						isOn
+							? 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 pressed:bg-amber-200'
+							: 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200 pressed:bg-gray-300',
+						'disabled:opacity-40',
+					)}
 				>
 					{buttonLabel}
 				</Button>

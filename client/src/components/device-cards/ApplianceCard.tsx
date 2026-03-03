@@ -1,5 +1,7 @@
 import type { Device } from '../../types'
 
+import { cn } from '../../lib/cn'
+
 const CYCLE_STYLES: Record<string, string> = {
 	running: 'text-blue-700 bg-blue-50',
 	paused: 'text-amber-700 bg-amber-50',
@@ -19,11 +21,11 @@ export function ApplianceCard({ device }: Readonly<ApplianceCardProps>) {
 	return (
 		<div className="space-y-2">
 			<div className="flex items-center justify-between">
-				<span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${cycleColor}`}>
+				<span className={cn('text-xs font-medium px-2 py-0.5 rounded-full capitalize', cycleColor)}>
 					{cycleStatus}
 				</span>
 				{state.doorLocked !== undefined && (
-					<span className={`text-xs ${state.doorLocked ? 'text-emerald-600' : 'text-gray-400'}`}>
+					<span className={cn('text-xs', state.doorLocked ? 'text-emerald-600' : 'text-gray-400')}>
 						{state.doorLocked ? '🔒 Locked' : '🔓 Unlocked'}
 					</span>
 				)}

@@ -20,6 +20,7 @@ import {
 
 import type { Device, DeviceState } from '../../types'
 
+import { cn } from '../../lib/cn'
 import { CCT_SWATCHES, COLOR_PRESETS, SCENES, tempToColor } from '../../lib/color-utils'
 
 interface LightCardProps {
@@ -109,10 +110,10 @@ export function LightCard({ device, onStateChange }: Readonly<LightCardProps>) {
 	}
 
 	return (
-		<div className={`rounded-lg p-2 transition-colors ${isOn ? 'bg-amber-50/30' : 'bg-gray-50'}`}>
+		<div className={cn('rounded-lg p-2 transition-colors', isOn ? 'bg-amber-50/30' : 'bg-gray-50')}>
 			{/* ── Power row ─────────────────────────────────────────────── */}
 			<div className="flex items-center justify-between mb-2">
-				<span className={`text-xs font-medium ${isOn ? 'text-amber-600' : 'text-gray-400'}`}>
+				<span className={cn('text-xs font-medium', isOn ? 'text-amber-600' : 'text-gray-400')}>
 					{isOn ? 'On' : 'Off'}
 					{state.brightness !== undefined && isOn && (
 						<span className="text-gray-400"> · {brightness}%</span>
@@ -122,11 +123,12 @@ export function LightCard({ device, onStateChange }: Readonly<LightCardProps>) {
 					<Button
 						onPress={() => { void handlePowerToggle() }}
 						isDisabled={toggling}
-						className={`text-xs px-4 py-1.5 rounded-full border transition-colors cursor-default disabled:opacity-40 ${
+						className={cn(
+							'text-xs px-4 py-1.5 rounded-full border transition-colors cursor-default disabled:opacity-40',
 							isOn
 								? 'bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-300 pressed:bg-amber-200'
-								: 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-300 pressed:bg-gray-300'
-						}`}
+								: 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-300 pressed:bg-gray-300',
+						)}
 					>
 						{buttonLabel}
 					</Button>
@@ -158,18 +160,20 @@ export function LightCard({ device, onStateChange }: Readonly<LightCardProps>) {
 					<button
 						type="button"
 						onClick={() => setMode('white')}
-						className={`flex-1 text-xs py-1 rounded-full transition-all ${
-							mode === 'white' ? 'bg-white shadow-sm font-medium text-gray-800' : 'text-gray-500'
-						}`}
+						className={cn(
+							'flex-1 text-xs py-1 rounded-full transition-all',
+							mode === 'white' ? 'bg-white shadow-sm font-medium text-gray-800' : 'text-gray-500',
+						)}
 					>
 						White
 					</button>
 					<button
 						type="button"
 						onClick={() => setMode('color')}
-						className={`flex-1 text-xs py-1 rounded-full transition-all ${
-							mode === 'color' ? 'bg-white shadow-sm font-medium text-gray-800' : 'text-gray-500'
-						}`}
+						className={cn(
+							'flex-1 text-xs py-1 rounded-full transition-all',
+							mode === 'color' ? 'bg-white shadow-sm font-medium text-gray-800' : 'text-gray-500',
+						)}
 					>
 						Color
 					</button>
@@ -194,11 +198,12 @@ export function LightCard({ device, onStateChange }: Readonly<LightCardProps>) {
 									boxShadow:
 										'0 2px 6px rgba(0,0,0,0.25), inset 0 1px 2px rgba(255,255,255,0.4)',
 								}}
-								className={`w-6 h-6 rounded-full cursor-pointer transition-transform hover:scale-110 ${
+								className={cn(
+									'w-6 h-6 rounded-full cursor-pointer transition-transform hover:scale-110',
 									Math.abs(colorTemp - k) < 200
 										? 'ring-2 ring-gray-600 ring-offset-1'
-										: 'ring-1 ring-white/40'
-								}`}
+										: 'ring-1 ring-white/40',
+								)}
 								aria-label={`${k}K`}
 							/>
 						))}

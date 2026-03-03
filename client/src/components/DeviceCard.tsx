@@ -3,6 +3,7 @@ import { Button, Label, Switch, Tooltip, TooltipTrigger } from 'react-aria-compo
 
 import type { Device, DeviceState } from '../types'
 
+import { cn } from '../lib/cn'
 import { type LightAccent, lightAccentStyle } from '../lib/color-utils'
 import { AirPurifierCard } from './device-cards/AirPurifierCard'
 import { ApplianceCard } from './device-cards/ApplianceCard'
@@ -13,6 +14,7 @@ import { MediaCard } from './device-cards/MediaCard'
 import { SensorCard } from './device-cards/SensorCard'
 import { ThermostatCard } from './device-cards/ThermostatCard'
 import { VacuumCard } from './device-cards/VacuumCard'
+import { Card, CardBody, CardFooter, CardHeader } from './ui/card'
 
 const TYPE_ICON: Record<string, string> = {
 	light: '💡',
@@ -144,31 +146,24 @@ function CardShell({
 	const icon = TYPE_ICON[device.type] ?? '📦'
 
 	return (
-		<div
-			className={`relative bg-white rounded-xl overflow-hidden transition-all ${
-				accent ? 'border-2' : 'border'
-			} ${device.online ? 'shadow-sm' : 'opacity-60'} ${
-				isSelected ? 'ring-2 ring-blue-500 ring-offset-1' : ''
-			}`}
-			style={accent ? { borderColor: accent.borderColor } : { borderColor: device.online ? '#e5e7eb' : '#f3f4f6' }}
+		<Card
+			accent={accent?.borderColor}
+			muted={!device.online}
+			selected={isSelected}
 		>
-			{/* ── Header zone — takes on the light color ── */}
-			<div
-				className="px-4 pt-4 pb-3"
-				style={accent ? { background: accent.headerBackground } : undefined}
-			>
+			<CardHeader style={accent ? { background: accent.headerBackground } : undefined}>
 				<div className="flex items-start justify-between gap-2">
 					<div className="flex items-center gap-2 min-w-0">
-						{/* Icon doubles as the selection toggle for selectable devices */}
 						{onToggleSelect !== undefined ? (
 							<button
 								type="button"
 								onClick={onToggleSelect}
-								className={`relative text-xl shrink-0 w-9 h-9 flex items-center justify-center rounded-full transition-all ${
+								className={cn(
+									'relative text-xl shrink-0 w-9 h-9 flex items-center justify-center rounded-full transition-all',
 									isSelected
 										? 'bg-blue-100 ring-2 ring-blue-500'
-										: 'hover:bg-white/60 hover:ring-2 hover:ring-white/80'
-								}`}
+										: 'hover:bg-white/60 hover:ring-2 hover:ring-white/80',
+								)}
 								aria-label={isSelected ? 'Deselect' : 'Select'}
 							>
 								{icon}
@@ -192,13 +187,11 @@ function CardShell({
 					</div>
 					<OnlineBadge online={device.online} accented={!!accent} />
 				</div>
-			</div>
+			</CardHeader>
 
-			{/* ── Content zone — always neutral white ── */}
-			<div className="px-4 pb-4">{children}</div>
+			<CardBody>{children}</CardBody>
 
-			{/* ── Footer — HomeKit, always neutral ── */}
-			<div className="px-4 py-2.5 border-t border-gray-100 bg-white flex items-center justify-between">
+			<CardFooter>
 				<span className="text-xs text-gray-400">HomeKit</span>
 				{isNativeHomeKit ? (
 					<TooltipTrigger delay={200}>
@@ -222,8 +215,8 @@ function CardShell({
 						<Label className="sr-only">Enable HomeKit</Label>
 					</Switch>
 				)}
-			</div>
-		</div>
+			</CardFooter>
+		</Card>
 	)
 }
 
@@ -235,9 +228,9 @@ function badgeBg(online: boolean, accented: boolean): string {
 function OnlineBadge({ online, accented }: Readonly<{ online: boolean; accented: boolean }>) {
 	return (
 		<span
-			className={`flex items-center gap-1 text-xs font-medium shrink-0 px-1.5 py-0.5 rounded-full ${badgeBg(online, accented)} ${online ? 'text-emerald-700' : 'text-gray-400'}`}
+			className={cn('flex items-center gap-1 text-xs font-medium shrink-0 px-1.5 py-0.5 rounded-full', badgeBg(online, accented), online ? 'text-emerald-700' : 'text-gray-400')}
 		>
-			<span className={`w-1.5 h-1.5 rounded-full ${online ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+			<span className={cn('w-1.5 h-1.5 rounded-full', online ? 'bg-emerald-500' : 'bg-gray-300')} />
 			{online ? 'Online' : 'Offline'}
 		</span>
 	)

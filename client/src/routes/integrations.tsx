@@ -7,8 +7,21 @@ import type { IntegrationsResponse } from '../types'
 import { IntegrationCard, QuickConnectCard } from '../components/IntegrationForm'
 import { useScanStream } from '../hooks/useScanStream'
 import { api } from '../lib/api'
+import { cn } from '../lib/cn'
 
 export const Route = createFileRoute('/integrations')({ component: Integrations })
+
+function scanPillClass(error: string | undefined, done: boolean) {
+	if (error) return 'bg-red-50 text-red-600'
+	if (done) return 'bg-emerald-50 text-emerald-700'
+	return 'bg-amber-50 text-amber-600 animate-pulse'
+}
+
+function resultPillClass(r: { error?: string; count: number }) {
+	if (r.error) return 'bg-red-50 text-red-600'
+	if (r.count > 0) return 'bg-emerald-50 text-emerald-700'
+	return 'bg-gray-100 text-gray-500'
+}
 
 async function fetchIntegrations(): Promise<IntegrationsResponse> {
 	const { data, error } = await api.api.integrations.get()
@@ -120,13 +133,7 @@ function Integrations() {
 							return (
 								<span
 									key={brand}
-									className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-										result?.error
-											? 'bg-red-50 text-red-600'
-											: done
-												? 'bg-emerald-50 text-emerald-700'
-												: 'bg-amber-50 text-amber-600 animate-pulse'
-									}`}
+									className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium', scanPillClass(result?.error, done))}
 								>
 									{brandDisplayName(brand)}
 									{!done && ' …'}
@@ -144,9 +151,7 @@ function Integrations() {
 						{scan.brandResults.map((r) => (
 							<span
 								key={r.brand}
-								className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-									r.error ? 'bg-red-50 text-red-600' : r.count > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'
-								}`}
+								className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium', resultPillClass(r))}
 							>
 								{brandDisplayName(r.brand)} · {r.error ? 'error' : `${r.count} found`}
 							</span>

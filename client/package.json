@@ -18,11 +18,14 @@
 		"@tanstack/react-query-devtools": "^5.91.3",
 		"@tanstack/react-router": "^1.163.3",
 		"@tanstack/react-router-devtools": "^1.163.3",
+		"clsx": "^2.1.1",
 		"home-jarvis-server": "workspace:*",
 		"react": "^19.2.0",
 		"react-aria-components": "^1.15.1",
 		"react-dom": "^19.2.0",
-		"sonner": "^2.0.7"
+		"sonner": "^2.0.7",
+		"tailwind-merge": "^3.5.0",
+		"tailwind-variants": "^3.2.2"
 	},
 	"devDependencies": {
 		"@tailwindcss/vite": "^4.2.1",
