@@ -42,7 +42,7 @@ export function useDeviceStream() {
 							d.id === event.deviceId
 								? {
 										...d,
-										...(event.state ? { state: event.state } : {}),
+										...(event.state ? { state: { ...d.state, ...event.state } } : {}),
 										...(event.online !== undefined ? { online: event.online } : {}),
 									}
 								: d,
