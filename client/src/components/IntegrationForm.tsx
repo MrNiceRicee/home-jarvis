@@ -8,6 +8,7 @@ import {
 import type { IntegrationMeta, CredentialField, DetectedDevice } from '../types'
 
 import { api } from '../lib/api'
+import { cn } from '../lib/cn'
 import { RaisedButton } from './ui/button'
 import { Card } from './ui/card'
 import { RaisedInput } from './ui/input'
@@ -25,6 +26,14 @@ const BRAND_ICON: Record<string, string> = {
 	elgato: '🔆',
 }
 
+// brands that support local network scanning
+const SCANNABLE_BRANDS = new Set(['hue', 'govee', 'aqara', 'elgato'])
+
+function formatDeviceCount(count: number) {
+	const plural = count !== 1 ? 's' : ''
+	return `${count} device${plural} found on network`
+}
+
 interface IntegrationFormProps {
 	meta: IntegrationMeta
 	isConfigured: boolean
@@ -33,19 +42,52 @@ interface IntegrationFormProps {
 }
 
 export function IntegrationCard({ meta, isConfigured, onSubmit, onRemove }: Readonly<IntegrationFormProps>) {
+	const [scanResult, setScanResult] = useState<{ count: number; error?: string } | null>(null)
+	const [scanning, setScanning] = useState(false)
+
+	async function handleBrandScan() {
+		setScanning(true)
+		setScanResult(null)
+		try {
+			const { data, error } = await api.api.scan({ brand: meta.brand }).get()
+			if (error) {
+				setScanResult({ count: 0, error: (error.value as { error?: string })?.error ?? 'Scan failed' })
+			} else {
+				const devices = Array.isArray(data) ? data : []
+				setScanResult({ count: devices.length })
+			}
+		} catch {
+			setScanResult({ count: 0, error: 'Scan failed' })
+		} finally {
+			setScanning(false)
+		}
+	}
+
+	const canScan = isConfigured && SCANNABLE_BRANDS.has(meta.brand)
+
 	return (
 		<Card className={isConfigured ? '!border-emerald-200' : ''}>
 			<div className="p-4 flex items-center justify-between gap-3">
 				<div className="flex items-center gap-3 min-w-0">
 					<span className="text-2xl">{BRAND_ICON[meta.brand] ?? '📦'}</span>
 					<div className="min-w-0">
-						<p className="text-sm font-semibold text-gray-900">{meta.displayName}</p>
-						<p className="text-xs text-gray-400 mt-0.5">
+						<p className="text-sm font-semibold text-stone-900">{meta.displayName}</p>
+						<p className="text-xs text-stone-400 mt-0.5">
 							{isConfigured ? '✓ Connected' : 'Not connected'}
 						</p>
 					</div>
 				</div>
 				<div className="flex items-center gap-2 shrink-0">
+					{canScan && (
+						<RaisedButton
+							variant="ghost"
+							size="sm"
+							onPress={handleBrandScan}
+							isDisabled={scanning}
+						>
+							{scanning ? 'Scanning...' : 'Scan'}
+						</RaisedButton>
+					)}
 					{isConfigured && (
 						<DialogTrigger>
 							<RaisedButton variant="ghost" size="sm" className="text-red-500 hover:text-red-700 hover:bg-red-50">
@@ -56,11 +98,11 @@ export function IntegrationCard({ meta, isConfigured, onSubmit, onRemove }: Read
 									<>
 										<Heading
 											slot="title"
-											className="text-base font-semibold text-gray-900 mb-2"
+											className="text-base font-semibold text-stone-900 mb-2"
 										>
 											Remove {meta.displayName}?
 										</Heading>
-										<p className="text-sm text-gray-500 mb-5">
+										<p className="text-sm text-stone-500 mb-5">
 											All devices from this integration will be removed from the portal. HomeKit
 											accessories will be unexposed.
 										</p>
@@ -103,7 +145,66 @@ export function IntegrationCard({ meta, isConfigured, onSubmit, onRemove }: Read
 					</DialogTrigger>
 				</div>
 			</div>
+			{/* inline scan result */}
+			{scanResult && (
+				<div className={cn('px-4 pb-3 text-xs', scanResult.error ? 'text-red-600' : 'text-emerald-700')}>
+					{scanResult.error
+						? `Scan error: ${scanResult.error}`
+						: formatDeviceCount(scanResult.count)}
+				</div>
+			)}
 		</Card>
+	)
+}
+
+// ─── Additional Device card (for devices from already-connected brands) ──────
+
+interface AdditionalDeviceProps {
+	detected: DetectedDevice
+	brandDisplayName: string
+	onAdd: () => void
+	isAdding: boolean
+}
+
+export function AdditionalDeviceCard({
+	detected,
+	brandDisplayName,
+	onAdd,
+	isAdding,
+}: Readonly<AdditionalDeviceProps>) {
+	const VIA_LABEL: Record<DetectedDevice['via'], string> = {
+		upnp: 'local network',
+		mdns: 'mDNS',
+		udp: 'LAN',
+	}
+
+	return (
+		<div
+			className="rounded-xl border border-emerald-200/80 p-4 flex items-center justify-between gap-3"
+			style={{
+				background: 'linear-gradient(to bottom, rgba(236,253,245,0.9), rgba(209,250,229,0.5))',
+				boxShadow: '0 1px 3px rgba(5,150,105,0.06), 0 4px 12px rgba(5,150,105,0.04), inset 0 1px 0 rgba(255,255,255,0.7)',
+			}}
+		>
+			<div className="flex items-center gap-3 min-w-0">
+				<span className="text-2xl">{BRAND_ICON[detected.brand] ?? '📦'}</span>
+				<div className="min-w-0">
+					<p className="text-sm font-semibold text-stone-900">{detected.label}</p>
+					<p className="text-xs text-emerald-700 mt-0.5">
+						{brandDisplayName} · found via {VIA_LABEL[detected.via]}
+					</p>
+				</div>
+			</div>
+			<RaisedButton
+				variant="primary"
+				size="sm"
+				className="shrink-0"
+				onPress={onAdd}
+				isDisabled={isAdding}
+			>
+				{isAdding ? 'Adding...' : 'Add'}
+			</RaisedButton>
+		</div>
 	)
 }
 
@@ -133,7 +234,7 @@ export function QuickConnectCard({ detected, meta, onSubmit }: Readonly<QuickCon
 			<div className="flex items-center gap-3 min-w-0">
 				<span className="text-2xl">{BRAND_ICON[detected.brand] ?? '📦'}</span>
 				<div className="min-w-0">
-					<p className="text-sm font-semibold text-gray-900">{detected.label}</p>
+					<p className="text-sm font-semibold text-stone-900">{detected.label}</p>
 					<p className="text-xs text-amber-700 mt-0.5">{VIA_LABEL[detected.via]}</p>
 				</div>
 			</div>
@@ -223,10 +324,10 @@ function IntegrationFormInner({ meta, prefill, onSubmit, onCancel }: Readonly<In
 	if (meta.oauthFlow) {
 		return (
 			<div>
-				<Heading slot="title" className="text-base font-semibold text-gray-900 mb-1">
+				<Heading slot="title" className="text-base font-semibold text-stone-900 mb-1">
 					{meta.displayName}
 				</Heading>
-				<p className="text-sm text-gray-500 mb-5">
+				<p className="text-sm text-stone-500 mb-5">
 					Uses OAuth 2.0 — you'll be redirected to LG to authorize.
 				</p>
 				<div className="flex gap-2 justify-end">
@@ -246,7 +347,7 @@ function IntegrationFormInner({ meta, prefill, onSubmit, onCancel }: Readonly<In
 
 	return (
 		<Form onSubmit={handleSubmit}>
-			<Heading slot="title" className="text-base font-semibold text-gray-900 mb-4">
+			<Heading slot="title" className="text-base font-semibold text-stone-900 mb-4">
 				Connect {meta.displayName}
 			</Heading>
 
@@ -270,7 +371,7 @@ function IntegrationFormInner({ meta, prefill, onSubmit, onCancel }: Readonly<In
 						isDisabled={linkingHue || !values.bridgeIp}
 						className="w-full bg-linear-to-b from-orange-50 to-orange-100/80 text-orange-700 border-orange-200"
 					>
-						{linkingHue ? 'Waiting for button press…' : '🔗 Press Bridge Button & Link'}
+						{linkingHue ? 'Waiting for button press...' : '🔗 Press Bridge Button & Link'}
 					</RaisedButton>
 					{hueLinkError && <p className="text-xs text-red-600 mt-1">{hueLinkError}</p>}
 					{values.apiKey && (
@@ -290,7 +391,7 @@ function IntegrationFormInner({ meta, prefill, onSubmit, onCancel }: Readonly<In
 					Cancel
 				</RaisedButton>
 				<RaisedButton variant="primary" type="submit" isDisabled={loading}>
-					{loading ? 'Connecting…' : 'Connect'}
+					{loading ? 'Connecting...' : 'Connect'}
 				</RaisedButton>
 			</div>
 		</Form>

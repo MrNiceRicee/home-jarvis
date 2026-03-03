@@ -21,6 +21,9 @@ export default defineConfig([
 		files: ['**/*.ts'],
 		languageOptions: {
 			globals: globals.node,
+			parserOptions: {
+				tsconfigRootDir: import.meta.dirname,
+			},
 		},
 	},
 	{

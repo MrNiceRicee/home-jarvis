@@ -11,15 +11,15 @@ export function SensorCard({ device }: Readonly<SensorCardProps>) {
 		<div className="space-y-2">
 			{state.temperature !== undefined && (
 				<div className="flex items-center gap-1">
-					<span className="text-2xl font-light text-gray-800">{state.temperature.toFixed(1)}</span>
-					<span className="text-sm text-gray-400">°C</span>
+					<span className="text-2xl font-light text-stone-800">{state.temperature.toFixed(1)}</span>
+					<span className="text-sm text-stone-400">°C</span>
 				</div>
 			)}
 			{state.humidity !== undefined && (
 				<div className="flex items-center gap-1.5">
 					<span className="text-lg text-blue-400">💧</span>
-					<span className="text-sm text-gray-600">{state.humidity}%</span>
-					<span className="text-xs text-gray-400">RH</span>
+					<span className="text-sm text-stone-600">{state.humidity}%</span>
+					<span className="text-xs text-stone-400">RH</span>
 				</div>
 			)}
 		</div>

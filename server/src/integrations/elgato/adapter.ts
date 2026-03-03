@@ -93,9 +93,10 @@ export class ElgatoAdapter implements DeviceAdapter {
 	}
 
 	getState(externalId: string): ResultAsync<DeviceState, Error> {
-		const index = this.parseIndex(externalId)
+		const { ip, index } = this.parseExternalId(externalId)
+		const url = this.deviceUrl(ip)
 		return ResultAsync.fromPromise(
-			fetch(`${this.baseUrl}/lights`, { signal: AbortSignal.timeout(5000) }),
+			fetch(`${url}/lights`, { signal: AbortSignal.timeout(5000) }),
 			(e) => new Error(`Network error: ${(e as Error).message}`),
 		).andThen((res) =>
 			ResultAsync.fromPromise(
@@ -114,10 +115,11 @@ export class ElgatoAdapter implements DeviceAdapter {
 	}
 
 	setState(externalId: string, state: Partial<DeviceState>): ResultAsync<void, Error> {
-		const index = this.parseIndex(externalId)
+		const { ip, index } = this.parseExternalId(externalId)
+		const url = this.deviceUrl(ip)
 		// GET current state first so we can fill in missing fields before PUT
 		return ResultAsync.fromPromise(
-			fetch(`${this.baseUrl}/lights`, { signal: AbortSignal.timeout(5000) }),
+			fetch(`${url}/lights`, { signal: AbortSignal.timeout(5000) }),
 			(e) => new Error(`Network error: ${(e as Error).message}`),
 		).andThen((res) =>
 			ResultAsync.fromPromise(
@@ -138,7 +140,7 @@ export class ElgatoAdapter implements DeviceAdapter {
 			}
 
 			return ResultAsync.fromPromise(
-				fetch(`${this.baseUrl}/lights`, {
+				fetch(`${url}/lights`, {
 					method: 'PUT',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({ numberOfLights: 1, lights: [updated] }),
@@ -153,9 +155,17 @@ export class ElgatoAdapter implements DeviceAdapter {
 		return null
 	}
 
-	private parseIndex(externalId: string): number {
-		// externalId format: "192.168.1.100:0"
+	/** parse "192.168.1.100:0" → { ip: "192.168.1.100", index: 0 } */
+	private parseExternalId(externalId: string): { ip: string; index: number } {
 		const colonIdx = externalId.lastIndexOf(':')
-		return parseInt(colonIdx >= 0 ? externalId.slice(colonIdx + 1) : '0', 10)
+		if (colonIdx < 0) return { ip: this.ip, index: 0 }
+		return {
+			ip: externalId.slice(0, colonIdx),
+			index: parseInt(externalId.slice(colonIdx + 1), 10),
+		}
+	}
+
+	private deviceUrl(ip: string): string {
+		return `http://${ip}:9123/elgato`
 	}
 }

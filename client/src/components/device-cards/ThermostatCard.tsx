@@ -39,8 +39,8 @@ export function ThermostatCard({ device, onStateChange }: Readonly<ThermostatCar
 			{/* Current temp */}
 			{state.temperature !== undefined && (
 				<div className="flex items-end gap-1">
-					<span className="text-3xl font-light text-gray-800">{state.temperature.toFixed(1)}</span>
-					<span className="text-sm text-gray-400 mb-1">°C</span>
+					<span className="text-3xl font-light text-stone-800">{state.temperature.toFixed(1)}</span>
+					<span className="text-sm text-stone-400 mb-1">°C</span>
 					{state.humidity !== undefined && (
 						<span className="text-xs text-blue-400 mb-1 ml-2">{state.humidity}% RH</span>
 					)}
@@ -50,21 +50,21 @@ export function ThermostatCard({ device, onStateChange }: Readonly<ThermostatCar
 			{/* Target temp */}
 			{target !== undefined && (
 				<div className="flex items-center gap-2">
-					<span className="text-xs text-gray-400 flex-1">Target</span>
+					<span className="text-xs text-stone-400 flex-1">Target</span>
 					<Button
 						onPress={() => { void adjustTarget(-0.5) }}
 						isDisabled={!device.online}
-						className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 text-sm font-medium hover:bg-gray-200 pressed:bg-gray-300 disabled:opacity-40 cursor-default flex items-center justify-center"
+						className="w-7 h-7 rounded-full bg-stone-100 text-stone-600 text-sm font-medium hover:bg-stone-200 pressed:bg-stone-300 disabled:opacity-40 cursor-default flex items-center justify-center"
 					>
 						−
 					</Button>
-					<span className="text-sm font-semibold text-gray-800 w-12 text-center">
+					<span className="text-sm font-semibold text-stone-800 w-12 text-center">
 						{target.toFixed(1)}°C
 					</span>
 					<Button
 						onPress={() => { void adjustTarget(0.5) }}
 						isDisabled={!device.online}
-						className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 text-sm font-medium hover:bg-gray-200 pressed:bg-gray-300 disabled:opacity-40 cursor-default flex items-center justify-center"
+						className="w-7 h-7 rounded-full bg-stone-100 text-stone-600 text-sm font-medium hover:bg-stone-200 pressed:bg-stone-300 disabled:opacity-40 cursor-default flex items-center justify-center"
 					>
 						+
 					</Button>
@@ -82,7 +82,7 @@ export function ThermostatCard({ device, onStateChange }: Readonly<ThermostatCar
 							'px-2.5 py-1 rounded-full text-xs font-medium cursor-default transition-colors disabled:opacity-40',
 							currentMode === m
 								? 'bg-blue-600 text-white'
-								: 'bg-gray-100 text-gray-600 hover:bg-gray-200 pressed:bg-gray-300',
+								: 'bg-stone-100 text-stone-600 hover:bg-stone-200 pressed:bg-stone-300',
 						)}
 					>
 						{MODE_LABELS[m]}

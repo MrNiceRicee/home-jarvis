@@ -1,13 +1,14 @@
-import { useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useCallback, useEffect, useRef } from 'react'
 
 import type { Device, SSEEvent } from '../types'
 
 export type StreamStatus = 'connecting' | 'connected' | 'reconnecting' | 'error'
 
+const STREAM_STATUS_KEY = ['stream:status'] as const
+
 export function useDeviceStream() {
 	const queryClient = useQueryClient()
-	const [status, setStatus] = useState<StreamStatus>('connecting')
 	const esRef = useRef<EventSource | null>(null)
 	const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	const retryCount = useRef(0)
@@ -23,7 +24,7 @@ export function useDeviceStream() {
 		esRef.current = es
 
 		es.onopen = () => {
-			setStatus('connected')
+			queryClient.setQueryData<StreamStatus>(STREAM_STATUS_KEY, 'connected')
 			retryCount.current = 0
 		}
 
@@ -63,7 +64,7 @@ export function useDeviceStream() {
 		es.onerror = () => {
 			es.close()
 			esRef.current = null
-			setStatus('reconnecting')
+			queryClient.setQueryData<StreamStatus>(STREAM_STATUS_KEY, 'reconnecting')
 
 			// Exponential backoff: 1s, 2s, 4s, 8s … max 30s
 			const delay = Math.min(1000 * 2 ** retryCount.current, 30_000)
@@ -81,5 +82,16 @@ export function useDeviceStream() {
 		}
 	}, [connect])
 
-	return { status }
+}
+
+/** read-only hook for stream connection status */
+export function useStreamStatus(): StreamStatus {
+	const { data } = useQuery<StreamStatus>({
+		queryKey: STREAM_STATUS_KEY,
+		queryFn: () => 'connecting' as StreamStatus,
+		initialData: 'connecting',
+		staleTime: Infinity,
+		gcTime: Infinity,
+	})
+	return data
 }

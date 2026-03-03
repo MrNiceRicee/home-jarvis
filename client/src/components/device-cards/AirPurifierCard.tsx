@@ -48,7 +48,7 @@ export function AirPurifierCard({ device, onStateChange }: Readonly<AirPurifierC
 	return (
 		<div className="space-y-3">
 			<div className="flex items-center justify-between">
-				<span className={cn('text-xs font-medium', isOn ? 'text-blue-600' : 'text-gray-400')}>
+				<span className={cn('text-xs font-medium', isOn ? 'text-blue-600' : 'text-stone-400')}>
 					{isOn ? 'On' : 'Off'}
 				</span>
 				{aqi && (
@@ -66,7 +66,7 @@ export function AirPurifierCard({ device, onStateChange }: Readonly<AirPurifierC
 						'w-full py-1.5 rounded-lg text-xs font-medium transition-colors cursor-default',
 						isOn
 							? 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 pressed:bg-blue-200'
-							: 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200 pressed:bg-gray-300',
+							: 'bg-stone-100 text-stone-600 hover:bg-stone-200 border border-stone-200 pressed:bg-stone-300',
 						'disabled:opacity-40',
 					)}
 				>
@@ -83,13 +83,13 @@ export function AirPurifierCard({ device, onStateChange }: Readonly<AirPurifierC
 					onChangeEnd={(v) => { void onStateChange?.(device.id, { fanSpeed: v }) }}
 				>
 					<div className="flex items-center justify-between mb-1">
-						<Label className="text-xs text-gray-500">Fan Speed</Label>
-						<SliderOutput className="text-xs text-gray-400" />
+						<Label className="text-xs text-stone-500">Fan Speed</Label>
+						<SliderOutput className="text-xs text-stone-400" />
 					</div>
 					<SliderTrack className="relative flex items-center h-5 w-full">
 						{({ state: sliderState }) => (
 							<>
-								<div className="absolute h-1.5 w-full rounded-full bg-gray-200" />
+								<div className="absolute h-1.5 w-full rounded-full bg-stone-200" />
 								<div
 									className="absolute h-1.5 rounded-full bg-blue-400"
 									style={{ width: `${sliderState.getThumbPercent(0) * 100}%` }}

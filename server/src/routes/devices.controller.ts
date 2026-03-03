@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto'
 import { eq } from 'drizzle-orm'
 import Elysia, { status, t } from 'elysia'
 
@@ -63,6 +64,80 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 
 		return { ok: true, message: `Discovery triggered for ${enabled.length} integration(s)` }
 	})
+
+	/** Add a device from scan results — creates adapter at the detected IP, discovers, and upserts */
+	.post(
+		'/add-from-scan',
+		async ({ db, body }) => {
+			const { brand, ip } = body
+
+			// find the existing integration for this brand
+			const integration = db.select().from(integrations).where(eq(integrations.brand, brand)).get()
+			if (!integration) {
+				log.warn('addFromScan no integration', { brand })
+				return status(400, { error: `No integration configured for ${brand}` })
+			}
+
+			// create adapter pointed at the detected IP
+			const adapterResult = createAdapter(brand, { ip })
+			if (adapterResult.isErr()) {
+				log.error('addFromScan adapter error', { brand, error: adapterResult.error.message })
+				return status(500, { error: adapterResult.error.message })
+			}
+
+			log.info('addFromScan discovering', { brand, ip })
+			const discovered = await adapterResult.value.discover()
+			if (discovered.isErr()) {
+				log.error('addFromScan discover failed', { brand, ip, error: discovered.error.message })
+				return status(500, { error: discovered.error.message })
+			}
+
+			const now = Date.now()
+			let added = 0
+
+			for (const d of discovered.value) {
+				const existing = db.select().from(devices).where(eq(devices.externalId, d.externalId)).get()
+				if (existing) continue // already in the system
+
+				const id = randomUUID()
+				db.insert(devices)
+					.values({
+						id,
+						integrationId: integration.id,
+						brand,
+						externalId: d.externalId,
+						name: d.name,
+						type: d.type,
+						state: JSON.stringify(d.state),
+						online: d.online,
+						lastSeen: now,
+						createdAt: now,
+						updatedAt: now,
+					})
+					.run()
+
+				eventBus.publish({
+					type: 'device:update',
+					deviceId: id,
+					brand,
+					state: d.state,
+					online: true,
+					timestamp: now,
+				})
+
+				log.info('addFromScan device added', { brand, deviceId: id, deviceName: d.name, ip })
+				added++
+			}
+
+			return { ok: true, added }
+		},
+		{
+			body: t.Object({
+				brand: t.String(),
+				ip: t.String(),
+			}),
+		},
+	)
 
 	/** Toggle device state (on/off, brightness, etc.) */
 	.patch(

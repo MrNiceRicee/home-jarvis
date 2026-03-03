@@ -179,8 +179,8 @@ function CardShell({
 							</span>
 						)}
 						<div className="min-w-0">
-							<p className="text-sm font-semibold text-gray-900 truncate">{device.name}</p>
-							<p className="text-xs text-gray-500 truncate">
+							<p className="text-sm font-semibold text-stone-900 truncate">{device.name}</p>
+							<p className="text-xs text-stone-500 truncate">
 								{BRAND_LABEL[device.brand] ?? device.brand}
 							</p>
 						</div>
@@ -192,13 +192,13 @@ function CardShell({
 			<CardBody>{children}</CardBody>
 
 			<CardFooter>
-				<span className="text-xs text-gray-400">HomeKit</span>
+				<span className="text-xs text-stone-400">HomeKit</span>
 				{isNativeHomeKit ? (
 					<TooltipTrigger delay={200}>
 						<Button className="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 cursor-default focus:outline-none">
 							Native ✓
 						</Button>
-						<Tooltip className="bg-gray-900 text-white text-xs rounded-lg px-3 py-1.5 shadow-lg max-w-[200px] text-center">
+						<Tooltip className="bg-stone-900 text-white text-xs rounded-lg px-3 py-1.5 shadow-lg max-w-[200px] text-center">
 							{nativeTooltip}
 						</Tooltip>
 					</TooltipTrigger>
@@ -209,7 +209,7 @@ function CardShell({
 						isDisabled={hkLoading || !device.online}
 						className="group flex items-center gap-2 cursor-default"
 					>
-						<div className="w-9 h-5 rounded-full transition-colors bg-gray-200 group-selected:bg-emerald-500 group-disabled:opacity-40">
+						<div className="w-9 h-5 rounded-full transition-colors bg-stone-200 group-selected:bg-emerald-500 group-disabled:opacity-40">
 							<div className="w-4 h-4 bg-white rounded-full shadow-sm m-0.5 transition-transform group-selected:translate-x-4" />
 						</div>
 						<Label className="sr-only">Enable HomeKit</Label>
@@ -222,15 +222,15 @@ function CardShell({
 
 function badgeBg(online: boolean, accented: boolean): string {
 	if (accented) return 'bg-white/70'
-	return online ? 'bg-emerald-50' : 'bg-gray-100'
+	return online ? 'bg-emerald-50' : 'bg-stone-100'
 }
 
 function OnlineBadge({ online, accented }: Readonly<{ online: boolean; accented: boolean }>) {
 	return (
 		<span
-			className={cn('flex items-center gap-1 text-xs font-medium shrink-0 px-1.5 py-0.5 rounded-full', badgeBg(online, accented), online ? 'text-emerald-700' : 'text-gray-400')}
+			className={cn('flex items-center gap-1 text-xs font-medium shrink-0 px-1.5 py-0.5 rounded-full', badgeBg(online, accented), online ? 'text-emerald-700' : 'text-stone-400')}
 		>
-			<span className={cn('w-1.5 h-1.5 rounded-full', online ? 'bg-emerald-500' : 'bg-gray-300')} />
+			<span className={cn('w-1.5 h-1.5 rounded-full', online ? 'bg-emerald-500' : 'bg-stone-300')} />
 			{online ? 'Online' : 'Offline'}
 		</span>
 	)

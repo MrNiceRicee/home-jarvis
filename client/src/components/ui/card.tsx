@@ -18,17 +18,17 @@ export function Card({ children, className, accent, muted, selected }: Readonly<
 		<div
 			className={cn(
 				'relative rounded-xl overflow-hidden',
-				'bg-linear-to-b from-white to-gray-50/80',
+				'bg-linear-to-b from-[#fffdf8] to-stone-50/80',
 				'border',
 				'shadow-[var(--shadow-raised)]',
 				'[box-shadow:var(--shadow-raised),var(--shadow-inner-glow)]',
 				'transition-all',
 				muted && 'opacity-60',
-				selected && 'ring-2 ring-blue-500 ring-offset-1',
+				selected && 'ring-2 ring-amber-500/70 ring-offset-1',
 				className,
 			)}
 			style={{
-				borderColor: accent ?? (muted ? '#f3f4f6' : 'rgba(0,0,0,0.06)'),
+				borderColor: accent ?? (muted ? '#e7e5e0' : 'rgba(168,151,125,0.15)'),
 				...(accent ? { borderWidth: '2px' } : {}),
 			}}
 		>
@@ -59,8 +59,8 @@ export function CardFooter({ children, className }: Readonly<{ children: ReactNo
 	return (
 		<div
 			className={cn(
-				'px-4 py-2.5 border-t border-gray-100/80',
-				'bg-linear-to-b from-gray-50/30 to-gray-50/60',
+				'px-4 py-2.5 border-t border-stone-100/80',
+				'bg-linear-to-b from-stone-50/30 to-stone-50/60',
 				'flex items-center justify-between',
 				className,
 			)}

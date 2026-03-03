@@ -110,13 +110,13 @@ export function LightCard({ device, onStateChange }: Readonly<LightCardProps>) {
 	}
 
 	return (
-		<div className={cn('rounded-lg p-2 transition-colors', isOn ? 'bg-amber-50/30' : 'bg-gray-50')}>
+		<div className={cn('rounded-lg p-2 transition-colors', isOn ? 'bg-amber-50/30' : 'bg-stone-50')}>
 			{/* ── Power row ─────────────────────────────────────────────── */}
 			<div className="flex items-center justify-between mb-2">
-				<span className={cn('text-xs font-medium', isOn ? 'text-amber-600' : 'text-gray-400')}>
+				<span className={cn('text-xs font-medium', isOn ? 'text-amber-600' : 'text-stone-400')}>
 					{isOn ? 'On' : 'Off'}
 					{state.brightness !== undefined && isOn && (
-						<span className="text-gray-400"> · {brightness}%</span>
+						<span className="text-stone-400"> · {brightness}%</span>
 					)}
 				</span>
 				{device.online && (
@@ -127,7 +127,7 @@ export function LightCard({ device, onStateChange }: Readonly<LightCardProps>) {
 							'text-xs px-4 py-1.5 rounded-full border transition-colors cursor-default disabled:opacity-40',
 							isOn
 								? 'bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-300 pressed:bg-amber-200'
-								: 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-300 pressed:bg-gray-300',
+								: 'bg-stone-100 text-stone-700 hover:bg-stone-200 border-stone-300 pressed:bg-stone-300',
 						)}
 					>
 						{buttonLabel}
@@ -143,7 +143,7 @@ export function LightCard({ device, onStateChange }: Readonly<LightCardProps>) {
 							key={scene.name}
 							type="button"
 							onClick={() => handleScene(scene)}
-							className="text-xs px-2 py-0.5 rounded-full bg-white/80 text-gray-600 hover:bg-white border border-gray-200 hover:border-gray-300 transition-colors"
+							className="text-xs px-2 py-0.5 rounded-full bg-white/80 text-stone-600 hover:bg-white border border-stone-200 hover:border-stone-300 transition-colors"
 							style={{
 								boxShadow: '0 1px 3px rgba(0,0,0,0.1), inset 0 1px 1px rgba(255,255,255,0.6)',
 							}}
@@ -156,13 +156,13 @@ export function LightCard({ device, onStateChange }: Readonly<LightCardProps>) {
 
 			{/* ── Mode toggle (full-color lights only) ──────────────────── */}
 			{isFullColor && (
-				<div className="flex gap-0.5 mb-2 rounded-full bg-gray-100 p-0.5">
+				<div className="flex gap-0.5 mb-2 rounded-full bg-stone-100 p-0.5">
 					<button
 						type="button"
 						onClick={() => setMode('white')}
 						className={cn(
 							'flex-1 text-xs py-1 rounded-full transition-all',
-							mode === 'white' ? 'bg-white shadow-sm font-medium text-gray-800' : 'text-gray-500',
+							mode === 'white' ? 'bg-white shadow-sm font-medium text-stone-800' : 'text-stone-500',
 						)}
 					>
 						White
@@ -172,7 +172,7 @@ export function LightCard({ device, onStateChange }: Readonly<LightCardProps>) {
 						onClick={() => setMode('color')}
 						className={cn(
 							'flex-1 text-xs py-1 rounded-full transition-all',
-							mode === 'color' ? 'bg-white shadow-sm font-medium text-gray-800' : 'text-gray-500',
+							mode === 'color' ? 'bg-white shadow-sm font-medium text-stone-800' : 'text-stone-500',
 						)}
 					>
 						Color
@@ -201,7 +201,7 @@ export function LightCard({ device, onStateChange }: Readonly<LightCardProps>) {
 								className={cn(
 									'w-6 h-6 rounded-full cursor-pointer transition-transform hover:scale-110',
 									Math.abs(colorTemp - k) < 200
-										? 'ring-2 ring-gray-600 ring-offset-1'
+										? 'ring-2 ring-stone-600 ring-offset-1'
 										: 'ring-1 ring-white/40',
 								)}
 								aria-label={`${k}K`}
@@ -218,8 +218,8 @@ export function LightCard({ device, onStateChange }: Readonly<LightCardProps>) {
 						onChangeEnd={(v) => { void onStateChange?.(device.id, { colorTemp: v }) }}
 					>
 						<div className="flex items-center justify-between mb-1">
-							<Label className="text-xs text-gray-500">Color Temp</Label>
-							<SliderOutput className="text-xs text-gray-400">
+							<Label className="text-xs text-stone-500">Color Temp</Label>
+							<SliderOutput className="text-xs text-stone-400">
 								{({ state: s }) => `${s.values[0]}K`}
 							</SliderOutput>
 						</div>
@@ -273,13 +273,13 @@ export function LightCard({ device, onStateChange }: Readonly<LightCardProps>) {
 							if (!open && pickerColor) commitPickerColor(pickerColor)
 						}}
 					>
-						<Button className="text-xs text-gray-500 hover:text-gray-700 px-2 py-0.5 rounded-full border border-gray-200 hover:border-gray-300 cursor-default">
+						<Button className="text-xs text-stone-500 hover:text-stone-700 px-2 py-0.5 rounded-full border border-stone-200 hover:border-stone-300 cursor-default">
 							+ Custom
 						</Button>
 						<Popover placement="bottom" className="z-50">
 							<Dialog
 								aria-label="Color picker"
-								className="outline-none p-3 bg-white rounded-xl shadow-xl border border-gray-200 w-60"
+								className="outline-none p-3 bg-white rounded-xl shadow-xl border border-stone-200 w-60"
 							>
 								<ColorPicker
 									value={pickerColor ?? '#ffffff'}
@@ -318,8 +318,8 @@ export function LightCard({ device, onStateChange }: Readonly<LightCardProps>) {
 										</SliderTrack>
 									</ColorSlider>
 									<ColorField className="mt-2 w-full">
-										<Label className="text-xs text-gray-500 block mb-0.5">Hex</Label>
-										<Input className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1 font-mono focus:outline-none focus:border-blue-400" />
+										<Label className="text-xs text-stone-500 block mb-0.5">Hex</Label>
+										<Input className="w-full text-xs border border-stone-200 rounded-lg px-2 py-1 font-mono focus:outline-none focus:border-blue-400" />
 									</ColorField>
 								</ColorPicker>
 							</Dialog>
@@ -339,13 +339,13 @@ export function LightCard({ device, onStateChange }: Readonly<LightCardProps>) {
 					className="mt-2"
 				>
 					<div className="flex items-center justify-between mb-1">
-						<Label className="text-xs text-gray-500">Brightness</Label>
-						<SliderOutput className="text-xs text-gray-400" />
+						<Label className="text-xs text-stone-500">Brightness</Label>
+						<SliderOutput className="text-xs text-stone-400" />
 					</div>
 					<SliderTrack className="relative flex items-center h-6 w-full">
 						{({ state: s }) => (
 							<>
-								<div className="absolute inset-x-0 h-1.5 top-1/2 -translate-y-1/2 rounded-full bg-gray-200" />
+								<div className="absolute inset-x-0 h-1.5 top-1/2 -translate-y-1/2 rounded-full bg-stone-200" />
 								<div
 									className="absolute h-1.5 top-1/2 -translate-y-1/2 rounded-full bg-amber-300"
 									style={{ width: `${s.getThumbPercent(0) * 100}%` }}
