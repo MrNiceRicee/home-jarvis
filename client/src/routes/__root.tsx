@@ -47,7 +47,7 @@ function AppShell() {
 							</span>
 							<NavItem to="/">Dashboard</NavItem>
 							<NavItem to="/integrations">Integrations</NavItem>
-							<NavItem to="/homekit">HomeKit</NavItem>
+							<NavItem to="/matter">Matter</NavItem>
 						</div>
 					</div>
 				</nav>

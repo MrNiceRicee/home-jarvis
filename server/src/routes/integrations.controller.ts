@@ -34,8 +34,8 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 				return status(400, { error: `Unknown brand: ${brand}` })
 			}
 
-			// Skip validation for OAuth brands (LG) — token comes from callback
-			if (!meta.oauthFlow) {
+			// Skip validation for OAuth brands (LG) and discovery-only brands (Elgato)
+			if (!meta.oauthFlow && !meta.discoveryOnly) {
 				log.info('addIntegration validating credentials', { brand })
 				const adapterResult = createAdapter(brand, config)
 				if (adapterResult.isErr()) {
@@ -104,8 +104,8 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 
 		log.info('removeIntegration', { brand: integration.brand, integrationId: params.id })
 		stopPolling(params.id)
-		// TODO Phase 5: also remove HomeKit accessories for devices from this integration
 
+		// cascade delete handles device rows; integration removal is sufficient
 		db.delete(integrations).where(eq(integrations.id, params.id)).run()
 		log.info('removeIntegration ok', { brand: integration.brand })
 		return { ok: true }

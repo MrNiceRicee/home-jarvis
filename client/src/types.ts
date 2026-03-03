@@ -1,4 +1,4 @@
-import type { Device as ServerDevice, Integration, HomekitConfig } from 'home-jarvis-server/src/db/schema'
+import type { Device as ServerDevice, Integration, MatterConfig } from 'home-jarvis-server/src/db/schema'
 import type { DetectedDevice } from 'home-jarvis-server/src/discovery/local-scanner'
 import type {
 	DeviceState,
@@ -15,7 +15,7 @@ import type {
 // Re-export server types so consumers import from a single location: '../types'
 export type {
 	Integration,
-	HomekitConfig,
+	MatterConfig,
 	DeviceState,
 	DeviceType,
 	IntegrationMeta,

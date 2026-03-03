@@ -46,13 +46,13 @@ const BRAND_LABEL: Record<string, string> = {
 	vesync: 'VeSync',
 }
 
-// Brands with native HomeKit support — show "Native ✓" instead of toggle
-const NATIVE_HOMEKIT_BRANDS = new Set(['hue', 'aqara'])
+// brands with native Matter support — show "Native ✓" instead of toggle
+const NATIVE_MATTER_BRANDS = new Set(['hue', 'aqara'])
 
 interface DeviceCardProps {
 	device: Device
 	isSelected?: boolean
-	onHomekitToggle?: (deviceId: string, enabled: boolean) => Promise<void>
+	onMatterToggle?: (deviceId: string, enabled: boolean) => Promise<void>
 	onStateChange?: (deviceId: string, state: Partial<DeviceState>) => Promise<void>
 	onToggleSelect?: () => void
 }
@@ -61,7 +61,7 @@ export function DeviceCard({
 	device,
 	isSelected,
 	onStateChange,
-	onHomekitToggle,
+	onMatterToggle,
 	onToggleSelect,
 }: Readonly<DeviceCardProps>) {
 	const accent = device.type === 'light' ? lightAccentStyle(device.state) : undefined
@@ -69,7 +69,7 @@ export function DeviceCard({
 	return (
 		<CardShell
 			device={device}
-			onHomekitToggle={onHomekitToggle}
+			onMatterToggle={onMatterToggle}
 			accent={accent}
 			isSelected={isSelected}
 			onToggleSelect={onToggleSelect}
@@ -113,7 +113,7 @@ interface CardShellProps {
 	children: React.ReactNode
 	device: Device
 	isSelected?: boolean
-	onHomekitToggle?: (deviceId: string, enabled: boolean) => Promise<void>
+	onMatterToggle?: (deviceId: string, enabled: boolean) => Promise<void>
 	onToggleSelect?: () => void
 }
 
@@ -122,26 +122,26 @@ function CardShell({
 	children,
 	device,
 	isSelected,
-	onHomekitToggle,
+	onMatterToggle,
 	onToggleSelect,
 }: Readonly<CardShellProps>) {
-	const [hkLoading, setHkLoading] = useState(false)
-	const isNativeHomeKit = NATIVE_HOMEKIT_BRANDS.has(device.brand)
+	const [matterLoading, setMatterLoading] = useState(false)
+	const isNativeMatter = NATIVE_MATTER_BRANDS.has(device.brand)
 
-	async function handleHomekitToggle(enabled: boolean) {
-		if (!onHomekitToggle) return
-		setHkLoading(true)
+	async function handleMatterToggle(enabled: boolean) {
+		if (!onMatterToggle) return
+		setMatterLoading(true)
 		try {
-			await onHomekitToggle(device.id, enabled)
+			await onMatterToggle(device.id, enabled)
 		} finally {
-			setHkLoading(false)
+			setMatterLoading(false)
 		}
 	}
 
 	const nativeTooltip =
 		device.brand === 'hue'
-			? 'Hue supports HomeKit natively. Add via the Apple Home app.'
-			: 'Aqara supports HomeKit natively. Add via the Apple Home app.'
+			? 'Hue supports Matter natively. Add via your smart home app.'
+			: 'Aqara supports Matter natively. Add via your smart home app.'
 
 	const icon = TYPE_ICON[device.type] ?? '📦'
 
@@ -192,8 +192,8 @@ function CardShell({
 			<CardBody>{children}</CardBody>
 
 			<CardFooter>
-				<span className="text-xs text-stone-400">HomeKit</span>
-				{isNativeHomeKit ? (
+				<span className="text-xs text-stone-400">Matter</span>
+				{isNativeMatter ? (
 					<TooltipTrigger delay={200}>
 						<Button className="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 cursor-default focus:outline-none">
 							Native ✓
@@ -204,15 +204,15 @@ function CardShell({
 					</TooltipTrigger>
 				) : (
 					<Switch
-						isSelected={device.homekitEnabled}
-						onChange={handleHomekitToggle}
-						isDisabled={hkLoading || !device.online}
+						isSelected={device.matterEnabled}
+						onChange={handleMatterToggle}
+						isDisabled={matterLoading || !device.online}
 						className="group flex items-center gap-2 cursor-default"
 					>
 						<div className="w-9 h-5 rounded-full transition-colors bg-stone-200 group-selected:bg-emerald-500 group-disabled:opacity-40">
 							<div className="w-4 h-4 bg-white rounded-full shadow-sm m-0.5 transition-transform group-selected:translate-x-4" />
 						</div>
-						<Label className="sr-only">Enable HomeKit</Label>
+						<Label className="sr-only">Enable Matter</Label>
 					</Switch>
 				)}
 			</CardFooter>

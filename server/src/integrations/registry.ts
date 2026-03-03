@@ -107,15 +107,8 @@ export const INTEGRATION_META: Record<string, IntegrationMeta> = {
 	elgato: {
 		brand: 'elgato',
 		displayName: 'Elgato Key Light',
-		fields: [
-			{
-				key: 'ip',
-				label: 'IP Address',
-				type: 'text',
-				placeholder: '192.168.1.x',
-				hint: 'Found automatically via Scan',
-			},
-		],
+		fields: [],
+		discoveryOnly: true,
 	},
 }
 

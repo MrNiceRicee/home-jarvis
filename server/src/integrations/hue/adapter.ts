@@ -1,8 +1,5 @@
-import type { Accessory } from '@homebridge/hap-nodejs'
-
 import { ResultAsync, ok, err, errAsync } from 'neverthrow'
 
-import type { Device } from '../../db/schema'
 import type { DeviceAdapter, DiscoveredDevice, DeviceState } from '../types'
 
 interface HueBridgeInfo {
@@ -141,11 +138,6 @@ export class HueAdapter implements DeviceAdapter {
 				(e) => new Error(`Failed to set state: ${(e as Error).message}`),
 			).map(() => undefined)
 		})
-	}
-
-	// Not implementing HomeKit bridging here — handled in accessory-factory.ts in Phase 5
-	toHomeKitAccessory(_device: Device): Accessory | null {
-		return null // Phase 5
 	}
 
 	private parseState(s: HueLight['state']): DeviceState {

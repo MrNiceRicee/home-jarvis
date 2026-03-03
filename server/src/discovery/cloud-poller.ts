@@ -2,9 +2,10 @@ import { randomUUID } from 'crypto'
 import { eq } from 'drizzle-orm'
 
 import type { DB } from '../db'
+import type { Device } from '../db/schema'
 
 import { devices, integrations } from '../db/schema'
-import { createAdapter } from '../integrations/registry'
+import { INTEGRATION_META, createAdapter } from '../integrations/registry'
 import { eventBus } from '../lib/events'
 import { log } from '../lib/logger'
 import { parseJson } from '../lib/parse-json'
@@ -24,8 +25,12 @@ const DEFAULTS: Record<string, PollConfig> = {
 	ge: { stateIntervalMs: 60_000, discoverIntervalMs: 5 * 60_000 },
 	aqara: { stateIntervalMs: 30_000, discoverIntervalMs: 5 * 60_000 },
 	smartthings: { stateIntervalMs: 60_000, discoverIntervalMs: 5 * 60_000 },
-	resideo: { stateIntervalMs: 5 * 60_000, discoverIntervalMs: 15 * 60_000 }, // 5min hard limit
+	resideo: { stateIntervalMs: 5 * 60_000, discoverIntervalMs: 15 * 60_000 },
+	elgato: { stateIntervalMs: 15_000, discoverIntervalMs: 5 * 60_000 },
 }
+
+const CONCURRENCY = 5
+const GRACE_PERIOD_MS = 60_000
 
 const timers = new Map<string, ReturnType<typeof setInterval>>()
 
@@ -36,12 +41,11 @@ export function startPolling(
 	brand: string,
 	config: Record<string, string>,
 ) {
-	stopPolling(integrationId) // clear any existing timers
+	stopPolling(integrationId)
 
 	const pollCfg = DEFAULTS[brand] ?? { stateIntervalMs: 60_000, discoverIntervalMs: 5 * 60_000 }
 	log.info('poller start', { brand, integrationId, discoverIntervalMs: pollCfg.discoverIntervalMs })
 
-	// Run discovery immediately on start
 	runDiscovery(db, integrationId, brand, config).catch((err: unknown) => {
 		log.error('poller runDiscovery unexpected error', { brand, error: err instanceof Error ? err.message : String(err) })
 	})
@@ -70,6 +74,61 @@ export function stopPolling(integrationId: string) {
 	if (stopped > 0) log.info('poller stop', { integrationId })
 }
 
+/** Upsert a single discovered device — update if exists, insert if new */
+function upsertDevice(
+	db: DB,
+	integrationId: string,
+	brand: string,
+	d: { externalId: string; name: string; type: string; state: Record<string, unknown>; metadata?: Record<string, unknown>; online: boolean },
+	now: number,
+) {
+	const existing = db.select().from(devices).where(eq(devices.externalId, d.externalId)).get()
+
+	if (existing) {
+		db.update(devices)
+			.set({
+				name: d.name,
+				state: JSON.stringify(d.state),
+				metadata: d.metadata ? JSON.stringify(d.metadata) : existing.metadata,
+				online: d.online,
+				lastSeen: now,
+				updatedAt: now,
+			})
+			.where(eq(devices.id, existing.id))
+			.run()
+
+		log.debug('poller device updated', { brand, deviceId: existing.id, deviceName: d.name, online: d.online })
+		eventBus.publish({ type: 'device:update', deviceId: existing.id, brand, state: d.state, online: d.online, timestamp: now, source: 'poller' })
+		return
+	}
+
+	const id = randomUUID()
+	db.insert(devices)
+		.values({
+			id, integrationId, brand, externalId: d.externalId,
+			name: d.name, type: d.type, state: JSON.stringify(d.state),
+			metadata: d.metadata ? JSON.stringify(d.metadata) : null,
+			online: d.online, lastSeen: now, createdAt: now, updatedAt: now,
+		})
+		.run()
+
+	log.info('poller device discovered', { brand, deviceId: id, deviceName: d.name, type: d.type })
+	eventBus.publish({ type: 'device:update', deviceId: id, brand, state: d.state, online: true, timestamp: now, source: 'poller' })
+}
+
+/** Mark devices not seen this cycle as offline */
+function markAbsentDevicesOffline(db: DB, integrationId: string, brand: string, seenExternalIds: Set<string>, now: number) {
+	const allDevices = db.select().from(devices).where(eq(devices.integrationId, integrationId)).all()
+
+	for (const device of allDevices) {
+		if (!seenExternalIds.has(device.externalId) && device.online) {
+			db.update(devices).set({ online: false, updatedAt: now }).where(eq(devices.id, device.id)).run()
+			log.warn('poller device offline', { brand, deviceId: device.id, deviceName: device.name })
+			eventBus.publish({ type: 'device:offline', deviceId: device.id, brand, online: false, timestamp: now, source: 'poller' })
+		}
+	}
+}
+
 /** Run device discovery + upsert results into DB */
 async function runDiscovery(
 	db: DB,
@@ -77,16 +136,25 @@ async function runDiscovery(
 	brand: string,
 	config: Record<string, string>,
 ) {
-	const adapterResult = createAdapter(brand, config)
-	if (adapterResult.isErr()) {
-		log.debug('poller adapter unavailable', { brand }) // Adapter not yet implemented — skip silently
+	const meta = INTEGRATION_META[brand]
+
+	// discovery-only brands: poll each device individually from stored metadata
+	if (meta?.discoveryOnly) {
+		const deviceRows = db.select().from(devices)
+			.where(eq(devices.integrationId, integrationId)).all()
+		await pollDevicesIndividually(db, brand, deviceRows)
 		return
 	}
 
-	const adapter = adapterResult.value
+	// standard integration-level discovery
+	const adapterResult = createAdapter(brand, config)
+	if (adapterResult.isErr()) {
+		log.debug('poller adapter unavailable', { brand })
+		return
+	}
 
 	log.debug('poller discovery run', { brand })
-	const discoveredResult = await adapter.discover()
+	const discoveredResult = await adapterResult.value.discover()
 	if (discoveredResult.isErr()) {
 		log.error('poller discovery failed', { brand, error: discoveredResult.error.message })
 		return
@@ -100,88 +168,96 @@ async function runDiscovery(
 
 	for (const d of discovered) {
 		seenExternalIds.add(d.externalId)
+		upsertDevice(db, integrationId, brand, d, now)
+	}
 
-		// Check if device already exists
-		const existing = db.select().from(devices).where(eq(devices.externalId, d.externalId)).get()
+	markAbsentDevicesOffline(db, integrationId, brand, seenExternalIds, now)
+	eventBus.publish({ type: 'discovery:complete', brand, timestamp: now, source: 'poller' })
+}
 
-		if (existing) {
-			// Update state + lastSeen
-			db.update(devices)
-				.set({
-					name: d.name,
-					state: JSON.stringify(d.state),
-					online: d.online,
-					lastSeen: now,
-					updatedAt: now,
-				})
-				.where(eq(devices.id, existing.id))
-				.run()
+/** Poll each device individually using its stored metadata (for discovery-only brands) */
+async function pollDevicesIndividually(db: DB, brand: string, deviceRows: Device[]) {
+	const withMetadata = deviceRows.filter((d) => d.metadata)
+	if (withMetadata.length === 0) {
+		log.debug('poller no devices with metadata', { brand })
+		return
+	}
 
-			log.debug('poller device updated', { brand, deviceId: existing.id, deviceName: d.name, online: d.online })
+	log.debug('poller per-device poll', { brand, deviceCount: withMetadata.length })
 
-			eventBus.publish({
-				type: 'device:update',
-				deviceId: existing.id,
-				brand,
-				state: d.state,
-				online: d.online,
-				timestamp: now,
-			})
-		} else {
-			// Insert new device
-			const id = randomUUID()
-			db.insert(devices)
-				.values({
-					id,
-					integrationId,
-					brand,
-					externalId: d.externalId,
-					name: d.name,
-					type: d.type,
-					state: JSON.stringify(d.state),
-					online: d.online,
-					lastSeen: now,
-					createdAt: now,
-					updatedAt: now,
-				})
-				.run()
+	type PollResult = {
+		deviceId: string
+		state: Record<string, unknown>
+		online: boolean
+		brand: string
+		skippedGrace?: boolean
+	}
 
-			log.info('poller device discovered', { brand, deviceId: id, deviceName: d.name, type: d.type })
+	const now = Date.now()
+	const results: PollResult[] = []
 
-			eventBus.publish({
-				type: 'device:update',
-				deviceId: id,
-				brand,
-				state: d.state,
-				online: true,
-				timestamp: now,
-			})
+	// bounded concurrency
+	for (let i = 0; i < withMetadata.length; i += CONCURRENCY) {
+		const batch = withMetadata.slice(i, i + CONCURRENCY)
+		const batchResults = await Promise.allSettled(
+			batch.map(async (device): Promise<PollResult> => {
+				const meta = parseJson<{ ip: string; port?: number }>(device.metadata!).unwrapOr(null)
+				if (!meta?.ip) {
+					return { deviceId: device.id, state: {}, online: false, brand }
+				}
+
+				const adapterResult = createAdapter(brand, { ip: meta.ip })
+				if (adapterResult.isErr()) {
+					return { deviceId: device.id, state: {}, online: false, brand }
+				}
+
+				const stateResult = await adapterResult.value.getState(device.externalId)
+				if (stateResult.isErr()) {
+					// grace period: don't mark newly-added devices offline
+					if (device.createdAt && now - device.createdAt < GRACE_PERIOD_MS) {
+						return { deviceId: device.id, state: {}, online: device.online, brand, skippedGrace: true }
+					}
+					return { deviceId: device.id, state: {}, online: false, brand }
+				}
+
+				return { deviceId: device.id, state: stateResult.value, online: true, brand }
+			}),
+		)
+
+		for (const result of batchResults) {
+			if (result.status === 'fulfilled') {
+				results.push(result.value)
+			}
 		}
 	}
 
-	// Mark devices not seen this cycle as offline
-	const allDevices = db.select().from(devices).where(eq(devices.integrationId, integrationId)).all()
-
-	for (const device of allDevices) {
-		if (!seenExternalIds.has(device.externalId) && device.online) {
-			db.update(devices)
-				.set({ online: false, updatedAt: now })
-				.where(eq(devices.id, device.id))
+	// batch DB writes in a single transaction
+	db.transaction((tx) => {
+		for (const { deviceId, state, online } of results) {
+			const updates: Record<string, unknown> = { online, lastSeen: now, updatedAt: now }
+			if (Object.keys(state).length > 0) {
+				updates.state = JSON.stringify(state)
+			}
+			tx.update(devices)
+				.set(updates)
+				.where(eq(devices.id, deviceId))
 				.run()
-
-			log.warn('poller device offline', { brand, deviceId: device.id, deviceName: device.name })
-
-			eventBus.publish({
-				type: 'device:offline',
-				deviceId: device.id,
-				brand,
-				online: false,
-				timestamp: now,
-			})
 		}
-	}
+	})
 
-	eventBus.publish({ type: 'discovery:complete', brand, timestamp: now })
+	// emit SSE events outside the transaction
+	for (const result of results) {
+		if (result.skippedGrace) continue
+		eventBus.publish({
+			type: result.online ? 'device:update' : 'device:offline',
+			deviceId: result.deviceId,
+			brand: result.brand,
+			state: Object.keys(result.state).length > 0 ? result.state : undefined,
+			online: result.online,
+			timestamp: now,
+			source: 'poller',
+		})
+	}
 }
 
 /** Start polling for ALL enabled integrations (called on server startup) */
