@@ -47,8 +47,8 @@ export function MediaCard({ device, onStateChange }: Readonly<MediaCardProps>) {
 					className={cn(
 						'flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-default',
 						isOn
-							? 'bg-gray-800 text-gray-100 hover:bg-gray-700 border border-gray-700 pressed:bg-gray-600'
-							: 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200 pressed:bg-gray-300',
+							? 'bg-stone-800 text-stone-100 hover:bg-stone-700 border border-stone-700 pressed:bg-stone-600'
+							: 'bg-stone-100 text-stone-600 hover:bg-stone-200 border border-stone-200 pressed:bg-stone-300',
 						'disabled:opacity-40',
 					)}
 				>
@@ -58,7 +58,7 @@ export function MediaCard({ device, onStateChange }: Readonly<MediaCardProps>) {
 					<Button
 						onPress={handlePlayPause}
 						isDisabled={!isOn}
-						className="w-9 h-9 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 pressed:bg-gray-300 disabled:opacity-40 cursor-default flex items-center justify-center text-sm"
+						className="w-9 h-9 rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 pressed:bg-stone-300 disabled:opacity-40 cursor-default flex items-center justify-center text-sm"
 					>
 						{state.playing ? '⏸' : '▶'}
 					</Button>
@@ -66,8 +66,8 @@ export function MediaCard({ device, onStateChange }: Readonly<MediaCardProps>) {
 			</div>
 
 			{state.track && (
-				<p className="text-xs text-gray-500 truncate">
-					<span className="text-gray-400">Now playing: </span>
+				<p className="text-xs text-stone-500 truncate">
+					<span className="text-stone-400">Now playing: </span>
 					{state.track}
 				</p>
 			)}
@@ -81,18 +81,18 @@ export function MediaCard({ device, onStateChange }: Readonly<MediaCardProps>) {
 					onChangeEnd={(v) => { void onStateChange?.(device.id, { volume: v }) }}
 				>
 					<div className="flex items-center justify-between mb-1">
-						<Label className="text-xs text-gray-500">Volume</Label>
-						<SliderOutput className="text-xs text-gray-400" />
+						<Label className="text-xs text-stone-500">Volume</Label>
+						<SliderOutput className="text-xs text-stone-400" />
 					</div>
 					<SliderTrack className="relative flex items-center h-5 w-full">
 						{({ state: sliderState }) => (
 							<>
-								<div className="absolute h-1.5 w-full rounded-full bg-gray-200" />
+								<div className="absolute h-1.5 w-full rounded-full bg-stone-200" />
 								<div
-									className="absolute h-1.5 rounded-full bg-gray-500"
+									className="absolute h-1.5 rounded-full bg-stone-500"
 									style={{ width: `${sliderState.getThumbPercent(0) * 100}%` }}
 								/>
-								<SliderThumb className="w-4 h-4 rounded-full bg-white border-2 border-gray-500 shadow-sm cursor-default focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500" />
+								<SliderThumb className="w-4 h-4 rounded-full bg-white border-2 border-stone-500 shadow-sm cursor-default focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-500" />
 							</>
 						)}
 					</SliderTrack>

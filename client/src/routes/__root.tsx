@@ -5,6 +5,7 @@ import { createRootRoute, Outlet, Link } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { Toaster } from 'sonner'
 
+import { useDeviceStream } from '../hooks/useDeviceStream'
 import { cn } from '../lib/cn'
 
 const queryClient = new QueryClient({
@@ -19,18 +20,29 @@ const queryClient = new QueryClient({
 function RootLayout() {
 	return (
 		<QueryClientProvider client={queryClient}>
-			<div className="min-h-screen bg-[#f5f3f0] text-gray-900">
+			<AppShell />
+		</QueryClientProvider>
+	)
+}
+
+function AppShell() {
+	// SSE device stream runs app-wide so ['devices'] cache is always populated
+	useDeviceStream()
+
+	return (
+		<>
+			<div className="min-h-screen bg-[#f5f2ec] text-stone-900">
 				<nav
-					className="sticky top-0 z-10 border-b border-white/40"
+					className="sticky top-0 z-10 border-b border-[rgba(168,151,125,0.12)]"
 					style={{
-						background: 'linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(245,243,240,0.9))',
-						boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03), inset 0 -1px 0 rgba(0,0,0,0.04)',
+						background: 'linear-gradient(to bottom, rgba(255,253,248,0.95), rgba(245,242,236,0.9))',
+						boxShadow: '0 1px 3px rgba(120,90,50,0.03), 0 4px 12px rgba(120,90,50,0.02), inset 0 -1px 0 rgba(120,90,50,0.04)',
 						backdropFilter: 'blur(12px)',
 					}}
 				>
 					<div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 						<div className="flex items-center h-14 gap-1">
-							<span className="font-semibold text-gray-900 mr-5 text-sm tracking-tight">
+							<span className="font-semibold text-stone-800 mr-5 text-sm tracking-tight">
 								Home Jarvis
 							</span>
 							<NavItem to="/">Dashboard</NavItem>
@@ -50,7 +62,7 @@ function RootLayout() {
 					{ name: 'TanStack Router', render: <TanStackRouterDevtoolsPanel /> },
 				]}
 			/>
-		</QueryClientProvider>
+		</>
 	)
 }
 
@@ -60,8 +72,8 @@ function NavItem({ to, children }: Readonly<{ to: string; children: React.ReactN
 			to={to}
 			className={cn(
 				'px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
-				'text-gray-500 hover:text-gray-900',
-				'[&.active]:bg-white [&.active]:text-gray-900 [&.active]:shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_8px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.8)]',
+				'text-stone-500 hover:text-stone-800',
+				'[&.active]:bg-[#fffdf8] [&.active]:text-stone-800 [&.active]:shadow-[0_1px_3px_rgba(120,90,50,0.05),0_2px_8px_rgba(120,90,50,0.03),inset_0_1px_0_rgba(255,253,245,0.8)]',
 			)}
 			activeOptions={to === '/' ? { exact: true } : undefined}
 		>

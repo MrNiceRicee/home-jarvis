@@ -2,9 +2,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect } from 'react'
 
-import type { IntegrationsResponse } from '../types'
+import type { DetectedDevice, Device, IntegrationsResponse } from '../types'
 
-import { IntegrationCard, QuickConnectCard } from '../components/IntegrationForm'
+import { AdditionalDeviceCard, IntegrationCard, QuickConnectCard } from '../components/IntegrationForm'
 import { useScanStream } from '../hooks/useScanStream'
 import { api } from '../lib/api'
 import { cn } from '../lib/cn'
@@ -20,7 +20,7 @@ function scanPillClass(error: string | undefined, done: boolean) {
 function resultPillClass(r: { error?: string; count: number }) {
 	if (r.error) return 'bg-red-50 text-red-600'
 	if (r.count > 0) return 'bg-emerald-50 text-emerald-700'
-	return 'bg-gray-100 text-gray-500'
+	return 'bg-stone-100 text-stone-500'
 }
 
 async function fetchIntegrations(): Promise<IntegrationsResponse> {
@@ -39,10 +39,10 @@ function Integrations() {
 
 	const scan = useScanStream()
 
-	// auto-scan on first mount
+	// auto-scan on first visit (skip if we already have results from a previous scan)
 	useEffect(() => {
 		if (scan.status === 'idle') scan.startScan()
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- only on mount
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- only on mount, skip if cache has data
 	}, [])
 
 	const addMutation = useMutation({
@@ -66,10 +66,25 @@ function Integrations() {
 		},
 	})
 
+	const addDeviceMutation = useMutation({
+		mutationFn: async ({ brand, ip }: { brand: string; ip: string }) => {
+			const { error } = await api.api.devices['add-from-scan'].post({ brand, ip })
+			if (error) throw new Error((error.value as { error?: string })?.error ?? 'Failed to add device')
+		},
+	})
+
+	// reactively subscribe to SSE device cache so filtering re-renders when snapshot arrives
+	const { data: existingDevices = [] } = useQuery<Device[]>({
+		queryKey: ['devices'],
+		queryFn: () => [], // SSE populates this — never fetched
+		staleTime: Infinity,
+		gcTime: Infinity,
+	})
+
 	if (isLoading) {
 		return (
 			<div className="flex items-center justify-center py-24">
-				<div className="text-sm text-gray-400">Loading…</div>
+				<div className="text-sm text-stone-400">Loading…</div>
 			</div>
 		)
 	}
@@ -78,14 +93,34 @@ function Integrations() {
 		return (
 			<div className="flex flex-col items-center justify-center py-24 text-center">
 				<p className="text-sm font-medium text-red-600 mb-1">Failed to load integrations</p>
-				<p className="text-xs text-gray-400">{error?.message ?? 'Unknown error'}</p>
-				<p className="text-xs text-gray-400 mt-1">Is the server running on port 3001?</p>
+				<p className="text-xs text-stone-400">{error?.message ?? 'Unknown error'}</p>
+				<p className="text-xs text-stone-400 mt-1">Is the server running on port 3001?</p>
 			</div>
 		)
 	}
 
 	const configuredBrands = new Set(data?.configured?.map((i) => i.brand) ?? [])
-	const unconnectedScanned = scan.devices.filter((d) => !configuredBrands.has(d.brand))
+	const existingIps = new Set(
+		existingDevices.map((d) => d.externalId.replace(/:\d+$/, '')), // strip port suffix e.g. "192.168.1.28:0" → "192.168.1.28"
+	)
+
+	// check if a detected device matches one already in the system
+	function isAlreadyAdded(d: DetectedDevice) {
+		const ip = d.details.ip ?? d.details.bridgeIp
+		return ip ? existingIps.has(ip) : false
+	}
+
+	// hue scan returns the bridge hub, not individual devices — filter it out when already connected
+	function isBridgeHub(d: DetectedDevice) {
+		return d.brand === 'hue' && d.details.bridgeIp != null
+	}
+
+	// devices from brands not yet connected — show as Quick Connect
+	const newBrandDevices = scan.devices.filter((d) => !configuredBrands.has(d.brand))
+	// devices from already-connected brands, excluding already-added ones and bridge hubs
+	const additionalDevices = scan.devices.filter(
+		(d) => configuredBrands.has(d.brand) && !isAlreadyAdded(d) && !isBridgeHub(d),
+	)
 	const scanning = scan.status === 'scanning'
 	const completedBrandSet = new Set(scan.brandResults.map((r) => r.brand))
 
@@ -104,23 +139,23 @@ function Integrations() {
 	return (
 		<div>
 			<div className="mb-6">
-				<h1 className="text-xl font-semibold text-gray-900">Integrations</h1>
-				<p className="text-sm text-gray-400 mt-0.5">Connect your smart home device accounts</p>
+				<h1 className="text-xl font-semibold text-stone-900">Integrations</h1>
+				<p className="text-sm text-stone-400 mt-0.5">Connect your smart home device accounts</p>
 			</div>
 
 			{/* ── Detected on network ─────────────────────────────────────────────── */}
 			<div className="mb-6">
 				<div className="flex items-center justify-between mb-2">
-					<h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+					<h2 className="text-xs font-semibold text-stone-500 uppercase tracking-wide">
 						Detected on Your Network
 					</h2>
 					<button
 						type="button"
 						onClick={scan.startScan}
 						disabled={scanning}
-						className="text-xs text-gray-400 hover:text-gray-600 disabled:opacity-40 transition-colors"
+						className="text-xs text-stone-400 hover:text-stone-600 disabled:opacity-40 transition-colors"
 					>
-						{scanning ? 'Scanning…' : 'Scan again'}
+						{scanning ? 'Scanning...' : 'Scan again'}
 					</button>
 				</div>
 
@@ -136,7 +171,7 @@ function Integrations() {
 									className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium', scanPillClass(result?.error, done))}
 								>
 									{brandDisplayName(brand)}
-									{!done && ' …'}
+									{!done && ' ...'}
 									{done && !result?.error && ` · ${result?.count ?? 0}`}
 									{result?.error && ' · error'}
 								</span>
@@ -159,12 +194,12 @@ function Integrations() {
 					</div>
 				)}
 
-				{!scanning && unconnectedScanned.length === 0 && scan.status !== 'idle' && (
-					<p className="text-xs text-gray-400">No new devices detected. Make sure your hubs are powered on.</p>
+				{!scanning && newBrandDevices.length === 0 && additionalDevices.length === 0 && scan.status !== 'idle' && (
+					<p className="text-xs text-stone-400">No new devices detected. Make sure your hubs are powered on.</p>
 				)}
 
 				<div className="space-y-2">
-					{unconnectedScanned.map((detected, i) => {
+					{newBrandDevices.map((detected, i) => {
 						const meta = data?.available?.find((m) => m.brand === detected.brand)
 						if (!meta) return null
 						return (
@@ -178,6 +213,34 @@ function Integrations() {
 					})}
 				</div>
 			</div>
+
+			{/* ── Additional devices for connected brands ─────────────────────── */}
+			{additionalDevices.length > 0 && (
+				<div className="mb-6">
+					<div className="flex items-center justify-between mb-2">
+						<h2 className="text-xs font-semibold text-stone-500 uppercase tracking-wide">
+							Additional Devices Found
+						</h2>
+						<span className="text-xs text-stone-400">
+							{additionalDevices.length} device{additionalDevices.length !== 1 ? 's' : ''} from connected brands
+						</span>
+					</div>
+					<div className="space-y-2">
+						{additionalDevices.map((detected, i) => (
+							<AdditionalDeviceCard
+								key={`additional-${detected.brand}-${detected.details.ip ?? detected.details.bridgeIp ?? i}`}
+								detected={detected}
+								brandDisplayName={brandDisplayName(detected.brand)}
+								onAdd={() => {
+									const ip = detected.details.ip ?? detected.details.bridgeIp
+									if (ip) addDeviceMutation.mutate({ brand: detected.brand, ip })
+								}}
+								isAdding={addDeviceMutation.isPending}
+							/>
+						))}
+					</div>
+				</div>
+			)}
 
 			{/* ── All integrations ─────────────────────────────────────────────────── */}
 			<div className="space-y-3">

@@ -42,12 +42,12 @@ export function LightMultiSelectBar({
 		>
 			{/* Count + clear */}
 			<div className="flex items-center gap-1.5 shrink-0">
-				<span className="text-xs font-semibold text-gray-700">
+				<span className="text-xs font-semibold text-stone-700">
 					{selectedIds.size} light{selectedIds.size > 1 ? 's' : ''}
 				</span>
 				<Button
 					onPress={onClear}
-					className="text-gray-400 hover:text-gray-600 text-xs leading-none cursor-default"
+					className="text-stone-400 hover:text-stone-600 text-xs leading-none cursor-default"
 					aria-label="Clear selection"
 				>
 					✕
@@ -66,7 +66,7 @@ export function LightMultiSelectBar({
 				</Button>
 				<Button
 					onPress={() => applyToAll({ on: false })}
-					className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200 cursor-default"
+					className="text-xs px-2.5 py-1 rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 border border-stone-200 cursor-default"
 				>
 					Off
 				</Button>
@@ -82,7 +82,7 @@ export function LightMultiSelectBar({
 						onPress={() =>
 							applyToAll({ on: true, colorTemp: scene.colorTemp, brightness: scene.brightness })
 						}
-						className="text-xs px-2.5 py-1 rounded-full bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200 cursor-default"
+						className="text-xs px-2.5 py-1 rounded-full bg-stone-50 text-stone-600 hover:bg-stone-100 border border-stone-200 cursor-default"
 					>
 						{scene.name}
 					</Button>
@@ -101,13 +101,13 @@ export function LightMultiSelectBar({
 				className="w-28 shrink-0"
 			>
 				<div className="flex items-center justify-between mb-0.5">
-					<Label className="text-xs text-gray-500">Brightness</Label>
-					<SliderOutput className="text-xs text-gray-400" />
+					<Label className="text-xs text-stone-500">Brightness</Label>
+					<SliderOutput className="text-xs text-stone-400" />
 				</div>
 				<SliderTrack className="relative flex items-center h-6 w-full">
 					{({ state: s }) => (
 						<>
-							<div className="absolute inset-x-0 h-1.5 top-1/2 -translate-y-1/2 rounded-full bg-gray-200" />
+							<div className="absolute inset-x-0 h-1.5 top-1/2 -translate-y-1/2 rounded-full bg-stone-200" />
 							<div
 								className="absolute h-1.5 top-1/2 -translate-y-1/2 rounded-full bg-amber-300"
 								style={{ width: `${s.getThumbPercent(0) * 100}%` }}
@@ -177,5 +177,5 @@ export function LightMultiSelectBar({
 }
 
 function Divider() {
-	return <div className="h-5 w-px bg-gray-200 shrink-0" />
+	return <div className="h-5 w-px bg-stone-200 shrink-0" />
 }

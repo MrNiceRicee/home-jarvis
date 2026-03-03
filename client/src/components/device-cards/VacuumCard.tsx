@@ -27,7 +27,7 @@ export function VacuumCard({ device, onStateChange }: Readonly<VacuumCardProps>)
 		await onStateChange(device.id, { status: cmd })
 	}
 
-	const statusColor = STATUS_STYLES[status] ?? 'text-gray-600 bg-gray-100'
+	const statusColor = STATUS_STYLES[status] ?? 'text-stone-600 bg-stone-100'
 
 	return (
 		<div className="space-y-3">
@@ -37,13 +37,13 @@ export function VacuumCard({ device, onStateChange }: Readonly<VacuumCardProps>)
 				</span>
 				{battery !== undefined && (
 					<div className="flex items-center gap-1.5">
-						<div className="w-16 h-2 rounded-full bg-gray-200 overflow-hidden">
+						<div className="w-16 h-2 rounded-full bg-stone-200 overflow-hidden">
 							<div
 								className={cn('h-full rounded-full transition-all', battery > 20 ? 'bg-emerald-400' : 'bg-red-400')}
 								style={{ width: `${battery}%` }}
 							/>
 						</div>
-						<span className="text-xs text-gray-400">{battery}%</span>
+						<span className="text-xs text-stone-400">{battery}%</span>
 					</div>
 				)}
 			</div>
@@ -66,7 +66,7 @@ export function VacuumCard({ device, onStateChange }: Readonly<VacuumCardProps>)
 				<Button
 					onPress={() => { void sendCommand('dock') }}
 					isDisabled={!device.online || status === 'docked'}
-					className="flex-1 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200 pressed:bg-gray-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-default transition-colors"
+					className="flex-1 py-1.5 rounded-lg text-xs font-medium bg-stone-100 text-stone-600 hover:bg-stone-200 border border-stone-200 pressed:bg-stone-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-default transition-colors"
 				>
 					Dock
 				</Button>

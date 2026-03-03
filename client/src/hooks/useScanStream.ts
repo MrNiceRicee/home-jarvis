@@ -1,4 +1,5 @@
-import { useCallback, useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useCallback, useRef } from 'react'
 
 import type { DetectedDevice, ScanEvent } from '../types'
 
@@ -10,7 +11,7 @@ export interface BrandResult {
 	error?: string
 }
 
-interface ScanState {
+export interface ScanState {
 	status: ScanStatus
 	devices: DetectedDevice[]
 	/** all brands being scanned (from scan:start) */
@@ -20,24 +21,45 @@ interface ScanState {
 	error?: string
 }
 
-export function useScanStream() {
-	const [state, setState] = useState<ScanState>({
-		status: 'idle',
-		devices: [],
-		brands: [],
-		brandResults: [],
+const INITIAL_SCAN_STATE: ScanState = {
+	status: 'idle',
+	devices: [],
+	brands: [],
+	brandResults: [],
+}
+
+const SCAN_QUERY_KEY = ['scan:state'] as const
+
+/** read scan state from React Query cache — survives navigation */
+function useScanState() {
+	return useQuery<ScanState>({
+		queryKey: SCAN_QUERY_KEY,
+		queryFn: () => INITIAL_SCAN_STATE,
+		initialData: INITIAL_SCAN_STATE,
+		staleTime: Infinity,
+		gcTime: Infinity,
 	})
+}
+
+export function useScanStream() {
+	const queryClient = useQueryClient()
 	const esRef = useRef<EventSource | null>(null)
+	const { data: state } = useScanState()
+
+	function updateScan(updater: (prev: ScanState) => ScanState) {
+		queryClient.setQueryData<ScanState>(SCAN_QUERY_KEY, (prev) => updater(prev ?? INITIAL_SCAN_STATE))
+	}
 
 	const cancel = useCallback(() => {
 		esRef.current?.close()
 		esRef.current = null
-		setState((prev) => ({ ...prev, status: prev.status === 'scanning' ? 'idle' : prev.status }))
+		updateScan((prev) => ({ ...prev, status: prev.status === 'scanning' ? 'idle' : prev.status }))
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- updateScan is stable (uses queryClient ref)
 	}, [])
 
 	const startScan = useCallback(() => {
 		cancel()
-		setState({ status: 'scanning', devices: [], brands: [], brandResults: [] })
+		updateScan(() => ({ status: 'scanning', devices: [], brands: [], brandResults: [] }))
 
 		const sseUrl = import.meta.env.DEV ? 'http://localhost:3001/api/scan' : '/api/scan'
 		const es = new EventSource(sseUrl)
@@ -48,16 +70,16 @@ export function useScanStream() {
 
 			switch (event.type) {
 				case 'scan:start':
-					setState((prev) => ({ ...prev, brands: event.brands }))
+					updateScan((prev) => ({ ...prev, brands: event.brands }))
 					break
 				case 'scan:device':
-					setState((prev) => ({
+					updateScan((prev) => ({
 						...prev,
 						devices: [...prev.devices, event.device as DetectedDevice],
 					}))
 					break
 				case 'scan:complete':
-					setState((prev) => ({
+					updateScan((prev) => ({
 						...prev,
 						brandResults: [
 							...prev.brandResults,
@@ -66,7 +88,7 @@ export function useScanStream() {
 					}))
 					break
 				case 'scan:done':
-					setState((prev) => ({ ...prev, status: 'done' }))
+					updateScan((prev) => ({ ...prev, status: 'done' }))
 					es.close()
 					esRef.current = null
 					break
@@ -76,9 +98,10 @@ export function useScanStream() {
 		es.onerror = () => {
 			es.close()
 			esRef.current = null
-			setState((prev) => ({ ...prev, status: 'error', error: 'Scan connection failed' }))
+			updateScan((prev) => ({ ...prev, status: 'error', error: 'Scan connection failed' }))
 		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- updateScan is stable (uses queryClient ref)
 	}, [cancel])
 
-	return { ...state, startScan, cancel }
+	return { ...(state ?? INITIAL_SCAN_STATE), startScan, cancel }
 }
