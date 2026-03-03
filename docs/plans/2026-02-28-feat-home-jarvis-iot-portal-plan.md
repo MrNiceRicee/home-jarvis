@@ -10,7 +10,7 @@ origin: docs/brainstorms/2026-02-28-home-jarvis-brainstorm.md
 
 ## Overview
 
-A locally-hosted web portal that unifies 8 smart home device brands under one admin UI and bridges them into Apple HomeKit via a HAP bridge. The server runs on Bun + Elysia + TypeScript. The frontend is React + Tailwind + react-aria. Everything lives on the home network — Apple HomeKit handles remote access via HomePod/Apple TV.
+A locally-hosted web portal that unifies 9 smart home device brands under one admin UI and bridges them into Apple HomeKit via a HAP bridge. The server runs on Bun + Elysia + TypeScript. The frontend is React + Tailwind + react-aria. Everything lives on the home network — Apple HomeKit handles remote access via HomePod/Apple TV.
 
 **Key constraint:** No auth, no cloud hosting, no Tailscale for v1. This is a trusted local network admin tool.
 
@@ -84,14 +84,19 @@ home-jarvis/
 │   │   ├── App.tsx
 │   │   ├── hooks/
 │   │   │   └── useDeviceStream.ts            # SSE connection hook
-│   │   ├── pages/
-│   │   │   ├── Dashboard.tsx                 # Device list with live state
-│   │   │   ├── Integrations.tsx              # Add/remove brand credentials
-│   │   │   └── HomeKit.tsx                   # QR code pairing + bridge status
+│   │   ├── routes/                           # TanStack Router file-based routes
+│   │   │   ├── __root.tsx
+│   │   │   ├── index.tsx                     # Device dashboard with live state
+│   │   │   ├── integrations.tsx              # Add/remove brand credentials
+│   │   │   └── homekit.tsx                   # QR code pairing + bridge status
+│   │   ├── lib/
+│   │   │   ├── api.ts                        # Eden Treaty client
+│   │   │   └── color-utils.ts                # Color conversion helpers
 │   │   └── components/
-│   │       ├── DeviceCard.tsx                # Single device: name, state, HK toggle
+│   │       ├── DeviceCard.tsx                # Dispatcher → type-specific sub-cards
+│   │       ├── device-cards/                 # LightCard, ThermostatCard, VacuumCard, etc.
 │   │       ├── IntegrationForm.tsx           # Dynamic credential form per brand
-│   │       └── HomeKitQR.tsx                 # QR code + PIN display
+│   │       └── LightMultiSelectBar.tsx       # Batch light control
 │   ├── package.json
 │   └── vite.config.ts
 └── docs/
@@ -453,19 +458,19 @@ export function createHAPAccessory(device: Device, adapter: DeviceAdapter): HAPA
 
 ## Implementation Phases
 
-### Phase 1: Foundation ✦ Start here
+### Phase 1: Foundation ✅ Complete
 
 **Goal:** Running Elysia server + React frontend + SQLite + empty routes
 
 **Tasks:**
-- [ ] `server/`: `bun init`, install Elysia, Drizzle ORM, `bun:sqlite`, `hap-nodejs`
-- [ ] Write Drizzle schema (`integrations`, `devices`, `homekit_config`)
-- [ ] Run `drizzle-kit push` to create SQLite DB
-- [ ] Scaffold Elysia app with CORS, static file serving (for Vite build output)
-- [ ] `client/`: Vite + React + Tailwind CSS + react-aria setup
-- [ ] Stub routes: `/api/integrations`, `/api/devices`, `/api/homekit`, `/api/events`
-- [ ] Decorate Elysia context with DB (`app.decorate('db', drizzle(db))`)
-- [ ] Basic React router with Dashboard, Integrations, HomeKit pages (empty shells)
+- [x] `server/`: `bun init`, install Elysia, Drizzle ORM, `bun:sqlite`, `hap-nodejs`
+- [x] Write Drizzle schema (`integrations`, `devices`, `homekit_config`)
+- [x] Run `drizzle-kit push` to create SQLite DB
+- [x] Scaffold Elysia app with CORS, static file serving (for Vite build output)
+- [x] `client/`: Vite + React + Tailwind CSS + react-aria setup
+- [x] Stub routes: `/api/integrations`, `/api/devices`, `/api/homekit`, `/api/events`
+- [x] Decorate Elysia context with DB (`app.decorate('db', drizzle(db))`)
+- [x] Basic React router with Dashboard, Integrations, HomeKit pages (empty shells)
 
 **Files:**
 - `server/src/index.ts`
@@ -478,27 +483,28 @@ export function createHAPAccessory(device: Device, adapter: DeviceAdapter): HAPA
 
 ---
 
-### Phase 2: Integration Framework + Philips Hue
+### Phase 2: Integration Framework + Philips Hue ✅ Complete
 
 **Goal:** First working integration — discover a Hue bridge and see lights on the dashboard
 
 **Tasks:**
-- [ ] Write `integrations/types.ts` — `DeviceAdapter` interface + all shared types
-- [ ] Write `integrations/registry.ts` — maps brand string to adapter
-- [ ] Write `discovery/mdns-scanner.ts` — mDNS scan using `@homebridge/ciao` for `_hue._tcp`
-- [ ] Write `integrations/hue/adapter.ts` — N-UPnP discovery + CLIP API v2 local REST
+- [x] Write `integrations/types.ts` — `DeviceAdapter` interface + all shared types
+- [x] Write `integrations/registry.ts` — maps brand string to adapter
+- [x] Write `discovery/mdns-scanner.ts` — mDNS scan using `bonjour-hap` for `_hue._tcp`
+- [x] Write `discovery/local-scanner.ts` — unified scan: Hue cloud+mDNS, Govee UDP, Aqara mDNS, Elgato mDNS
+- [x] Write `integrations/hue/adapter.ts` — N-UPnP discovery + CLIP API v2 local REST
   - `validateCredentials()`: test API call to bridge
   - `discover()`: fetch lights, rooms from bridge
   - `getState()`: fetch individual light state
   - `setState()`: PUT to bridge light endpoint
   - Note: Hue bridge requires one-time button press → store resulting token in `config.token`
-- [ ] `integrations.controller.ts`: POST /api/integrations (save + validate credentials)
-- [ ] `cloud-poller.ts`: basic poll loop for configured integrations
-- [ ] `devices.controller.ts`: GET /api/devices (list all from DB)
-- [ ] `events.controller.ts`: SSE endpoint — stream device state updates
-- [ ] Frontend: `IntegrationForm.tsx` (Hue brand — fields: bridge IP + press-button flow)
-- [ ] Frontend: `DeviceCard.tsx` — shows name, state, online status
-- [ ] Frontend: `useDeviceStream.ts` hook — SSE connection with auto-reconnect
+- [x] `integrations.controller.ts`: POST /api/integrations (save + validate credentials)
+- [x] `cloud-poller.ts`: basic poll loop for configured integrations
+- [x] `devices.controller.ts`: GET /api/devices (list all from DB)
+- [x] `events.controller.ts`: SSE endpoint — stream device state updates
+- [x] Frontend: `IntegrationForm.tsx` (Hue brand — fields: bridge IP + press-button flow)
+- [x] Frontend: `DeviceCard.tsx` — shows name, state, online status
+- [x] Frontend: `useDeviceStream.ts` hook — SSE connection with auto-reconnect
 
 **Files:**
 - `server/src/integrations/types.ts`
@@ -514,6 +520,27 @@ export function createHAPAccessory(device: Device, adapter: DeviceAdapter): HAPA
 - `client/src/components/IntegrationForm.tsx`
 
 **Success criteria:** Add Hue integration, see lights appear on dashboard with live state. Toggle a light in Apple Home (manually, before HomeKit phase) and see dashboard update.
+
+---
+
+### Phase 2b: Elgato Key Light Adapter ✅ Complete (bonus — not in original plan)
+
+**Goal:** Local mDNS-based adapter for Elgato Key Light devices
+
+**Tasks:**
+- [x] Write `integrations/elgato/adapter.ts` — mDNS discovery via `_elg._tcp` + local HTTP API
+- [x] Add to `registry.ts` — `createAdapter('elgato', config)` returns `ElgatoAdapter`
+- [x] Add Elgato metadata to `INTEGRATION_META` in registry
+- [x] Add Elgato to `runLocalScan()` in `local-scanner.ts`
+- [ ] **Needs testing** — adapter implemented but not yet verified against real hardware
+
+---
+
+### Phase 4a: Richer Device Cards ✅ Complete
+
+See: [docs/plans/2026-03-01-phase-4a-richer-device-cards.md](./2026-03-01-phase-4a-richer-device-cards.md)
+
+**Summary:** Expanded `DeviceType` from 5 to 12, expanded `DeviceState` with vacuum/media/appliance/fridge fields, refactored `DeviceCard` into dispatcher pattern with 9 type-specific sub-cards, added "Native" badge for Hue/Aqara.
 
 ---
 
@@ -697,7 +724,7 @@ HAP characteristic .onGet() fires (Apple Home polls state)
 
 - [ ] SSE connection auto-reconnects within 5 seconds of disconnect
 - [ ] Dashboard renders within 1 second on local network
-- [ ] HAP bridge accessible on port 51826, Elysia on port 3000
+- [ ] HAP bridge accessible on port 51826, Elysia on port 3001
 - [ ] SQLite file stored at `server/data/jarvis.db` (gitignored)
 - [ ] hap-nodejs pairing data stored at `server/data/.homekit/` (gitignored)
 - [ ] TypeScript strict mode enabled throughout

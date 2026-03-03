@@ -1,6 +1,8 @@
+import Bonjour from 'bonjour-hap'
 import * as dgram from 'node:dgram'
 
 import { discoverHueBridges } from '../integrations/hue/adapter'
+import { log } from '../lib/logger'
 
 export interface DetectedDevice {
 	brand: string
@@ -33,10 +35,8 @@ async function scanHueMdns(timeoutMs = 3000): Promise<DetectedDevice[]> {
 		const found: DetectedDevice[] = []
 		const seen = new Set<string>()
 		try {
-			// eslint-disable-next-line @typescript-eslint/no-require-imports
-			const bonjour = require('bonjour-hap')()
-			// Hue bridges advertise on _hue._tcp (v2+)
-			const browser = bonjour.find({ type: 'hue' })
+			const instance = new Bonjour()
+			const browser = instance.find({ type: 'hue' })
 
 			browser.on('up', (service: { name: string; addresses?: string[]; host: string }) => {
 				const ip = service.addresses?.[0] ?? service.host
@@ -54,11 +54,12 @@ async function scanHueMdns(timeoutMs = 3000): Promise<DetectedDevice[]> {
 			setTimeout(() => {
 				try {
 					browser.stop()
-					bonjour.destroy()
+					instance.destroy()
 				} catch { /* ignore */ }
 				resolve(found)
 			}, timeoutMs)
-		} catch {
+		} catch (e) {
+			log.error('scanHueMdns error', { error: (e as Error).message })
 			resolve([])
 		}
 	})
@@ -110,7 +111,8 @@ function scanGovee(timeoutMs = 3000): Promise<DetectedDevice[]> {
 			}
 		})
 
-		socket.on('error', () => {
+		socket.on('error', (e) => {
+			log.error('scanGovee socket error', { error: e.message })
 			try {
 				socket.close()
 			} catch {
@@ -174,9 +176,8 @@ function scanMdns(
 	return new Promise((resolve) => {
 		const found: DetectedDevice[] = []
 		try {
-			// eslint-disable-next-line @typescript-eslint/no-require-imports
-			const bonjour = require('bonjour-hap')()
-			const browser = bonjour.find({ type: serviceType, protocol })
+			const instance = new Bonjour()
+			const browser = instance.find({ type: serviceType, protocol })
 
 			browser.on('up', (service: BonjourService) => {
 				const ip = service.addresses?.[0] ?? service.host
@@ -191,13 +192,14 @@ function scanMdns(
 			setTimeout(() => {
 				try {
 					browser.stop()
-					bonjour.destroy()
+					instance.destroy()
 				} catch {
 					/* ignore */
 				}
 				resolve(found)
 			}, timeoutMs)
-		} catch {
+		} catch (e) {
+			log.error('scanMdns error', { brand, error: (e as Error).message })
 			resolve([])
 		}
 	})

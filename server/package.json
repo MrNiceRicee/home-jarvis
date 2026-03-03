@@ -32,6 +32,7 @@
 		"@elysiajs/cors": "^1.4.1",
 		"@elysiajs/static": "^1.4.7",
 		"@homebridge/hap-nodejs": "^2.1.0",
+		"bonjour-hap": "^3.10.0",
 		"drizzle-orm": "^0.45.1",
 		"elysia": "^1.4.26",
 		"neverthrow": "^8.2.0",
