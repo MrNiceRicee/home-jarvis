@@ -8,7 +8,7 @@
 		"client"
 	],
 	"scripts": {
-		"dev": "turbo dev",
+		"dev": "turbo dev db:studio",
 		"build": "turbo build",
 		"lint": "turbo lint",
 		"lint:fix": "turbo lint:fix",
