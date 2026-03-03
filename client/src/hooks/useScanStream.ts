@@ -4,11 +4,19 @@ import type { DetectedDevice, ScanEvent } from '../types'
 
 export type ScanStatus = 'idle' | 'scanning' | 'done' | 'error'
 
+export interface BrandResult {
+	brand: string
+	count: number
+	error?: string
+}
+
 interface ScanState {
 	status: ScanStatus
 	devices: DetectedDevice[]
-	completedBrands: string[]
-	totalBrands: number
+	/** all brands being scanned (from scan:start) */
+	brands: string[]
+	/** per-brand results as they complete */
+	brandResults: BrandResult[]
 	error?: string
 }
 
@@ -16,8 +24,8 @@ export function useScanStream() {
 	const [state, setState] = useState<ScanState>({
 		status: 'idle',
 		devices: [],
-		completedBrands: [],
-		totalBrands: 0,
+		brands: [],
+		brandResults: [],
 	})
 	const esRef = useRef<EventSource | null>(null)
 
@@ -29,7 +37,7 @@ export function useScanStream() {
 
 	const startScan = useCallback(() => {
 		cancel()
-		setState({ status: 'scanning', devices: [], completedBrands: [], totalBrands: 0 })
+		setState({ status: 'scanning', devices: [], brands: [], brandResults: [] })
 
 		const sseUrl = import.meta.env.DEV ? 'http://localhost:3001/api/scan' : '/api/scan'
 		const es = new EventSource(sseUrl)
@@ -40,7 +48,7 @@ export function useScanStream() {
 
 			switch (event.type) {
 				case 'scan:start':
-					setState((prev) => ({ ...prev, totalBrands: event.brands.length }))
+					setState((prev) => ({ ...prev, brands: event.brands }))
 					break
 				case 'scan:device':
 					setState((prev) => ({
@@ -51,7 +59,10 @@ export function useScanStream() {
 				case 'scan:complete':
 					setState((prev) => ({
 						...prev,
-						completedBrands: [...prev.completedBrands, event.brand],
+						brandResults: [
+							...prev.brandResults,
+							{ brand: event.brand, count: event.count, error: event.error },
+						],
 					}))
 					break
 				case 'scan:done':
