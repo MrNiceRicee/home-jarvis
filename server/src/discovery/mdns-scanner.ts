@@ -1,7 +1,9 @@
 /**
- * mDNS scanner using @homebridge/ciao (already bundled with hap-nodejs).
+ * mDNS scanner using bonjour-hap.
  * Looks for Philips Hue bridges advertising _hue._tcp on the local network.
  */
+
+import Bonjour from 'bonjour-hap'
 
 export interface MdnsDevice {
 	brand: string
@@ -15,13 +17,9 @@ export async function scanForHueBridges(timeoutMs = 5000): Promise<MdnsDevice[]>
 	const found: MdnsDevice[] = []
 
 	return new Promise((resolve) => {
-		// @homebridge/ciao exposes a responder; we use its underlying mDNS stack for browsing
-		// Since ciao is primarily a responder library, we fall back to N-UPnP for Hue discovery.
-		// mDNS browsing is used via the bonjour-hap package (already installed as dep of hap-nodejs).
 		try {
-			// eslint-disable-next-line @typescript-eslint/no-require-imports
-			const bonjour = require('bonjour-hap')()
-			const browser = bonjour.find({ type: 'hue' })
+			const instance = new Bonjour()
+			const browser = instance.find({ type: 'hue' })
 
 			browser.on(
 				'up',
@@ -38,11 +36,10 @@ export async function scanForHueBridges(timeoutMs = 5000): Promise<MdnsDevice[]>
 
 			setTimeout(() => {
 				browser.stop()
-				bonjour.destroy()
+				instance.destroy()
 				resolve(found)
 			}, timeoutMs)
 		} catch {
-			// bonjour-hap not available — fall through to N-UPnP discovery
 			resolve([])
 		}
 	})

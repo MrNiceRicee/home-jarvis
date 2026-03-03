@@ -57,20 +57,37 @@ bun run db:studio        # visual database browser
 home-jarvis/
 ├── server/              # Bun + Elysia API
 │   └── src/
-│       ├── index.ts                    # app entry + Eden Treaty App type
-│       ├── routes/                     # controllers (devices, events, integrations, scan)
-│       ├── integrations/               # per-brand adapters (Hue, Elgato, …)
-│       ├── discovery/                  # cloud-poller, mDNS/UDP local scanner
-│       ├── db/                         # Drizzle schema + SQLite instance
+│       ├── index.ts                      # app entry + Eden Treaty App type
+│       ├── routes/                       # controllers (devices, events, integrations, scan)
+│       ├── integrations/                 # per-brand adapters
+│       │   ├── types.ts                  # DeviceAdapter interface, DeviceState, DeviceType
+│       │   ├── registry.ts               # brand → adapter mapping + IntegrationMeta
+│       │   ├── hue/adapter.ts            # Philips Hue (mDNS + N-UPnP + CLIP API)
+│       │   └── elgato/adapter.ts         # Elgato Key Light (mDNS + local HTTP)
+│       ├── discovery/                    # device scanning
+│       │   ├── local-scanner.ts          # unified scan: Hue, Govee UDP, Aqara, Elgato mDNS
+│       │   ├── mdns-scanner.ts           # low-level mDNS via bonjour-hap
+│       │   └── cloud-poller.ts           # scheduled polling for cloud integrations
+│       ├── lib/                          # shared utilities
+│       │   ├── events.ts                 # SSE event bus
+│       │   ├── logger.ts                 # structured logging
+│       │   └── parse-json.ts             # safe JSON parsing
+│       ├── db/                           # Drizzle schema + SQLite instance
 │       └── generated/client-manifest.ts  # stub in dev; embedded client in prod
 ├── client/              # React + Vite SPA
 │   └── src/
-│       ├── routes/                     # TanStack Router pages
-│       ├── components/                 # device cards, forms, multi-select bar
-│       ├── hooks/useDeviceStream.ts    # SSE → TanStack Query cache
-│       └── lib/api.ts                  # Eden Treaty client
+│       ├── routes/                       # TanStack Router file-based pages
+│       ├── components/
+│       │   ├── DeviceCard.tsx            # dispatcher → type-specific sub-cards
+│       │   ├── device-cards/             # LightCard, ThermostatCard, VacuumCard, …
+│       │   ├── IntegrationForm.tsx       # dynamic credential form per brand
+│       │   └── LightMultiSelectBar.tsx   # batch light control
+│       ├── hooks/useDeviceStream.ts      # SSE → TanStack Query cache
+│       └── lib/
+│           ├── api.ts                    # Eden Treaty client
+│           └── color-utils.ts            # color conversion helpers
 └── scripts/
-    └── gen-client-manifest.ts          # codegen: client/dist/ → embedded TS module
+    └── gen-client-manifest.ts            # codegen: client/dist/ → embedded TS module
 ```
 
 ---
@@ -193,17 +210,17 @@ DB_PATH=~/Applications/jarvis/data/jarvis.db bun run db:push
 
 ## Integrations
 
-| Brand | Discovery | Auth type |
-|-------|-----------|-----------|
-| Philips Hue | mDNS `_hue._tcp` + N-UPnP cloud | Local API key (press bridge button) |
-| Govee | UDP LAN `239.255.255.250:4003` | Cloud API key |
-| Elgato Key Light | mDNS `_elg._tcp` | None (unauthenticated local HTTP) |
-| Aqara | mDNS `_miio._udp` | Access code |
-| LG ThinQ | Manual | OAuth 2.0 |
-| GE Cync / SmartHQ | Manual | Email + password |
-| SmartThings | Manual | Personal Access Token |
-| Resideo (Honeywell) | Manual | API key + OAuth token |
-| VeSync (Levoit) | Manual | Email + password |
+| Brand | Discovery | Auth type | Status |
+|-------|-----------|-----------|--------|
+| Philips Hue | mDNS `_hue._tcp` + N-UPnP cloud | Local API key (press bridge button) | Working |
+| Elgato Key Light | mDNS `_elg._tcp` | None (unauthenticated local HTTP) | Needs testing |
+| Govee | UDP LAN `239.255.255.250:4003` | Cloud API key | Planned (Phase 3) |
+| VeSync (Levoit) | Manual | Email + password | Planned (Phase 3) |
+| Resideo (Honeywell) | Manual | API key + OAuth token | Planned (Phase 3) |
+| LG ThinQ | Manual | OAuth 2.0 | Planned (Phase 4) |
+| GE Cync / SmartHQ | Manual | Email + password | Planned (Phase 4) |
+| SmartThings | Manual | Personal Access Token | Planned (Phase 4) |
+| Aqara | mDNS `_miio._udp` | Access code | Planned (Phase 4) |
 
 > **Note:** mDNS/UDP auto-detection works on macOS (Bonjour built-in) and Linux (avahi). It does not work inside WSL2 due to multicast limitations — run from a native host or enter the device IP manually.
 
