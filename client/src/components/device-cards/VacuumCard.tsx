@@ -2,6 +2,8 @@ import { Button } from 'react-aria-components'
 
 import type { Device, DeviceState } from '../../types'
 
+import { cn } from '../../lib/cn'
+
 const STATUS_STYLES: Record<string, string> = {
 	cleaning: 'text-blue-700 bg-blue-50',
 	docked: 'text-emerald-700 bg-emerald-50',
@@ -30,14 +32,14 @@ export function VacuumCard({ device, onStateChange }: Readonly<VacuumCardProps>)
 	return (
 		<div className="space-y-3">
 			<div className="flex items-center justify-between">
-				<span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${statusColor}`}>
+				<span className={cn('text-xs font-medium px-2 py-0.5 rounded-full capitalize', statusColor)}>
 					{status}
 				</span>
 				{battery !== undefined && (
 					<div className="flex items-center gap-1.5">
 						<div className="w-16 h-2 rounded-full bg-gray-200 overflow-hidden">
 							<div
-								className={`h-full rounded-full transition-all ${battery > 20 ? 'bg-emerald-400' : 'bg-red-400'}`}
+								className={cn('h-full rounded-full transition-all', battery > 20 ? 'bg-emerald-400' : 'bg-red-400')}
 								style={{ width: `${battery}%` }}
 							/>
 						</div>

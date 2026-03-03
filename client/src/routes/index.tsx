@@ -6,8 +6,10 @@ import type { Device, DeviceState } from '../types'
 
 import { DeviceCard } from '../components/DeviceCard'
 import { LightMultiSelectBar } from '../components/LightMultiSelectBar'
+import { RaisedButton } from '../components/ui/button'
 import { useDeviceStream } from '../hooks/useDeviceStream'
 import { api } from '../lib/api'
+import { cn } from '../lib/cn'
 
 export const Route = createFileRoute('/')({ component: Dashboard })
 
@@ -83,7 +85,7 @@ function Dashboard() {
 				</p>
 				<Link
 					to="/integrations"
-					className="px-4 py-2 bg-gray-900 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors"
+					className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg bg-linear-to-b from-gray-800 to-gray-900 text-white border border-gray-700/50 shadow-[0_1px_3px_rgba(0,0,0,0.2),0_4px_12px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] hover:from-gray-700 hover:to-gray-800 transition-all"
 				>
 					Add Integration →
 				</Link>
@@ -101,23 +103,26 @@ function Dashboard() {
 					</p>
 				</div>
 				<div className="flex items-center gap-2">
-					<button
-						type="button"
-						onClick={() => { void discoverMutation.mutateAsync() }}
-						disabled={discoverMutation.isPending}
-						className="text-xs px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-40 transition-colors"
+					<RaisedButton
+						variant="raised"
+						size="sm"
+						onPress={() => { void discoverMutation.mutateAsync() }}
+						isDisabled={discoverMutation.isPending}
 					>
 						{discoverMutation.isPending ? 'Discovering…' : 'Discover Now'}
-					</button>
+					</RaisedButton>
 					<StreamStatusBadge status={status} />
 				</div>
 			</div>
 
 			{Object.entries(grouped).map(([brand, brandDevices]) => (
 				<section key={brand} className="mb-8">
-					<h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-						{brand}
-					</h2>
+					<div className="flex items-center gap-3 mb-3">
+						<h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+							{brand}
+						</h2>
+						<div className="flex-1 h-px bg-linear-to-r from-gray-200 to-transparent" />
+					</div>
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
 						{brandDevices.map((device) => (
 							<DeviceCard
@@ -149,8 +154,13 @@ function StreamStatusBadge({ status }: Readonly<{ status: string }>) {
 	if (status === 'connected') return null
 	return (
 		<span
-			className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full
-      ${status === 'reconnecting' ? 'bg-amber-50 text-amber-700' : 'bg-gray-100 text-gray-500'}`}
+			className={cn(
+				'flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full',
+				'bg-linear-to-b from-white to-gray-50',
+				'border border-gray-200/80',
+				'shadow-[var(--shadow-raised),var(--shadow-inner-glow)]',
+				status === 'reconnecting' ? 'text-amber-700' : 'text-gray-500',
+			)}
 		>
 			<span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
 			{status === 'reconnecting' ? 'Reconnecting…' : 'Connecting…'}

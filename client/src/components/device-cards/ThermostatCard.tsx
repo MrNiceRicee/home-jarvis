@@ -2,6 +2,8 @@ import { Button } from 'react-aria-components'
 
 import type { Device, DeviceState } from '../../types'
 
+import { cn } from '../../lib/cn'
+
 const MODES = ['heat', 'cool', 'auto', 'off'] as const
 type ThermostatMode = (typeof MODES)[number]
 
@@ -76,11 +78,12 @@ export function ThermostatCard({ device, onStateChange }: Readonly<ThermostatCar
 						key={m}
 						onPress={() => { void setMode(m) }}
 						isDisabled={!device.online}
-						className={`px-2.5 py-1 rounded-full text-xs font-medium cursor-default transition-colors disabled:opacity-40
-              ${currentMode === m
+						className={cn(
+							'px-2.5 py-1 rounded-full text-xs font-medium cursor-default transition-colors disabled:opacity-40',
+							currentMode === m
 								? 'bg-blue-600 text-white'
-								: 'bg-gray-100 text-gray-600 hover:bg-gray-200 pressed:bg-gray-300'
-							}`}
+								: 'bg-gray-100 text-gray-600 hover:bg-gray-200 pressed:bg-gray-300',
+						)}
 					>
 						{MODE_LABELS[m]}
 					</Button>

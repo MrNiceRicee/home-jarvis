@@ -3,6 +3,8 @@ import { Button, Label, Slider, SliderOutput, SliderThumb, SliderTrack } from 'r
 
 import type { Device, DeviceState } from '../../types'
 
+import { cn } from '../../lib/cn'
+
 const AQI_LEVELS = [
 	{ max: 1, label: 'Good', color: 'text-emerald-700 bg-emerald-50' },
 	{ max: 2, label: 'Fair', color: 'text-yellow-700 bg-yellow-50' },
@@ -46,11 +48,11 @@ export function AirPurifierCard({ device, onStateChange }: Readonly<AirPurifierC
 	return (
 		<div className="space-y-3">
 			<div className="flex items-center justify-between">
-				<span className={`text-xs font-medium ${isOn ? 'text-blue-600' : 'text-gray-400'}`}>
+				<span className={cn('text-xs font-medium', isOn ? 'text-blue-600' : 'text-gray-400')}>
 					{isOn ? 'On' : 'Off'}
 				</span>
 				{aqi && (
-					<span className={`text-xs font-medium px-2 py-0.5 rounded-full ${aqi.color}`}>
+					<span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', aqi.color)}>
 						{aqi.label}
 					</span>
 				)}
@@ -60,11 +62,13 @@ export function AirPurifierCard({ device, onStateChange }: Readonly<AirPurifierC
 				<Button
 					onPress={handlePowerToggle}
 					isDisabled={toggling}
-					className={`w-full py-1.5 rounded-lg text-xs font-medium transition-colors cursor-default
-            ${isOn
-						? 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 pressed:bg-blue-200'
-						: 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200 pressed:bg-gray-300'
-					} disabled:opacity-40`}
+					className={cn(
+						'w-full py-1.5 rounded-lg text-xs font-medium transition-colors cursor-default',
+						isOn
+							? 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 pressed:bg-blue-200'
+							: 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200 pressed:bg-gray-300',
+						'disabled:opacity-40',
+					)}
 				>
 					{buttonLabel}
 				</Button>

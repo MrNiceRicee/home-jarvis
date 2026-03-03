@@ -3,6 +3,8 @@ import { Button, Label, Slider, SliderOutput, SliderThumb, SliderTrack } from 'r
 
 import type { Device, DeviceState } from '../../types'
 
+import { cn } from '../../lib/cn'
+
 interface MediaCardProps {
 	device: Device
 	onStateChange?: (deviceId: string, state: Partial<DeviceState>) => Promise<void>
@@ -42,11 +44,13 @@ export function MediaCard({ device, onStateChange }: Readonly<MediaCardProps>) {
 				<Button
 					onPress={handlePowerToggle}
 					isDisabled={!device.online || toggling}
-					className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-default
-            ${isOn
-						? 'bg-gray-800 text-gray-100 hover:bg-gray-700 border border-gray-700 pressed:bg-gray-600'
-						: 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200 pressed:bg-gray-300'
-					} disabled:opacity-40`}
+					className={cn(
+						'flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-default',
+						isOn
+							? 'bg-gray-800 text-gray-100 hover:bg-gray-700 border border-gray-700 pressed:bg-gray-600'
+							: 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200 pressed:bg-gray-300',
+						'disabled:opacity-40',
+					)}
 				>
 					{buttonLabel}
 				</Button>
