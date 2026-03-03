@@ -1,9 +1,32 @@
 import type { Device as ServerDevice, Integration, HomekitConfig } from 'home-jarvis-server/src/db/schema'
 import type { DetectedDevice } from 'home-jarvis-server/src/discovery/local-scanner'
-import type { DeviceState, DeviceType, IntegrationMeta, CredentialField } from 'home-jarvis-server/src/integrations/types'
+import type {
+	DeviceState,
+	DeviceType,
+	IntegrationMeta,
+	CredentialField,
+	ScanStartEvent,
+	ScanDeviceEvent,
+	ScanBrandCompleteEvent,
+	ScanDoneEvent,
+	ScanEvent,
+} from 'home-jarvis-server/src/integrations/types'
 
 // Re-export server types so consumers import from a single location: '../types'
-export type { Integration, HomekitConfig, DeviceState, DeviceType, IntegrationMeta, CredentialField, DetectedDevice }
+export type {
+	Integration,
+	HomekitConfig,
+	DeviceState,
+	DeviceType,
+	IntegrationMeta,
+	CredentialField,
+	DetectedDevice,
+	ScanStartEvent,
+	ScanDeviceEvent,
+	ScanBrandCompleteEvent,
+	ScanDoneEvent,
+	ScanEvent,
+}
 
 // ─── Device ──────────────────────────────────────────────────────────────────
 // Server schema's Device has state: string (JSON blob). The API parses it

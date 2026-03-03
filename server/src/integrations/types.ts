@@ -110,3 +110,34 @@ export interface DeviceEvent {
 	online?: boolean
 	timestamp: number
 }
+
+// ─── Scan SSE events ────────────────────────────────────────────────────────
+
+export interface ScanStartEvent {
+	type: 'scan:start'
+	brands: string[]
+}
+
+export interface ScanDeviceEvent {
+	type: 'scan:device'
+	device: {
+		brand: string
+		label: string
+		details: Record<string, string>
+		via: 'upnp' | 'mdns' | 'udp'
+	}
+}
+
+export interface ScanBrandCompleteEvent {
+	type: 'scan:complete'
+	brand: string
+	count: number
+	error?: string
+}
+
+export interface ScanDoneEvent {
+	type: 'scan:done'
+	totalDevices: number
+}
+
+export type ScanEvent = ScanStartEvent | ScanDeviceEvent | ScanBrandCompleteEvent | ScanDoneEvent

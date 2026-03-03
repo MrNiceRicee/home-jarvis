@@ -1,4 +1,5 @@
 import Bonjour from 'bonjour-hap'
+import { ResultAsync, ok } from 'neverthrow'
 import * as dgram from 'node:dgram'
 
 import { discoverHueBridges } from '../integrations/hue/adapter'
@@ -12,29 +13,36 @@ export interface DetectedDevice {
 	via: 'upnp' | 'mdns' | 'udp'
 }
 
-// ─── Philips Hue — cloud N-UPnP + local mDNS in parallel ────────────────────
-// Cloud discovery (discovery.meethue.com) is unreliable; mDNS is the local fallback.
-// Both run concurrently and results are merged by IP to avoid duplicates.
+export interface ScanCallbacks {
+	onDevice: (device: DetectedDevice) => void
+	onBrandComplete: (brand: string, count: number, error?: string) => void
+}
 
-async function scanHueCloud(): Promise<DetectedDevice[]> {
-	const result = await discoverHueBridges()
-	return result.match(
-		(bridges) =>
-			bridges.map((b) => ({
-				brand: 'hue',
-				label: `Philips Hue bridge at ${b.internalipaddress}`,
-				details: { bridgeIp: b.internalipaddress },
-				via: 'upnp' as const,
-			})),
-		() => [],
+// ─── Philips Hue — cloud N-UPnP + local mDNS in parallel ────────────────────
+
+function scanHueCloud(): ResultAsync<DetectedDevice[], Error> {
+	return ResultAsync.fromPromise(
+		discoverHueBridges().then((result) =>
+			result.match(
+				(bridges) =>
+					bridges.map((b) => ({
+						brand: 'hue',
+						label: `Philips Hue bridge at ${b.internalipaddress}`,
+						details: { bridgeIp: b.internalipaddress },
+						via: 'upnp' as const,
+					})),
+				() => [],
+			),
+		),
+		(e) => new Error(`Hue cloud discovery failed: ${(e as Error).message}`),
 	)
 }
 
-async function scanHueMdns(timeoutMs = 3000): Promise<DetectedDevice[]> {
-	return new Promise((resolve) => {
-		const found: DetectedDevice[] = []
-		const seen = new Set<string>()
-		try {
+function scanHueMdns(timeoutMs = 3000): ResultAsync<DetectedDevice[], Error> {
+	return ResultAsync.fromPromise(
+		new Promise<DetectedDevice[]>((resolve) => {
+			const found: DetectedDevice[] = []
+			const seen = new Set<string>()
 			const instance = new Bonjour()
 			const browser = instance.find({ type: 'hue' })
 
@@ -55,30 +63,33 @@ async function scanHueMdns(timeoutMs = 3000): Promise<DetectedDevice[]> {
 				try {
 					browser.stop()
 					instance.destroy()
-				} catch { /* ignore */ }
+				} catch { /* cleanup */ }
 				resolve(found)
 			}, timeoutMs)
-		} catch (e) {
-			log.error('scanHueMdns error', { error: (e as Error).message })
-			resolve([])
-		}
-	})
+		}),
+		(e) => new Error(`Hue mDNS scan failed: ${(e as Error).message}`),
+	)
 }
 
-async function scanHue(): Promise<DetectedDevice[]> {
-	const [cloud, mdns] = await Promise.all([scanHueCloud(), scanHueMdns()])
-	// Merge, deduplicate by bridgeIp
-	const seen = new Set<string>()
-	return [...cloud, ...mdns].filter((d) => {
-		const ip = d.details.bridgeIp
-		if (!ip || seen.has(ip)) return false
-		seen.add(ip)
-		return true
-	})
+function scanHue(): ResultAsync<DetectedDevice[], Error> {
+	return ResultAsync.fromPromise(
+		Promise.all([
+			scanHueCloud().unwrapOr([]),
+			scanHueMdns().unwrapOr([]),
+		]).then(([cloud, mdns]) => {
+			const seen = new Set<string>()
+			return [...cloud, ...mdns].filter((d) => {
+				const ip = d.details.bridgeIp
+				if (!ip || seen.has(ip)) return false
+				seen.add(ip)
+				return true
+			})
+		}),
+		(e) => new Error(`Hue scan failed: ${(e as Error).message}`),
+	)
 }
 
 // ─── Govee via UDP LAN API ────────────────────────────────────────────────────
-// Requires "LAN Control" to be enabled in the Govee mobile app (Settings → Device → LAN Control)
 
 interface GoveeResponseData {
 	ip: string
@@ -86,77 +97,63 @@ interface GoveeResponseData {
 	sku: string
 }
 
-function scanGovee(timeoutMs = 3000): Promise<DetectedDevice[]> {
-	return new Promise((resolve) => {
-		const found: DetectedDevice[] = []
-		const seen = new Set<string>()
+function scanGovee(timeoutMs = 3000): ResultAsync<DetectedDevice[], Error> {
+	return ResultAsync.fromPromise(
+		new Promise<DetectedDevice[]>((resolve) => {
+			const found: DetectedDevice[] = []
+			const seen = new Set<string>()
+			const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true })
 
-		const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true })
-
-		socket.on('message', (msg) => {
-			try {
-				const parsed = JSON.parse(msg.toString()) as { msg?: { data?: GoveeResponseData } }
-				const device = parsed?.msg?.data
-				if (device?.ip && device?.sku && !seen.has(device.ip)) {
-					seen.add(device.ip)
-					found.push({
-						brand: 'govee',
-						label: `Govee ${device.sku} at ${device.ip}`,
-						details: { ip: device.ip, sku: device.sku },
-						via: 'udp',
-					})
-				}
-			} catch {
-				/* malformed UDP packet — skip */
-			}
-		})
-
-		socket.on('error', (e) => {
-			log.error('scanGovee socket error', { error: e.message })
-			try {
-				socket.close()
-			} catch {
-				/* already closed */
-			}
-			resolve(found)
-		})
-
-		socket.bind(4002, () => {
-			try {
-				// eslint-disable-next-line sonarjs/no-hardcoded-ip -- mDNS multicast address (protocol constant)
-				socket.addMembership('239.255.255.250')
-			} catch {
-				/* multicast may not be available */
-			}
-
-			const payload = Buffer.from(
-				JSON.stringify({ msg: { cmd: 'scan', data: { account_topic: 'reserve' } } }),
-			)
-			// eslint-disable-next-line sonarjs/no-hardcoded-ip -- mDNS multicast address (protocol constant)
-			socket.send(payload, 4003, '239.255.255.250', (err) => {
-				if (err) {
-					try {
-						socket.close()
-					} catch {
-						/* ignore */
+			socket.on('message', (msg) => {
+				try {
+					const parsed = JSON.parse(msg.toString()) as { msg?: { data?: GoveeResponseData } }
+					const device = parsed?.msg?.data
+					if (device?.ip && device?.sku && !seen.has(device.ip)) {
+						seen.add(device.ip)
+						found.push({
+							brand: 'govee',
+							label: `Govee ${device.sku} at ${device.ip}`,
+							details: { ip: device.ip, sku: device.sku },
+							via: 'udp',
+						})
 					}
-					resolve(found)
-				}
+				} catch { /* malformed UDP packet */ }
 			})
-		})
 
-		setTimeout(() => {
-			try {
-				socket.close()
-			} catch {
-				/* ignore */
-			}
-			resolve(found)
-		}, timeoutMs)
-	})
+			socket.on('error', (e) => {
+				log.error('scanGovee socket error', { error: e.message })
+				try { socket.close() } catch { /* already closed */ }
+				resolve(found)
+			})
+
+			socket.bind(4002, () => {
+				try {
+					// eslint-disable-next-line sonarjs/no-hardcoded-ip -- multicast address (protocol constant)
+					socket.addMembership('239.255.255.250')
+				} catch { /* multicast may not be available */ }
+
+				const payload = Buffer.from(
+					JSON.stringify({ msg: { cmd: 'scan', data: { account_topic: 'reserve' } } }),
+				)
+				// eslint-disable-next-line sonarjs/no-hardcoded-ip -- multicast address (protocol constant)
+				socket.send(payload, 4003, '239.255.255.250', (err) => {
+					if (err) {
+						try { socket.close() } catch { /* ignore */ }
+						resolve(found)
+					}
+				})
+			})
+
+			setTimeout(() => {
+				try { socket.close() } catch { /* ignore */ }
+				resolve(found)
+			}, timeoutMs)
+		}),
+		(e) => new Error(`Govee scan failed: ${(e as Error).message}`),
+	)
 }
 
-// ─── mDNS scan ────────────────────────────────────────────────────────────────
+// ─── Generic mDNS scan ──────────────────────────────────────────────────────
 
 interface BonjourService {
 	name: string
@@ -172,10 +169,10 @@ function scanMdns(
 	detailsKey: string,
 	timeoutMs = 3000,
 	protocol: 'tcp' | 'udp' = 'tcp',
-): Promise<DetectedDevice[]> {
-	return new Promise((resolve) => {
-		const found: DetectedDevice[] = []
-		try {
+): ResultAsync<DetectedDevice[], Error> {
+	return ResultAsync.fromPromise(
+		new Promise<DetectedDevice[]>((resolve) => {
+			const found: DetectedDevice[] = []
 			const instance = new Bonjour()
 			const browser = instance.find({ type: serviceType, protocol })
 
@@ -193,29 +190,65 @@ function scanMdns(
 				try {
 					browser.stop()
 					instance.destroy()
-				} catch {
-					/* ignore */
-				}
+				} catch { /* cleanup */ }
 				resolve(found)
 			}, timeoutMs)
-		} catch (e) {
-			log.error('scanMdns error', { brand, error: (e as Error).message })
-			resolve([])
-		}
-	})
+		}),
+		(e) => new Error(`${brand} mDNS scan failed: ${(e as Error).message}`),
+	)
 }
 
-// ─── Unified scan ─────────────────────────────────────────────────────────────
+// ─── Brand registry ──────────────────────────────────────────────────────────
+
+type BrandScanner = () => ResultAsync<DetectedDevice[], Error>
+
+const BRAND_SCANNERS: Record<string, BrandScanner> = {
+	hue: () => scanHue(),
+	govee: () => scanGovee(),
+	aqara: () => scanMdns('miio', 'aqara', 'Aqara Hub', 'ip', 3000, 'udp'),
+	elgato: () => scanMdns('elg', 'elgato', 'Elgato Key Light', 'ip', 5000),
+}
+
+export const SCANNABLE_BRANDS = Object.keys(BRAND_SCANNERS)
+
+// ─── Streaming scan ──────────────────────────────────────────────────────────
+
+export async function runStreamingScan(
+	callbacks: ScanCallbacks,
+	brands?: string[],
+): Promise<DetectedDevice[]> {
+	const targetBrands = brands?.filter((b) => b in BRAND_SCANNERS) ?? SCANNABLE_BRANDS
+	const allDevices: DetectedDevice[] = []
+
+	await Promise.all(
+		targetBrands.map(async (brand) => {
+			const scanner = BRAND_SCANNERS[brand]
+			if (!scanner) return
+
+			const result = await scanner()
+				.orElse((e) => {
+					log.error('scan failed', { brand, error: e.message })
+					callbacks.onBrandComplete(brand, 0, e.message)
+					return ok([])
+				})
+
+			const devices = result.isOk() ? result.value : []
+			for (const device of devices) {
+				callbacks.onDevice(device)
+				allDevices.push(device)
+			}
+			// only emit brand complete if we didn't already (from error path)
+			if (result.isOk()) {
+				callbacks.onBrandComplete(brand, devices.length)
+			}
+		}),
+	)
+
+	return allDevices
+}
+
+// ─── Backward-compatible wrapper ─────────────────────────────────────────────
 
 export async function runLocalScan(): Promise<DetectedDevice[]> {
-	const results = await Promise.allSettled([
-		scanHue(),
-		scanGovee(),
-		scanMdns('miio', 'aqara', 'Aqara Hub', 'ip', 3000, 'udp'),
-		scanMdns('elg', 'elgato', 'Elgato Key Light', 'ip', 5000),
-	])
-
-	return results
-		.filter((r): r is PromiseFulfilledResult<DetectedDevice[]> => r.status === 'fulfilled')
-		.flatMap((r) => r.value)
+	return runStreamingScan({ onDevice: () => {}, onBrandComplete: () => {} })
 }

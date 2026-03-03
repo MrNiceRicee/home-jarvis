@@ -1,9 +1,11 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
+import { useEffect } from 'react'
 
-import type { DetectedDevice, IntegrationsResponse } from '../types'
+import type { IntegrationsResponse } from '../types'
 
 import { IntegrationCard, QuickConnectCard } from '../components/IntegrationForm'
+import { useScanStream } from '../hooks/useScanStream'
 import { api } from '../lib/api'
 
 export const Route = createFileRoute('/integrations')({ component: Integrations })
@@ -14,11 +16,6 @@ async function fetchIntegrations(): Promise<IntegrationsResponse> {
 	return data ?? { configured: [], available: [] }
 }
 
-async function fetchScan(): Promise<DetectedDevice[]> {
-	const { data } = await api.api.scan.get()
-	return Array.isArray(data) ? data : []
-}
-
 function Integrations() {
 	const queryClient = useQueryClient()
 
@@ -27,18 +24,13 @@ function Integrations() {
 		queryFn: fetchIntegrations,
 	})
 
-	const {
-		data: scanned = [],
-		isFetching: scanning,
-		refetch: refetchScan,
-	} = useQuery({
-		queryKey: ['scan'],
-		queryFn: fetchScan,
-		staleTime: Infinity,
-		gcTime: 0,
-		retry: false,
-		refetchOnWindowFocus: false,
-	})
+	const scan = useScanStream()
+
+	// auto-scan on first mount
+	useEffect(() => {
+		if (scan.status === 'idle') scan.startScan()
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- only on mount
+	}, [])
 
 	const addMutation = useMutation({
 		mutationFn: async ({ brand, config }: { brand: string; config: Record<string, string> }) => {
@@ -47,7 +39,6 @@ function Integrations() {
 		},
 		onSuccess: () => {
 			void queryClient.invalidateQueries({ queryKey: ['integrations'] })
-			void queryClient.invalidateQueries({ queryKey: ['scan'] })
 		},
 	})
 
@@ -81,7 +72,8 @@ function Integrations() {
 	}
 
 	const configuredBrands = new Set(data?.configured?.map((i) => i.brand) ?? [])
-	const unconnectedScanned = scanned.filter((d) => !configuredBrands.has(d.brand))
+	const unconnectedScanned = scan.devices.filter((d) => !configuredBrands.has(d.brand))
+	const scanning = scan.status === 'scanning'
 
 	async function handleSubmit(brand: string, config: Record<string, string>) {
 		await addMutation.mutateAsync({ brand, config })
@@ -105,11 +97,15 @@ function Integrations() {
 						<h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
 							Detected on Your Network
 						</h2>
-						{scanning && <span className="text-xs text-amber-600 animate-pulse">Scanning…</span>}
+						{scanning && (
+							<span className="text-xs text-amber-600 animate-pulse">
+								Scanning ({scan.completedBrands.length}/{scan.totalBrands})…
+							</span>
+						)}
 					</div>
 					<button
 						type="button"
-						onClick={() => { void refetchScan() }}
+						onClick={scan.startScan}
 						disabled={scanning}
 						className="text-xs text-gray-400 hover:text-gray-600 disabled:opacity-40 transition-colors"
 					>
@@ -127,7 +123,7 @@ function Integrations() {
 						if (!meta) return null
 						return (
 							<QuickConnectCard
-								key={`${detected.brand}-${i}`}
+								key={`${detected.brand}-${detected.details.ip ?? detected.details.bridgeIp ?? i}`}
 								detected={detected}
 								meta={meta}
 								onSubmit={handleSubmit}
