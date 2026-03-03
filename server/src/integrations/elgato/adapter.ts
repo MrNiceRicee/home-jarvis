@@ -1,8 +1,5 @@
-import type { Accessory } from '@homebridge/hap-nodejs'
-
 import { ResultAsync, err, errAsync, ok } from 'neverthrow'
 
-import type { Device } from '../../db/schema'
 import type { DeviceAdapter, DeviceState, DiscoveredDevice } from '../types'
 
 interface ElgatoLight {
@@ -88,6 +85,7 @@ export class ElgatoAdapter implements DeviceAdapter {
 					colorTemp: miredToKelvin(light.temperature),
 				},
 				online: true,
+				metadata: { ip: this.ip, port: 9123 },
 			}))
 		})
 	}
@@ -149,10 +147,6 @@ export class ElgatoAdapter implements DeviceAdapter {
 				(e) => new Error(`Failed to set state: ${(e as Error).message}`),
 			).map(() => undefined)
 		})
-	}
-
-	toHomeKitAccessory(_device: Device): Accessory | null {
-		return null
 	}
 
 	/** parse "192.168.1.100:0" → { ip: "192.168.1.100", index: 0 } */

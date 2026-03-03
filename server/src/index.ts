@@ -4,10 +4,13 @@ import { Elysia } from 'elysia'
 import { db } from './db'
 import { startAllPolling } from './discovery/cloud-poller'
 import { clientAssets, hasClientAssets } from './generated/client-manifest'
+import { eventBus } from './lib/events'
 import { log } from './lib/logger'
+import { matterBridge } from './matter/bridge'
 import { devicesController } from './routes/devices.controller'
 import { eventsController } from './routes/events.controller'
 import { integrationsController } from './routes/integrations.controller'
+import { matterController } from './routes/matter.controller'
 import { scanController } from './routes/scan.controller'
 
 const PORT = Number(process.env.PORT ?? 3001)
@@ -41,6 +44,7 @@ const app = new Elysia()
 	.use(devicesController)
 	.use(eventsController)
 	.use(scanController)
+	.use(matterController)
 	.get('/api/health', () => ({ ok: true, timestamp: Date.now() }))
 	// ── Embedded client (production only — dev uses Vite on :5173) ───────────
 	.get('/*', ({ request }) => {
@@ -63,6 +67,23 @@ const app = new Elysia()
 startAllPolling(db).catch((err: unknown) => {
 	log.error('startAllPolling failed', { error: err instanceof Error ? err.message : String(err) })
 })
+
+// Start Matter bridge
+matterBridge.start(db).catch((err: unknown) => {
+	log.error('matter bridge start failed', { error: err instanceof Error ? err.message : String(err) })
+})
+
+// Sync device state changes to Matter bridge (skip events originating from matter)
+eventBus.on('device:update', (event) => {
+	if (event.source === 'matter') return
+	if (event.deviceId && event.state) {
+		void matterBridge.updateDeviceState(event.deviceId, event.state)
+	}
+})
+
+// Clean shutdown
+process.on('SIGTERM', () => void matterBridge.stop())
+process.on('SIGINT', () => void matterBridge.stop())
 
 log.info('server started', {
 	port: app.server?.port,

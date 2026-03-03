@@ -19,7 +19,7 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 	/** List all devices with their current state */
 	.get('', ({ db }) => {
 		const rows = db.select().from(devices).all()
-		return rows.map((d) => ({
+		return rows.map(({ metadata: _metadata, ...d }) => ({
 			...d,
 			state: parseJson<DeviceState>(d.state).unwrapOr({}),
 		}))
@@ -93,7 +93,7 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 			}
 
 			const now = Date.now()
-			let added = 0
+			const addedDevices: { id: string; integrationId: string; brand: string; externalId: string; name: string; type: string; state: Record<string, unknown>; online: boolean }[] = []
 
 			for (const d of discovered.value) {
 				const existing = db.select().from(devices).where(eq(devices.externalId, d.externalId)).get()
@@ -109,6 +109,7 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 						name: d.name,
 						type: d.type,
 						state: JSON.stringify(d.state),
+						metadata: d.metadata ? JSON.stringify(d.metadata) : null,
 						online: d.online,
 						lastSeen: now,
 						createdAt: now,
@@ -125,11 +126,14 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 					timestamp: now,
 				})
 
+				addedDevices.push({
+					id, integrationId: integration.id, brand, externalId: d.externalId,
+					name: d.name, type: d.type, state: d.state, online: d.online,
+				})
 				log.info('addFromScan device added', { brand, deviceId: id, deviceName: d.name, ip })
-				added++
 			}
 
-			return { ok: true, added }
+			return { ok: true, added: addedDevices.length, devices: addedDevices }
 		},
 		{
 			body: t.Object({
@@ -214,26 +218,26 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 		},
 	)
 
-	/** Toggle HomeKit exposure (stub — Phase 5 wires this to HAP bridge) */
+	/** Toggle Matter bridge exposure for a device */
 	.patch(
-		'/:id/homekit',
+		'/:id/matter',
 		async ({ db, params, body }) => {
 			const device = db.select().from(devices).where(eq(devices.id, params.id)).get()
 			if (!device) {
-				log.warn('setHomeKit device not found', { deviceId: params.id })
+				log.warn('setMatter device not found', { deviceId: params.id })
 				return status(404, { error: 'Device not found' })
 			}
 
 			if (device.brand === 'aqara') {
-				log.warn('setHomeKit aqara native', { deviceId: params.id, deviceName: device.name })
-				return status(400, { error: 'Aqara supports HomeKit natively. Add via the Apple Home app.' })
+				log.warn('setMatter aqara native', { deviceId: params.id, deviceName: device.name })
+				return status(400, { error: 'Aqara supports Matter natively. Add via your smart home app.' })
 			}
 
-			log.info('setHomeKit', { deviceId: params.id, deviceName: device.name, enabled: body.enabled })
+			log.info('setMatter', { deviceId: params.id, deviceName: device.name, enabled: body.enabled })
 
 			const now = Date.now()
 			db.update(devices)
-				.set({ homekitEnabled: body.enabled, updatedAt: now })
+				.set({ matterEnabled: body.enabled, updatedAt: now })
 				.where(eq(devices.id, params.id))
 				.run()
 

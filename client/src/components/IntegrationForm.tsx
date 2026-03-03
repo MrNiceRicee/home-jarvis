@@ -103,7 +103,7 @@ export function IntegrationCard({ meta, isConfigured, onSubmit, onRemove }: Read
 											Remove {meta.displayName}?
 										</Heading>
 										<p className="text-sm text-stone-500 mb-5">
-											All devices from this integration will be removed from the portal. HomeKit
+											All devices from this integration will be removed from the portal. Matter
 											accessories will be unexposed.
 										</p>
 										<div className="flex gap-2 justify-end">
@@ -126,23 +126,35 @@ export function IntegrationCard({ meta, isConfigured, onSubmit, onRemove }: Read
 							</RaisedModal>
 						</DialogTrigger>
 					)}
-					<DialogTrigger>
-						<RaisedButton variant="primary" size="sm">
-							{isConfigured ? 'Edit' : 'Connect'}
-						</RaisedButton>
-						<RaisedModal>
-							{({ close }) => (
-								<IntegrationFormInner
-									meta={meta}
-									onSubmit={async (config) => {
-										await onSubmit(meta.brand, config)
-										close()
-									}}
-									onCancel={close}
-								/>
-							)}
-						</RaisedModal>
-					</DialogTrigger>
+					{meta.discoveryOnly ? (
+						!isConfigured && (
+							<RaisedButton
+								variant="primary"
+								size="sm"
+								onPress={() => void onSubmit(meta.brand, {})}
+							>
+								Connect
+							</RaisedButton>
+						)
+					) : (
+						<DialogTrigger>
+							<RaisedButton variant="primary" size="sm">
+								{isConfigured ? 'Edit' : 'Connect'}
+							</RaisedButton>
+							<RaisedModal>
+								{({ close }) => (
+									<IntegrationFormInner
+										meta={meta}
+										onSubmit={async (config) => {
+											await onSubmit(meta.brand, config)
+											close()
+										}}
+										onCancel={close}
+									/>
+								)}
+							</RaisedModal>
+						</DialogTrigger>
+					)}
 				</div>
 			</div>
 			{/* inline scan result */}

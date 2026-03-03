@@ -42,9 +42,9 @@ function Dashboard() {
 		mutationFn: () => api.api.devices.discover.post({}),
 	})
 
-	const homekitMutation = useMutation({
+	const matterMutation = useMutation({
 		mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) => {
-			await api.api.devices({ id }).homekit.patch({ enabled })
+			await api.api.devices({ id }).matter.patch({ enabled })
 		},
 	})
 
@@ -128,7 +128,7 @@ function Dashboard() {
 							<DeviceCard
 								key={device.id}
 								device={device}
-								onHomekitToggle={(id, enabled) => homekitMutation.mutateAsync({ id, enabled })}
+								onMatterToggle={(id, enabled) => matterMutation.mutateAsync({ id, enabled })}
 								onStateChange={handleStateChange}
 								isSelected={device.type === 'light' ? selectedLightIds.has(device.id) : undefined}
 								onToggleSelect={

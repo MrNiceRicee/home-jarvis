@@ -1,7 +1,4 @@
-import type { Accessory } from '@homebridge/hap-nodejs'
 import type { ResultAsync } from 'neverthrow'
-
-import type { Device } from '../db/schema'
 
 export type DeviceType =
 	| 'light'
@@ -75,12 +72,6 @@ export interface DeviceAdapter {
 
 	/** Apply a partial state change */
 	setState(externalId: string, state: Partial<DeviceState>): ResultAsync<void, Error>
-
-	/**
-	 * Create a HAP Accessory for this device.
-	 * Return null for adapters that should NOT be bridged to HomeKit (e.g. Aqara — already native).
-	 */
-	toHomeKitAccessory(device: Device): Accessory | null
 }
 
 /** Metadata fields stored with each credential form entry */
@@ -91,6 +82,8 @@ export interface IntegrationMeta {
 	fields: CredentialField[]
 	/** If true, show OAuth button instead of credential fields (LG) */
 	oauthFlow?: boolean
+	/** true for brands discovered locally without credentials (e.g. Elgato) */
+	discoveryOnly?: boolean
 }
 
 export interface CredentialField {
@@ -109,6 +102,7 @@ export interface DeviceEvent {
 	state?: DeviceState
 	online?: boolean
 	timestamp: number
+	source?: 'dashboard' | 'poller' | 'matter' | 'scan'
 }
 
 // ─── Scan SSE events ────────────────────────────────────────────────────────
