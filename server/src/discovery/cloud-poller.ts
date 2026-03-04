@@ -58,6 +58,21 @@ export function startPolling(
 		pollCfg.discoverIntervalMs,
 	)
 	timers.set(`${integrationId}:discover`, discoverTimer)
+
+	// state poll: more frequent than discovery for responsive UI
+	// discovery-only brands handle this in runDiscovery already (per-device poll)
+	const meta = INTEGRATION_META[brand]
+	if (!meta?.discoveryOnly && pollCfg.stateIntervalMs < pollCfg.discoverIntervalMs) {
+		const stateTimer = setInterval(
+			() =>
+				runStatePoll(db, integrationId, brand, config).catch((err: unknown) => {
+					log.error('poller runStatePoll unexpected error', { brand, error: err instanceof Error ? err.message : String(err) })
+				}),
+			pollCfg.stateIntervalMs,
+		)
+		timers.set(`${integrationId}:state`, stateTimer)
+		log.info('poller state poll', { brand, integrationId, stateIntervalMs: pollCfg.stateIntervalMs })
+	}
 }
 
 /** Stop all timers for an integration */
@@ -126,6 +141,47 @@ function markAbsentDevicesOffline(db: DB, integrationId: string, brand: string, 
 			log.warn('poller device offline', { brand, deviceId: device.id, deviceName: device.name })
 			eventBus.publish({ type: 'device:offline', deviceId: device.id, brand, online: false, timestamp: now, source: 'poller' })
 		}
+	}
+}
+
+/** Lightweight state poll — update existing devices only, no upsert/offline logic */
+async function runStatePoll(
+	db: DB,
+	integrationId: string,
+	brand: string,
+	config: Record<string, string>,
+) {
+	const adapterResult = createAdapter(brand, config)
+	if (adapterResult.isErr()) return
+
+	const discoveredResult = await adapterResult.value.discover()
+	if (discoveredResult.isErr()) {
+		log.debug('poller state poll failed', { brand, error: discoveredResult.error.message })
+		return
+	}
+
+	const now = Date.now()
+	const knownDevices = db.select().from(devices).where(eq(devices.integrationId, integrationId)).all()
+	const knownByExternalId = new Map(knownDevices.map((d) => [d.externalId, d]))
+
+	for (const d of discoveredResult.value) {
+		const existing = knownByExternalId.get(d.externalId)
+		if (!existing) continue // new devices handled by runDiscovery
+
+		db.update(devices)
+			.set({ state: JSON.stringify(d.state), online: d.online, lastSeen: now, updatedAt: now })
+			.where(eq(devices.id, existing.id))
+			.run()
+
+		eventBus.publish({
+			type: 'device:update',
+			deviceId: existing.id,
+			brand,
+			state: d.state,
+			online: d.online,
+			timestamp: now,
+			source: 'poller',
+		})
 	}
 }
 
