@@ -9,21 +9,42 @@ const MODES = ['heat', 'cool', 'auto', 'off'] as const
 type ThermostatMode = (typeof MODES)[number]
 
 const MODE_LABELS: Record<ThermostatMode, string> = {
+	heat: 'HEAT',
+	cool: 'COOL',
+	auto: 'AUTO',
+	off: 'OFF',
+}
+
+const MODE_ARIA_LABELS: Record<ThermostatMode, string> = {
 	heat: 'Heat',
 	cool: 'Cool',
 	auto: 'Auto',
 	off: 'Off',
 }
 
+// mode-specific active styling
+function modeActiveStyle(mode: ThermostatMode): string {
+	switch (mode) {
+		case 'heat':
+			return 'bg-orange-50 text-orange-800 border-orange-300 shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]'
+		case 'cool':
+			return 'bg-blue-50 text-blue-800 border-blue-300 shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]'
+		default:
+			return 'bg-amber-50 text-amber-800 border-amber-300 shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]'
+	}
+}
+
 interface ThermostatCardProps {
 	device: Device
+	variant?: 'compact' | 'full'
 	onStateChange?: (deviceId: string, state: Partial<DeviceState>) => Promise<void>
 }
 
-export function ThermostatCard({ device, onStateChange }: Readonly<ThermostatCardProps>) {
+export function ThermostatCard({ device, variant = 'compact', onStateChange }: Readonly<ThermostatCardProps>) {
 	const state = device.state
 	const currentMode = (state.mode ?? 'auto') as ThermostatMode
 	const target = state.targetTemperature
+	const isFull = variant === 'full'
 
 	async function adjustTarget(delta: number) {
 		if (!onStateChange || target === undefined) return
@@ -35,25 +56,33 @@ export function ThermostatCard({ device, onStateChange }: Readonly<ThermostatCar
 		await onStateChange(device.id, { mode })
 	}
 
+	// build readout aria label
+	const readoutParts: string[] = []
+	if (state.temperature !== undefined) readoutParts.push(`Current temperature: ${state.temperature.toFixed(1)} degrees Celsius`)
+	if (state.humidity !== undefined) readoutParts.push(`Humidity: ${state.humidity}%`)
+	const readoutLabel = readoutParts.join(', ') || 'Temperature unavailable'
+
 	return (
 		<div className="space-y-3">
-			{/* Current temp */}
+			{/* ── Current temp readout ────────────────────────────────── */}
 			{state.temperature !== undefined && (
-				<div className="flex items-center gap-2">
-					<ReadoutDisplay size="lg">
+				<ReadoutDisplay size="lg" aria-label={readoutLabel} className="w-full justify-between">
+					<span>
 						{state.temperature.toFixed(1)}
 						<span className="text-sm text-[#faf0dc]/50 ml-1">°C</span>
-					</ReadoutDisplay>
+					</span>
 					{state.humidity !== undefined && (
-						<span className="text-xs font-commit text-stone-400">{state.humidity}% RH</span>
+						<span className="text-sm text-[#faf0dc]/50">
+							{state.humidity}<span className="text-xs ml-0.5">% RH</span>
+						</span>
 					)}
-				</div>
+				</ReadoutDisplay>
 			)}
 
-			{/* Target temp */}
+			{/* ── Target temp ─────────────────────────────────────────── */}
 			{target !== undefined && (
 				<div className="flex items-center gap-2">
-					<span className="text-xs text-stone-400 flex-1">Target</span>
+					<span className="font-michroma text-[10px] uppercase tracking-widest text-stone-400 flex-1" aria-label="Target Temperature">TARGET</span>
 					<Button
 						onPress={() => { void adjustTarget(-0.5) }}
 						isDisabled={!device.online}
@@ -61,7 +90,7 @@ export function ThermostatCard({ device, onStateChange }: Readonly<ThermostatCar
 					>
 						−
 					</Button>
-					<span className="text-sm font-semibold text-stone-800 w-12 text-center">
+					<span className="font-ioskeley text-sm font-semibold text-stone-800 w-14 text-center">
 						{target.toFixed(1)}°C
 					</span>
 					<Button
@@ -74,23 +103,29 @@ export function ThermostatCard({ device, onStateChange }: Readonly<ThermostatCar
 				</div>
 			)}
 
-			{/* Mode pills */}
-			<div className="flex gap-1.5 flex-wrap">
-				{MODES.map((m) => (
-					<Button
-						key={m}
-						onPress={() => { void setMode(m) }}
-						isDisabled={!device.online}
-						className={cn(
-							'px-2.5 py-1 rounded-full text-xs font-medium cursor-default transition-colors disabled:opacity-40',
-							currentMode === m
-								? 'bg-blue-600 text-white'
-								: 'bg-stone-100 text-stone-600 hover:bg-stone-200 pressed:bg-stone-300',
-						)}
-					>
-						{MODE_LABELS[m]}
-					</Button>
-				))}
+			{/* ── Mode buttons (transport-style) ──────────────────────── */}
+			<div>
+				<span className="font-michroma text-[10px] uppercase tracking-widest text-stone-400 mb-1.5 block" aria-label="Mode">MODE</span>
+				<div className="flex gap-1">
+					{MODES.map((m) => (
+						<Button
+							key={m}
+							onPress={() => { void setMode(m) }}
+							isDisabled={!device.online}
+							className={cn(
+								'flex-1 font-michroma uppercase tracking-wider cursor-default transition-colors disabled:opacity-40',
+								'rounded-md border',
+								isFull ? 'py-2 text-[11px]' : 'py-1.5 text-[10px]',
+								currentMode === m
+									? modeActiveStyle(m)
+									: 'bg-stone-50 text-stone-500 border-stone-200 hover:bg-stone-100 pressed:bg-stone-200',
+							)}
+							aria-label={MODE_ARIA_LABELS[m]}
+						>
+							{MODE_LABELS[m]}
+						</Button>
+					))}
+				</div>
 			</div>
 		</div>
 	)
