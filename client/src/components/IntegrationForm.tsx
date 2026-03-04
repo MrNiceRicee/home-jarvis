@@ -27,7 +27,7 @@ const BRAND_ICON: Record<string, string> = {
 }
 
 // brands that support local network scanning
-const SCANNABLE_BRANDS = new Set(['hue', 'govee', 'aqara', 'elgato'])
+const SCANNABLE_BRANDS = new Set(['hue', 'aqara', 'elgato'])
 
 function formatDeviceCount(count: number) {
 	const plural = count !== 1 ? 's' : ''

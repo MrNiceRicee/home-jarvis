@@ -19,7 +19,7 @@ interface PollConfig {
 
 const DEFAULTS: Record<string, PollConfig> = {
 	hue: { stateIntervalMs: 30_000, discoverIntervalMs: 5 * 60_000 },
-	govee: { stateIntervalMs: 60_000, discoverIntervalMs: 5 * 60_000 },
+	govee: { stateIntervalMs: 120_000, discoverIntervalMs: 5 * 60_000 },
 	vesync: { stateIntervalMs: 30_000, discoverIntervalMs: 5 * 60_000 },
 	lg: { stateIntervalMs: 60_000, discoverIntervalMs: 5 * 60_000 },
 	ge: { stateIntervalMs: 60_000, discoverIntervalMs: 5 * 60_000 },
