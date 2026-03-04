@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
 
 import type { Device, DeviceState, Section } from '../types'
 
 import { CreateSectionDialog } from '../components/CreateSectionDialog'
 import { DeviceDetailDialog } from '../components/DeviceDetailDialog'
+import { LightMultiSelectBar } from '../components/LightMultiSelectBar'
 import { SectionGroup } from '../components/SectionGroup'
 import { useStreamStatus } from '../hooks/useDeviceStream'
 import { api } from '../lib/api'
@@ -18,6 +19,7 @@ function Dashboard() {
 	const queryClient = useQueryClient()
 	const status = useStreamStatus()
 	const [expandedDevice, setExpandedDevice] = useState<Device | null>(null)
+	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
 	const { data: devices = [] } = useQuery<Device[]>({
 		queryKey: ['devices'],
@@ -73,6 +75,32 @@ function Dashboard() {
 		}
 		await queryClient.invalidateQueries({ queryKey: ['sections'] })
 	}
+
+	function handleReorder(updates: Array<{ id: string; sectionId: string; position: number }>) {
+		// optimistic: update positions in query cache
+		queryClient.setQueryData(['devices'], (prev: Device[] = []) => {
+			const posMap = new Map(updates.map((u) => [u.id, u]))
+			return prev.map((d) => {
+				const update = posMap.get(d.id)
+				return update ? { ...d, sectionId: update.sectionId, position: update.position } : d
+			})
+		})
+		void api.api.devices.positions.patch(updates).then(({ error }) => {
+			if (error) toast.error('Failed to save device order')
+		})
+	}
+
+	const handleToggleSelect = useCallback((deviceId: string) => {
+		setSelectedIds((prev) => {
+			const next = new Set(prev)
+			if (next.has(deviceId)) {
+				next.delete(deviceId)
+			} else {
+				next.add(deviceId)
+			}
+			return next
+		})
+	}, [])
 
 	// keep expanded device in sync with SSE updates
 	const liveExpandedDevice = expandedDevice
@@ -135,7 +163,10 @@ function Dashboard() {
 							key={section.id}
 							section={section}
 							devices={sectionDevices}
+							selectedIds={selectedIds}
+							onToggleSelect={handleToggleSelect}
 							onExpand={setExpandedDevice}
+							onReorder={handleReorder}
 							onStateChange={handleStateChange}
 							onRename={handleRenameSection}
 							onDelete={handleDeleteSection}
@@ -151,6 +182,13 @@ function Dashboard() {
 			<DeviceDetailDialog
 				device={liveExpandedDevice}
 				onClose={() => setExpandedDevice(null)}
+				onStateChange={handleStateChange}
+			/>
+
+			<LightMultiSelectBar
+				selectedIds={selectedIds}
+				devices={devices}
+				onClear={() => setSelectedIds(new Set())}
 				onStateChange={handleStateChange}
 			/>
 		</div>

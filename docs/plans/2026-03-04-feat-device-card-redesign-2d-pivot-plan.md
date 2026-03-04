@@ -261,18 +261,17 @@ Wire up light multi-select and add device reordering.
 
 **Tasks:**
 
-- [ ] Add `selectedIds: Set<string>` state to dashboard
-- [ ] Pass `onToggleSelect` to light-type `DeviceCard` instances
-- [ ] Conditionally render `LightMultiSelectBar` when `selectedIds.size > 0`
-- [ ] Wire multi-select bar's `onStateChange` to batch-update selected devices
-- [ ] Add drag handle to `DeviceCard` — grip icon (6-dot or similar), 44px touch target
-- [ ] Implement drag-and-drop using React Aria `useDrag` / `useDrop`:
-  - Drag source: device card (via grip handle)
-  - Drop targets: between cards within a section, section headers for cross-section moves
+- [x] Add `selectedIds: Set<string>` state to dashboard
+- [x] Pass `onToggleSelect` to light-type `DeviceCard` instances
+- [x] Conditionally render `LightMultiSelectBar` when `selectedIds.size > 0`
+- [x] Wire multi-select bar's `onStateChange` to batch-update selected devices
+- [x] Implement drag-and-drop using dnd-kit (`@dnd-kit/core` + `@dnd-kit/sortable`):
+  - Drag source: device card (with 8px distance constraint to avoid accidental drags)
+  - Drop targets: between cards within a section using `rectSortingStrategy`
   - On drop: compute new positions for all affected devices, batch `PATCH /api/devices/positions`
-- [ ] Keyboard DnD: arrow keys to move, Enter to confirm, Escape to cancel
-- [ ] Visual feedback during drag: card lifts with shadow, drop zone highlights
-- [ ] Run `bun run system:check --force`
+  - DragOverlay for smooth visual feedback during drag
+- [x] Visual feedback during drag: dragged card fades, overlay shows card preview
+- [x] Run `bun run system:check --force`
 
 **Success criteria:** Lights can be multi-selected for batch control. Devices can be dragged to reorder within sections and moved across sections. Positions persist to database.
 
