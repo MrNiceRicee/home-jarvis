@@ -6,7 +6,7 @@ import { db } from '../db'
 import { devices } from '../db/schema'
 import { eventBus } from '../lib/events'
 import { log } from '../lib/logger'
-import { parseJson } from '../lib/parse-json'
+import { sanitizeDevice } from '../lib/sanitize'
 
 type HeartbeatEvent = { type: 'heartbeat'; timestamp: number }
 type QueueItem = DeviceEvent | HeartbeatEvent
@@ -30,12 +30,12 @@ export const eventsController = new Elysia({ prefix: '/api' })
 		// Must be set before the first yield
 		set.headers['X-Accel-Buffering'] = 'no'
 
-		// Send initial state snapshot immediately
+		// Send initial state snapshot immediately (metadata stripped)
 		const snapshot = db
 			.select()
 			.from(devices)
 			.all()
-			.map((d) => ({ ...d, state: parseJson<Record<string, unknown>>(d.state).unwrapOr({}) }))
+			.map(sanitizeDevice)
 		yield sse({ data: { type: 'snapshot', devices: snapshot, timestamp: Date.now() } })
 		log.info('sse snapshot sent', { clientId, deviceCount: snapshot.length })
 
@@ -54,6 +54,7 @@ export const eventsController = new Elysia({ prefix: '/api' })
 		}
 		const heartbeat = setInterval(() => enqueue({ type: 'heartbeat', timestamp: Date.now() }), 30_000)
 		eventBus.on('device:update', handler)
+		eventBus.on('device:new', handler)
 
 		try {
 			// Loop forever — Elysia calls generator.return() on client disconnect,
@@ -72,6 +73,7 @@ export const eventsController = new Elysia({ prefix: '/api' })
 		} finally {
 			clearInterval(heartbeat)
 			eventBus.off('device:update', handler)
+			eventBus.off('device:new', handler)
 			log.info('sse disconnect', { clientId })
 		}
 	})

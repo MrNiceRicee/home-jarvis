@@ -1,5 +1,13 @@
 import { index, integer, sqliteTable, text, unique } from 'drizzle-orm/sqlite-core'
 
+export const sections = sqliteTable('sections', {
+	id: text('id').primaryKey(),
+	name: text('name').notNull().unique(),
+	position: integer('position').notNull().default(0),
+	createdAt: integer('created_at').notNull().$defaultFn(() => Date.now()),
+	updatedAt: integer('updated_at').notNull().$defaultFn(() => Date.now()),
+})
+
 export const integrations = sqliteTable('integrations', {
 	id: text('id').primaryKey(),
 	brand: text('brand').notNull().unique(),
@@ -26,6 +34,8 @@ export const devices = sqliteTable(
 		online: integer('online', { mode: 'boolean' }).notNull().default(true),
 		matterEnabled: integer('matter_enabled', { mode: 'boolean' }).notNull().default(false),
 		matterEndpointId: text('matter_endpoint_id'),
+		sectionId: text('section_id').notNull().references(() => sections.id, { onDelete: 'restrict' }),
+		position: integer('position').notNull(),
 		lastSeen: integer('last_seen'),
 		createdAt: integer('created_at').notNull(),
 		updatedAt: integer('updated_at').notNull(),
@@ -33,6 +43,7 @@ export const devices = sqliteTable(
 	(t) => [
 		unique().on(t.brand, t.externalId),
 		index('idx_devices_integration').on(t.integrationId),
+		index('idx_devices_section_position').on(t.sectionId, t.position),
 	],
 )
 
@@ -45,6 +56,8 @@ export const matterConfig = sqliteTable('matter_config', {
 	updatedAt: integer('updated_at').notNull(),
 })
 
+export type Section = typeof sections.$inferSelect
+export type NewSection = typeof sections.$inferInsert
 export type Integration = typeof integrations.$inferSelect
 export type NewIntegration = typeof integrations.$inferInsert
 export type Device = typeof devices.$inferSelect

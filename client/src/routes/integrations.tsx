@@ -72,15 +72,8 @@ function Integrations() {
 			if (error) throw new Error((error.value as { error?: string })?.error ?? 'Failed to add device')
 			return data
 		},
-		onSuccess: (data) => {
-			if (!data?.devices?.length) return
-			// merge newly-added devices into SSE cache so they appear on dashboard
-			// and get filtered out of "Additional devices found"
-			queryClient.setQueryData(['devices'], (prev: Device[] = []) => {
-				const existingIds = new Set(prev.map((d) => d.id))
-				const newDevices = (data.devices as Device[]).filter((d) => !existingIds.has(d.id))
-				return [...prev, ...newDevices]
-			})
+		onSuccess: () => {
+			// device:new SSE events handle cache updates automatically
 		},
 	})
 

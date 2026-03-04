@@ -1,4 +1,4 @@
-import type { Device as ServerDevice, Integration, MatterConfig } from 'home-jarvis-server/src/db/schema'
+import type { Device as ServerDevice, Integration, MatterConfig, Section } from 'home-jarvis-server/src/db/schema'
 import type { DetectedDevice } from 'home-jarvis-server/src/discovery/local-scanner'
 import type {
 	DeviceState,
@@ -14,6 +14,7 @@ import type {
 
 // Re-export server types so consumers import from a single location: '../types'
 export type {
+	Section,
 	Integration,
 	MatterConfig,
 	DeviceState,
@@ -58,6 +59,13 @@ export interface DeviceUpdateEvent {
 	timestamp: number
 }
 
+export interface DeviceNewEvent {
+	type: 'device:new'
+	deviceId: string
+	device: Device
+	timestamp: number
+}
+
 export interface DeviceOfflineEvent {
 	type: 'device:offline'
 	deviceId: string
@@ -69,4 +77,4 @@ export interface HeartbeatEvent {
 	timestamp: number
 }
 
-export type SSEEvent = SnapshotEvent | DeviceUpdateEvent | DeviceOfflineEvent | HeartbeatEvent
+export type SSEEvent = SnapshotEvent | DeviceUpdateEvent | DeviceNewEvent | DeviceOfflineEvent | HeartbeatEvent
