@@ -3,7 +3,9 @@ import { type Result, err, ok } from 'neverthrow'
 import type { DeviceAdapter, IntegrationMeta } from './types'
 
 import { ElgatoAdapter } from './elgato/adapter'
+import { GoveeAdapter } from './govee/adapter'
 import { HueAdapter } from './hue/adapter'
+import { VeSyncAdapter } from './vesync/adapter'
 
 /** All supported integrations and their credential form metadata */
 export const INTEGRATION_META: Record<string, IntegrationMeta> = {
@@ -117,9 +119,12 @@ export function createAdapter(brand: string, config: Record<string, string>): Re
 	switch (brand) {
 		case 'elgato':
 			return ok(new ElgatoAdapter(config))
+		case 'govee':
+			return ok(new GoveeAdapter(config))
 		case 'hue':
 			return ok(new HueAdapter(config))
-		// Phase 3–4 adapters are stubs until implemented
+		case 'vesync':
+			return ok(new VeSyncAdapter(config))
 		default:
 			return err(new Error(`Adapter not yet implemented for brand: ${brand}`))
 	}
