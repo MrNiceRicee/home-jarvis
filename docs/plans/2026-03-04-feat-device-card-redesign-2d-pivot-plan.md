@@ -205,20 +205,20 @@ Apply Commit Mono throughout, add IoskeleyMono display windows for readout value
 
 **Tasks:**
 
-- [ ] Download Commit Mono (WOFF2) from commitmono.com, place in `client/public/fonts/`
-- [ ] Download IoskeleyMono (WOFF2) from github.com/ahatem/IoskeleyMono releases, place in `client/public/fonts/`
+- [x] Download Commit Mono (WOFF2) from commitmono.com, place in `client/public/fonts/`
+- [x] Download IoskeleyMono (WOFF2) from github.com/ahatem/IoskeleyMono releases, place in `client/public/fonts/`
 - [ ] Remove DSEG7 font files from `client/public/fonts/` and remove the `@font-face` declaration + `FONT_DSEG7` constant
-- [ ] Add `@font-face` for both fonts + register `--font-commit`, `--font-ioskeley`, `--font-michroma` in `@theme` block in `index.css`
-- [ ] Apply `font-commit` as the default body font or selectively to card text, labels, and values
-- [ ] Create a `ReadoutDisplay` component: dark background (`bg-[#0a0a0a]`), rounded, subtle inner shadow, IoskeleyMono font, warm cream text (`#faf0dc`), optional faint amber `text-shadow` glow — the "UV display window" concept. Accepts `size: 'lg' | 'sm'` for focal vs compact readouts
-- [ ] Apply `ReadoutDisplay` (lg) to AirPurifierCard PM2.5 value
-- [ ] Apply `ReadoutDisplay` (lg) to ThermostatCard current/target temperature
-- [ ] Apply `ReadoutDisplay` (sm) to LightCard brightness percentage
-- [ ] Apply `ReadoutDisplay` (sm) to SensorCard readings
-- [ ] Use Michroma for section labels in `SectionGroup`
-- [ ] Add micro-interactions: card hover shadow lift, slider thumb scale-up, toggle transitions
+- [x] Add `@font-face` for both fonts + register `--font-commit`, `--font-ioskeley`, `--font-michroma` in `@theme` block in `index.css`
+- [x] Apply `font-commit` as the default body font or selectively to card text, labels, and values
+- [x] Create a `ReadoutDisplay` component: dark background (`bg-[#0a0a0a]`), rounded, subtle inner shadow, IoskeleyMono font, warm cream text (`#faf0dc`), optional faint amber `text-shadow` glow — the "UV display window" concept. Accepts `size: 'lg' | 'sm'` for focal vs compact readouts
+- [x] Apply `ReadoutDisplay` (lg) to AirPurifierCard PM2.5 value
+- [x] Apply `ReadoutDisplay` (lg) to ThermostatCard current/target temperature
+- [x] Apply `ReadoutDisplay` (sm) to LightCard brightness percentage
+- [x] Apply `ReadoutDisplay` (sm) to SensorCard readings
+- [x] Use Michroma for section labels in `SectionGroup`
+- [x] Add micro-interactions: card hover shadow lift, slider thumb scale-up, toggle transitions
 - [ ] Compact card refinement: ensure each card shows power toggle + one primary metric/slider — move heavy controls (color wheel, full scene picker) behind the detail dialog
-- [ ] Run `bun run system:check --force`
+- [x] Run `bun run system:check --force`
 
 **Success criteria:** Commit Mono gives the entire dashboard a cohesive, technical character. IoskeleyMono readouts in dark display windows feel like UV instrument panels — geometric, compact, glowing. Section labels use Michroma. Cards feel clean, precise, and "retro yet modern" — like the commitmono.com aesthetic.
 

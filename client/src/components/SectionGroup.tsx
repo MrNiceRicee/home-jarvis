@@ -11,7 +11,7 @@ interface SectionGroupProps {
 export function SectionGroup({ section, devices, onStateChange }: Readonly<SectionGroupProps>) {
 	return (
 		<section>
-			<h2 className="font-[Michroma] text-xs uppercase tracking-wider text-stone-400 mb-3">
+			<h2 className="font-michroma text-xs uppercase tracking-wider text-stone-400 mb-3 border-b border-stone-200/60 pb-2">
 				{section.name}
 			</h2>
 			{devices.length === 0 ? (

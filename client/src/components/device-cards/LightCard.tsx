@@ -129,7 +129,7 @@ export function LightCard({ device, onAccentChange, onStateChange }: Readonly<Li
 		<div className={cn('rounded-lg p-2 transition-colors', isOn ? 'bg-amber-50/30' : 'bg-stone-50')}>
 			{/* ── Power row ─────────────────────────────────────────────── */}
 			<div className="flex items-center justify-between mb-2">
-				<span className={cn('text-xs font-medium', isOn ? 'text-amber-600' : 'text-stone-400')}>
+				<span className={cn('text-xs font-commit font-medium', isOn ? 'text-amber-600' : 'text-stone-400')}>
 					{isOn ? 'On' : 'Off'}
 					{state.brightness !== undefined && isOn && (
 						<span className="text-stone-400"> · {brightness}%</span>

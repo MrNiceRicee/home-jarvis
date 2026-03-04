@@ -44,3 +44,4 @@ logs/
 .claude/settings.local.json
 .claude/cache/
 .claude/preferences/
+screenshots/

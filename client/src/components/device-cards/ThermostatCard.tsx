@@ -3,6 +3,7 @@ import { Button } from 'react-aria-components'
 import type { Device, DeviceState } from '../../types'
 
 import { cn } from '../../lib/cn'
+import { ReadoutDisplay } from '../ui/readout-display'
 
 const MODES = ['heat', 'cool', 'auto', 'off'] as const
 type ThermostatMode = (typeof MODES)[number]
@@ -38,11 +39,13 @@ export function ThermostatCard({ device, onStateChange }: Readonly<ThermostatCar
 		<div className="space-y-3">
 			{/* Current temp */}
 			{state.temperature !== undefined && (
-				<div className="flex items-end gap-1">
-					<span className="text-3xl font-light text-stone-800">{state.temperature.toFixed(1)}</span>
-					<span className="text-sm text-stone-400 mb-1">°C</span>
+				<div className="flex items-center gap-2">
+					<ReadoutDisplay size="lg">
+						{state.temperature.toFixed(1)}
+						<span className="text-sm text-[#faf0dc]/50 ml-1">°C</span>
+					</ReadoutDisplay>
 					{state.humidity !== undefined && (
-						<span className="text-xs text-blue-400 mb-1 ml-2">{state.humidity}% RH</span>
+						<span className="text-xs font-commit text-stone-400">{state.humidity}% RH</span>
 					)}
 				</div>
 			)}
