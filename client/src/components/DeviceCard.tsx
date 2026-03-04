@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Button, Label, Switch, Tooltip, TooltipTrigger } from 'react-aria-components'
 
 import type { Device, DeviceState } from '../types'
@@ -64,7 +64,20 @@ export function DeviceCard({
 	onMatterToggle,
 	onToggleSelect,
 }: Readonly<DeviceCardProps>) {
-	const accent = device.type === 'light' ? lightAccentStyle(device.state) : undefined
+	const baseAccent = device.type === 'light' ? lightAccentStyle(device.state) : undefined
+	const [liveAccent, setLiveAccent] = useState<LightAccent | null>(null)
+
+	const handleAccentChange = useCallback((override: { brightness?: number; colorTemp?: number; color?: { r: number; g: number; b: number } } | null) => {
+		if (!override) { setLiveAccent(null); return }
+		setLiveAccent(lightAccentStyle({
+			on: true,
+			brightness: override.brightness,
+			colorTemp: override.colorTemp,
+			color: override.color,
+		}) ?? null)
+	}, [])
+
+	const accent = liveAccent ?? baseAccent
 
 	return (
 		<CardShell
@@ -74,7 +87,7 @@ export function DeviceCard({
 			isSelected={isSelected}
 			onToggleSelect={onToggleSelect}
 		>
-			{renderBody(device, onStateChange)}
+			{renderBody(device, onStateChange, handleAccentChange)}
 		</CardShell>
 	)
 }
@@ -82,10 +95,11 @@ export function DeviceCard({
 function renderBody(
 	device: Device,
 	onStateChange?: (deviceId: string, state: Partial<DeviceState>) => Promise<void>,
+	onAccentChange?: (override: { brightness?: number; colorTemp?: number; color?: { r: number; g: number; b: number } } | null) => void,
 ) {
 	switch (device.type) {
 		case 'light':
-			return <LightCard device={device} onStateChange={onStateChange} />
+			return <LightCard device={device} onStateChange={onStateChange} onAccentChange={onAccentChange} />
 		case 'thermostat':
 			return <ThermostatCard device={device} onStateChange={onStateChange} />
 		case 'air_purifier':

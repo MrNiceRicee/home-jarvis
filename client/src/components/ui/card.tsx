@@ -45,7 +45,7 @@ interface CardHeaderProps {
 
 export function CardHeader({ children, className, style }: Readonly<CardHeaderProps>) {
 	return (
-		<div className={cn('px-4 pt-4 pb-3', className)} style={style}>
+		<div className={cn('px-4 pt-4 pb-3 transition-colors', className)} style={style}>
 			{children}
 		</div>
 	)

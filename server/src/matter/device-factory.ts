@@ -1,7 +1,7 @@
 import { BridgedDeviceBasicInformationServer } from '@matter/main/behaviors/bridged-device-basic-information'
 import { ThermostatServer } from '@matter/main/behaviors/thermostat'
 import { Thermostat } from '@matter/main/clusters/thermostat'
-import { ColorTemperatureLightDevice } from '@matter/main/devices/color-temperature-light'
+import { ExtendedColorLightDevice } from '@matter/main/devices/extended-color-light'
 import { FanDevice } from '@matter/main/devices/fan'
 import { OnOffLightDevice } from '@matter/main/devices/on-off-light'
 import { OnOffPlugInUnitDevice } from '@matter/main/devices/on-off-plug-in-unit'
@@ -31,11 +31,6 @@ function toMatterLevel(brightness: number): number {
 	return Math.round(Math.min(100, Math.max(0, brightness)) * 2.54)
 }
 
-// kelvin → mired (1_000_000 / K), default 370 mired (~2700K)
-function kelvinToMired(kelvin: number): number {
-	return Math.round(1_000_000 / kelvin)
-}
-
 // 0-100 fan speed → 0-100 matter percent (same scale, just clamped)
 function toFanPercent(speed: number): number {
 	return Math.round(Math.min(100, Math.max(0, speed)))
@@ -62,6 +57,11 @@ function toMatterTemp(celsius: number): number {
 	return Math.round(celsius * 100)
 }
 
+// kelvin → mireds (micro reciprocal degrees)
+function kelvinToMired(kelvin: number): number {
+	return Math.round(1_000_000 / Math.max(1, kelvin))
+}
+
 // ─── Device type detection ───────────────────────────────────────────────────
 
 function isColorTempLight(state: DeviceState): boolean {
@@ -86,9 +86,14 @@ function createOnOffLight(device: Device, state: DeviceState): Endpoint {
 	)
 }
 
+// elgato range: 2900–7000K → ~143–345 mireds
+const CT_PHYSICAL_MIN_MIREDS = 143
+const CT_PHYSICAL_MAX_MIREDS = 345
+
 function createColorTempLight(device: Device, state: DeviceState): Endpoint {
+	const mireds = state.colorTemp ? kelvinToMired(state.colorTemp) : 250
 	return new Endpoint(
-		ColorTemperatureLightDevice.with(BridgedDeviceBasicInformationServer),
+		ExtendedColorLightDevice.with(BridgedDeviceBasicInformationServer),
 		{
 			id: device.id,
 			bridgedDeviceBasicInformation: {
@@ -99,10 +104,14 @@ function createColorTempLight(device: Device, state: DeviceState): Endpoint {
 				onOff: state.on ?? false,
 			},
 			levelControl: {
-				currentLevel: state.brightness ? toMatterLevel(state.brightness) : 0,
+				currentLevel: state.brightness ? toMatterLevel(state.brightness) : 254,
 			},
 			colorControl: {
-				colorTemperatureMireds: state.colorTemp ? kelvinToMired(state.colorTemp) : 370,
+				colorMode: 2, // ColorTemperatureMireds
+				colorTemperatureMireds: mireds,
+				colorTempPhysicalMinMireds: CT_PHYSICAL_MIN_MIREDS,
+				colorTempPhysicalMaxMireds: CT_PHYSICAL_MAX_MIREDS,
+				coupleColorTempToLevelMinMireds: CT_PHYSICAL_MIN_MIREDS,
 			},
 		},
 	)

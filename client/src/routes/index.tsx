@@ -46,6 +46,11 @@ function Dashboard() {
 		mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) => {
 			await api.api.devices({ id }).matter.patch({ enabled })
 		},
+		onMutate: ({ id, enabled }) => {
+			queryClient.setQueryData(['devices'], (prev: Device[] = []) =>
+				prev.map((d) => (d.id === id ? { ...d, matterEnabled: enabled } : d)),
+			)
+		},
 	})
 
 	const stateMutation = useMutation({

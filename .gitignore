@@ -6,8 +6,8 @@ server/data/*.db
 server/data/*.db-shm
 server/data/*.db-wal
 
-# HomeKit persistence
-server/data/.homekit/
+# Matter bridge persistence (fabric creds, session keys)
+server/data/matter-storage/
 
 # Build output
 dist/

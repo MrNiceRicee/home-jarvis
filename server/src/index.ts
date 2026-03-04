@@ -1,11 +1,15 @@
 import { cors } from '@elysiajs/cors'
+import { eq } from 'drizzle-orm'
 import { Elysia } from 'elysia'
 
 import { db } from './db'
+import { devices, integrations } from './db/schema'
 import { startAllPolling } from './discovery/cloud-poller'
 import { clientAssets, hasClientAssets } from './generated/client-manifest'
+import { createAdapter } from './integrations/registry'
 import { eventBus } from './lib/events'
 import { log } from './lib/logger'
+import { parseJson } from './lib/parse-json'
 import { matterBridge } from './matter/bridge'
 import { devicesController } from './routes/devices.controller'
 import { eventsController } from './routes/events.controller'
@@ -71,6 +75,36 @@ startAllPolling(db).catch((err: unknown) => {
 // Start Matter bridge
 matterBridge.start(db).catch((err: unknown) => {
 	log.error('matter bridge start failed', { error: err instanceof Error ? err.message : String(err) })
+})
+
+// Forward inbound Matter commands to physical devices
+matterBridge.onCommand((deviceId, state) => {
+	const device = db.select().from(devices).where(eq(devices.id, deviceId)).get()
+	if (!device?.integrationId) return
+
+	const integration = db.select().from(integrations).where(eq(integrations.id, device.integrationId)).get()
+	if (!integration) return
+
+	const config = parseJson<Record<string, string>>(integration.config).unwrapOr({})
+	const adapterResult = createAdapter(integration.brand, config)
+	if (adapterResult.isErr()) return
+
+	// fire-and-forget — SSE already updated the dashboard, this forwards to the physical device
+	void adapterResult.value.setState(device.externalId, state).match(
+		() => {
+			// update DB state to match
+			const currentState = parseJson<Record<string, unknown>>(device.state).unwrapOr({})
+			const newState = { ...currentState, ...state }
+			db.update(devices)
+				.set({ state: JSON.stringify(newState), updatedAt: Date.now() })
+				.where(eq(devices.id, deviceId))
+				.run()
+			log.info('matter inbound forwarded', { deviceId, brand: device.brand })
+		},
+		(error) => {
+			log.error('matter inbound forward failed', { deviceId, brand: device.brand, error: error.message })
+		},
+	)
 })
 
 // Sync device state changes to Matter bridge (skip events originating from matter)

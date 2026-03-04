@@ -10,6 +10,7 @@ import { createAdapter } from '../integrations/registry'
 import { eventBus } from '../lib/events'
 import { log } from '../lib/logger'
 import { parseJson } from '../lib/parse-json'
+import { matterBridge } from '../matter/bridge'
 
 let discoveryInFlight = false
 
@@ -209,6 +210,7 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 				on: t.Optional(t.Boolean()),
 				brightness: t.Optional(t.Number()),
 				colorTemp: t.Optional(t.Number()),
+				color: t.Optional(t.Object({ r: t.Number(), g: t.Number(), b: t.Number() })),
 				fanSpeed: t.Optional(t.Number()),
 				targetTemperature: t.Optional(t.Number()),
 				mode: t.Optional(t.String()),
@@ -228,9 +230,11 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 				return status(404, { error: 'Device not found' })
 			}
 
-			if (device.brand === 'aqara') {
-				log.warn('setMatter aqara native', { deviceId: params.id, deviceName: device.name })
-				return status(400, { error: 'Aqara supports Matter natively. Add via your smart home app.' })
+			// brands with native Matter support — don't bridge, avoid duplicates
+			const nativeMatterBrands = new Set(['hue', 'aqara'])
+			if (nativeMatterBrands.has(device.brand)) {
+				log.warn('setMatter native brand blocked', { deviceId: params.id, brand: device.brand })
+				return status(400, { error: `${device.brand} supports Matter natively. Add via your smart home app.` })
 			}
 
 			log.info('setMatter', { deviceId: params.id, deviceName: device.name, enabled: body.enabled })
@@ -240,6 +244,14 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 				.set({ matterEnabled: body.enabled, updatedAt: now })
 				.where(eq(devices.id, params.id))
 				.run()
+
+			// add/remove from the live matter bridge
+			if (body.enabled) {
+				const state = parseJson<DeviceState>(device.state).unwrapOr({})
+				await matterBridge.addDevice(device, state)
+			} else {
+				await matterBridge.removeDevice(params.id)
+			}
 
 			eventBus.publish({
 				type: 'device:update',

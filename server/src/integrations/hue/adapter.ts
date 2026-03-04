@@ -21,6 +21,25 @@ interface HueLight {
 	}
 }
 
+// hsv → rgb for hue light color reporting
+function hsvToRgb(h: number, s: number, v: number): { r: number; g: number; b: number } {
+	const c = v * s
+	const x = c * (1 - Math.abs(((h / 60) % 2) - 1))
+	const m = v - c
+	let r = 0, g = 0, b = 0
+	if (h < 60) { r = c; g = x }
+	else if (h < 120) { r = x; g = c }
+	else if (h < 180) { g = c; b = x }
+	else if (h < 240) { g = x; b = c }
+	else if (h < 300) { r = x; b = c }
+	else { r = c; b = x }
+	return {
+		r: Math.round((r + m) * 255),
+		g: Math.round((g + m) * 255),
+		b: Math.round((b + m) * 255),
+	}
+}
+
 export class HueAdapter implements DeviceAdapter {
 	readonly brand = 'hue'
 	readonly displayName = 'Philips Hue'
@@ -141,11 +160,21 @@ export class HueAdapter implements DeviceAdapter {
 	}
 
 	private parseState(s: HueLight['state']): DeviceState {
-		return {
+		const state: DeviceState = {
 			on: s.on,
 			brightness: s.bri !== undefined ? Math.round(((s.bri - 1) / 253) * 100) : undefined,
 			colorTemp: s.ct !== undefined ? Math.round(1_000_000 / s.ct) : undefined,
 		}
+
+		// hue (0–65535) + sat (0–254) → RGB for full-color lights
+		if (s.hue !== undefined && s.sat !== undefined) {
+			const h = (s.hue / 65535) * 360
+			const sat = s.sat / 254
+			const v = s.bri !== undefined ? s.bri / 254 : 1
+			state.color = hsvToRgb(h, sat, v)
+		}
+
+		return state
 	}
 }
 

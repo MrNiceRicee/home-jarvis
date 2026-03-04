@@ -4,17 +4,16 @@ import {
 	ColorArea,
 	ColorField,
 	ColorPicker,
-	ColorSlider,
 	ColorThumb,
-	Dialog,
-	DialogTrigger,
+	ColorWheel,
+	ColorWheelTrack,
 	Input,
 	Label,
-	Popover,
 	Slider,
 	SliderOutput,
 	SliderThumb,
 	SliderTrack,
+	parseColor,
 	type Color,
 } from 'react-aria-components'
 
@@ -25,10 +24,11 @@ import { CCT_SWATCHES, COLOR_PRESETS, SCENES, tempToColor } from '../../lib/colo
 
 interface LightCardProps {
 	device: Device
+	onAccentChange?: (accent: { brightness?: number; colorTemp?: number; color?: { r: number; g: number; b: number } } | null) => void
 	onStateChange?: (deviceId: string, state: Partial<DeviceState>) => Promise<void>
 }
 
-export function LightCard({ device, onStateChange }: Readonly<LightCardProps>) {
+export function LightCard({ device, onAccentChange, onStateChange }: Readonly<LightCardProps>) {
 	const state = device.state
 	const isOn = state.on ?? false
 
@@ -42,25 +42,41 @@ export function LightCard({ device, onStateChange }: Readonly<LightCardProps>) {
 	const [brightness, setBrightness] = useState(state.brightness ?? 100)
 	const [colorTemp, setColorTemp] = useState(state.colorTemp ?? 4000)
 	const [mode, setMode] = useState<'white' | 'color'>('white')
-	const [pickerColor, setPickerColor] = useState<Color | null>(null)
+	const [pickerColor, setPickerColor] = useState<Color>(() => {
+		if (state.color) {
+			const { r, g, b } = state.color
+			try { return parseColor(`rgb(${r}, ${g}, ${b})`) } catch { /* fall through */ }
+		}
+		return parseColor('hsl(0, 100%, 50%)')
+	})
+
+	// push live accent to card shell during interaction
+	function pushAccent(overrides: { brightness?: number; colorTemp?: number; color?: { r: number; g: number; b: number } }) {
+		onAccentChange?.({
+			brightness: overrides.brightness ?? brightness,
+			colorTemp: showCCT ? (overrides.colorTemp ?? colorTemp) : undefined,
+			color: showColor ? colorFromPicker(overrides) : undefined,
+		})
+	}
+
+	function colorFromPicker(overrides: { color?: { r: number; g: number; b: number } }): { r: number; g: number; b: number } {
+		if (overrides.color) return overrides.color
+		const rgb = pickerColor.toFormat('rgb')
+		return {
+			r: Math.round(rgb.getChannelValue('red')),
+			g: Math.round(rgb.getChannelValue('green')),
+			b: Math.round(rgb.getChannelValue('blue')),
+		}
+	}
 
 	// Sync sliders when SSE pushes new state
 	useEffect(() => { setBrightness(state.brightness ?? 100) }, [state.brightness])
 	useEffect(() => { setColorTemp(state.colorTemp ?? 4000) }, [state.colorTemp])
-
-	// Lazy-import parseColor to avoid loading color machinery until needed
 	useEffect(() => {
-		if (!isRGB) return
-		const { r, g, b } = state.color ?? { r: 255, g: 255, b: 255 }
-		import('react-aria-components').then(({ parseColor }) => {
-			try {
-				setPickerColor(parseColor(`rgb(${r}, ${g}, ${b})`))
-			} catch {
-				setPickerColor(parseColor('#ffffff'))
-			}
-		}).catch(() => undefined)
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- sync once on mount; SSE updates handled separately
-	}, [])
+		if (!state.color) return
+		const { r, g, b } = state.color
+		try { setPickerColor(parseColor(`rgb(${r}, ${g}, ${b})`)) } catch { /* ignore */ }
+	}, [state.color])
 
 	// Which panels to show
 	const showCCT = isCCT && (!isFullColor || mode === 'white')
@@ -86,18 +102,6 @@ export function LightCard({ device, onStateChange }: Readonly<LightCardProps>) {
 		})
 	}
 
-	function handleColorPreset(color: { r: number; g: number; b: number }) {
-		import('react-aria-components').then(({ parseColor }) => {
-			try {
-				setPickerColor(parseColor(`rgb(${color.r}, ${color.g}, ${color.b})`))
-			} catch { /* ignore */ }
-		}).catch(() => undefined)
-		void onStateChange?.(device.id, { color, on: true })
-	}
-
-	const powerLabel = isOn ? 'Turn Off' : 'Turn On'
-	const buttonLabel = toggling ? '…' : powerLabel
-
 	function commitPickerColor(c: Color) {
 		const rgb = c.toFormat('rgb')
 		void onStateChange?.(device.id, {
@@ -106,8 +110,20 @@ export function LightCard({ device, onStateChange }: Readonly<LightCardProps>) {
 				g: Math.round(rgb.getChannelValue('green')),
 				b: Math.round(rgb.getChannelValue('blue')),
 			},
+			on: true,
 		})
 	}
+
+	function handleColorPreset(color: { r: number; g: number; b: number }) {
+		try {
+			const c = parseColor(`rgb(${color.r}, ${color.g}, ${color.b})`)
+			setPickerColor(c)
+		} catch { /* ignore */ }
+		void onStateChange?.(device.id, { color, on: true })
+	}
+
+	const powerLabel = isOn ? 'Turn Off' : 'Turn On'
+	const buttonLabel = toggling ? '…' : powerLabel
 
 	return (
 		<div className={cn('rounded-lg p-2 transition-colors', isOn ? 'bg-amber-50/30' : 'bg-stone-50')}>
@@ -214,8 +230,8 @@ export function LightCard({ device, onStateChange }: Readonly<LightCardProps>) {
 						value={colorTemp}
 						minValue={2700}
 						maxValue={6500}
-						onChange={setColorTemp}
-						onChangeEnd={(v) => { void onStateChange?.(device.id, { colorTemp: v }) }}
+						onChange={(v) => { setColorTemp(v); pushAccent({ colorTemp: v }) }}
+						onChangeEnd={(v) => { onAccentChange?.(null); void onStateChange?.(device.id, { colorTemp: v }) }}
 					>
 						<div className="flex items-center justify-between mb-1">
 							<Label className="text-xs text-stone-500">Color Temp</Label>
@@ -252,79 +268,76 @@ export function LightCard({ device, onStateChange }: Readonly<LightCardProps>) {
 
 			{/* ── Color mode (RGB / full-color lights) ──────────────────── */}
 			{showColor && device.online && (
-				<div className="flex gap-2 flex-wrap items-center mb-2">
-					{COLOR_PRESETS.map((preset) => (
-						<button
-							key={preset.label}
-							type="button"
-							onClick={() => handleColorPreset(preset.value)}
-							style={{
-								background: `rgb(${preset.value.r} ${preset.value.g} ${preset.value.b})`,
-								boxShadow:
-									'0 2px 6px rgba(0,0,0,0.25), inset 0 1px 2px rgba(255,255,255,0.4)',
-							}}
-							className="w-6 h-6 rounded-full ring-1 ring-white/40 cursor-pointer hover:scale-110 transition-transform"
-							aria-label={preset.label}
-						/>
-					))}
-
-					<DialogTrigger
-						onOpenChange={(open) => {
-							if (!open && pickerColor) commitPickerColor(pickerColor)
-						}}
-					>
-						<Button className="text-xs text-stone-500 hover:text-stone-700 px-2 py-0.5 rounded-full border border-stone-200 hover:border-stone-300 cursor-default">
-							+ Custom
-						</Button>
-						<Popover placement="bottom" className="z-50">
-							<Dialog
-								aria-label="Color picker"
-								className="outline-none p-3 bg-white rounded-xl shadow-xl border border-stone-200 w-60"
+				<div className="flex flex-col items-center gap-2">
+					{/* color wheel with saturation/brightness area centered inside */}
+					<ColorPicker value={pickerColor} onChange={(c) => {
+						setPickerColor(c)
+						const rgb = c.toFormat('rgb')
+						pushAccent({ color: {
+							r: Math.round(rgb.getChannelValue('red')),
+							g: Math.round(rgb.getChannelValue('green')),
+							b: Math.round(rgb.getChannelValue('blue')),
+						} })
+					}}>
+						<div className="relative" style={{ width: 160, height: 160 }}>
+							<ColorWheel outerRadius={80} innerRadius={60} onChangeEnd={(c) => { onAccentChange?.(null); commitPickerColor(c) }}>
+								<ColorWheelTrack />
+								<ColorThumb
+									className="w-4 h-4 rounded-full ring-2 ring-white"
+									style={{ boxShadow: '0 2px 6px rgba(0,0,0,0.35)' }}
+								/>
+							</ColorWheel>
+							<ColorArea
+								colorSpace="hsb"
+								xChannel="saturation"
+								yChannel="brightness"
+								className="rounded-lg"
+								onChangeEnd={(c) => { onAccentChange?.(null); commitPickerColor(c) }}
+								style={{
+									width: 84,
+									height: 84,
+									position: 'absolute',
+									top: 'calc(50% - 42px)',
+									left: 'calc(50% - 42px)',
+								}}
 							>
-								<ColorPicker
-									value={pickerColor ?? '#ffffff'}
-									onChange={(c) => setPickerColor(c)}
-								>
-									<ColorArea
-										colorSpace="hsb"
-										xChannel="saturation"
-										yChannel="brightness"
-										className="w-full rounded-lg mb-2"
-										style={{ height: '10rem' }}
-									>
-										<ColorThumb
-											className="w-5 h-5 rounded-full ring-2 ring-white"
-											style={{
-												background:
-													'radial-gradient(circle at 35% 35%, rgba(255,255,255,0.65) 0%, transparent 55%)',
-												boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-											}}
-										/>
-									</ColorArea>
-									<ColorSlider channel="hue" colorSpace="hsb" className="mb-1.5">
-										<SliderTrack className="h-3 rounded-full">
-											<ColorThumb
-												className="w-4 h-4 rounded-full ring-2 ring-white"
-												style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}
-											/>
-										</SliderTrack>
-									</ColorSlider>
-									<ColorSlider channel="saturation" colorSpace="hsb" className="mb-1.5">
-										<SliderTrack className="h-3 rounded-full">
-											<ColorThumb
-												className="w-4 h-4 rounded-full ring-2 ring-white"
-												style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}
-											/>
-										</SliderTrack>
-									</ColorSlider>
-									<ColorField className="mt-2 w-full">
-										<Label className="text-xs text-stone-500 block mb-0.5">Hex</Label>
-										<Input className="w-full text-xs border border-stone-200 rounded-lg px-2 py-1 font-mono focus:outline-none focus:border-blue-400" />
-									</ColorField>
-								</ColorPicker>
-							</Dialog>
-						</Popover>
-					</DialogTrigger>
+								<ColorThumb
+									className="w-4 h-4 rounded-full ring-2 ring-white"
+									style={{
+										boxShadow: '0 2px 6px rgba(0,0,0,0.35)',
+									}}
+								/>
+							</ColorArea>
+						</div>
+					</ColorPicker>
+
+					{/* preset dots + hex input */}
+					<div className="flex items-center gap-1.5">
+						{COLOR_PRESETS.map((preset) => (
+							<button
+								key={preset.label}
+								type="button"
+								onClick={() => handleColorPreset(preset.value)}
+								style={{
+									background: `rgb(${preset.value.r} ${preset.value.g} ${preset.value.b})`,
+									boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
+								}}
+								className="w-5 h-5 rounded-full ring-1 ring-white/40 cursor-pointer hover:scale-110 transition-transform"
+								aria-label={preset.label}
+							/>
+						))}
+						<ColorPicker
+							value={pickerColor}
+							onChange={(c) => { setPickerColor(c); commitPickerColor(c) }}
+						>
+							<ColorField className="ml-1">
+								<Input
+									className="w-16 text-xs border border-stone-200 rounded-lg px-1.5 py-0.5 font-mono text-stone-600 focus:outline-none focus:border-blue-400"
+									aria-label="Hex color"
+								/>
+							</ColorField>
+						</ColorPicker>
+					</div>
 				</div>
 			)}
 
@@ -334,8 +347,8 @@ export function LightCard({ device, onStateChange }: Readonly<LightCardProps>) {
 					value={brightness}
 					minValue={0}
 					maxValue={100}
-					onChange={setBrightness}
-					onChangeEnd={(v) => { void onStateChange?.(device.id, { brightness: v }) }}
+					onChange={(v) => { setBrightness(v); pushAccent({ brightness: v }) }}
+					onChangeEnd={(v) => { onAccentChange?.(null); void onStateChange?.(device.id, { brightness: v }) }}
 					className="mt-2"
 				>
 					<div className="flex items-center justify-between mb-1">
