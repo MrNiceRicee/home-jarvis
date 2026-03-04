@@ -45,3 +45,4 @@ logs/
 .claude/cache/
 .claude/preferences/
 screenshots/
+.tmp/
