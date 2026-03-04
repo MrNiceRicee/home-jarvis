@@ -42,9 +42,18 @@ function Dashboard() {
 			await api.api.devices({ id }).state.patch(state)
 		},
 		onMutate: ({ id, state }) => {
+			// snapshot for rollback
+			const previous = queryClient.getQueryData<Device[]>(['devices'])
 			queryClient.setQueryData(['devices'], (prev: Device[] = []) =>
 				prev.map((d) => (d.id === id ? { ...d, state: { ...d.state, ...state } } : d)),
 			)
+			return { previous }
+		},
+		onError: (_err, _vars, context) => {
+			if (context?.previous) {
+				queryClient.setQueryData(['devices'], context.previous)
+			}
+			toast.error('Device is offline or unreachable')
 		},
 	})
 
@@ -106,6 +115,22 @@ function Dashboard() {
 	const liveExpandedDevice = expandedDevice
 		? devices.find((d) => d.id === expandedDevice.id) ?? expandedDevice
 		: null
+
+	// skeleton loading while SSE connects
+	if (devices.length === 0 && status !== 'connected') {
+		return (
+			<div>
+				<div className="mb-6">
+					<StreamStatusBadge status={status} />
+				</div>
+				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+					{Array.from({ length: 6 }, (_, i) => (
+						<SkeletonCard key={i} />
+					))}
+				</div>
+			</div>
+		)
+	}
 
 	if (devices.length === 0 && status === 'connected') {
 		return (
@@ -191,6 +216,31 @@ function Dashboard() {
 				onClear={() => setSelectedIds(new Set())}
 				onStateChange={handleStateChange}
 			/>
+		</div>
+	)
+}
+
+function SkeletonCard() {
+	return (
+		<div
+			className={cn(
+				'rounded-xl overflow-hidden',
+				'bg-linear-to-b from-[#fffdf8] to-stone-50/80',
+				'border border-[rgba(168,151,125,0.15)]',
+				'shadow-[var(--shadow-raised)]',
+				'animate-pulse',
+			)}
+		>
+			<div className="px-4 pt-4 pb-3 flex items-center gap-3">
+				<div className="w-8 h-4 rounded bg-stone-200/80" />
+				<div className="flex-1">
+					<div className="w-24 h-3.5 rounded bg-stone-200/60 mb-1.5" />
+					<div className="w-16 h-2.5 rounded bg-stone-200/40" />
+				</div>
+			</div>
+			<div className="px-4 pb-4">
+				<div className="w-full h-8 rounded-lg bg-stone-200/40" />
+			</div>
 		</div>
 	)
 }

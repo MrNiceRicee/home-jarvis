@@ -1,7 +1,7 @@
 ---
 title: "feat: Device Dashboard — 2D Sony/TE-Inspired Pivot"
 type: feat
-status: active
+status: completed
 date: 2026-03-04
 origin: docs/brainstorms/2026-03-03-device-card-redesign-brainstorm.md
 ---
@@ -207,7 +207,7 @@ Apply Commit Mono throughout, add IoskeleyMono display windows for readout value
 
 - [x] Download Commit Mono (WOFF2) from commitmono.com, place in `client/public/fonts/`
 - [x] Download IoskeleyMono (WOFF2) from github.com/ahatem/IoskeleyMono releases, place in `client/public/fonts/`
-- [ ] Remove DSEG7 font files from `client/public/fonts/` and remove the `@font-face` declaration + `FONT_DSEG7` constant
+- [x] Remove DSEG7 font files from `client/public/fonts/` and remove the `@font-face` declaration + `FONT_DSEG7` constant
 - [x] Add `@font-face` for both fonts + register `--font-commit`, `--font-ioskeley`, `--font-michroma` in `@theme` block in `index.css`
 - [x] Apply `font-commit` as the default body font or selectively to card text, labels, and values
 - [x] Create a `ReadoutDisplay` component: dark background (`bg-[#0a0a0a]`), rounded, subtle inner shadow, IoskeleyMono font, warm cream text (`#faf0dc`), optional faint amber `text-shadow` glow — the "UV display window" concept. Accepts `size: 'lg' | 'sm'` for focal vs compact readouts
@@ -287,14 +287,14 @@ Remove R3F artifacts and polish the experience.
 
 **Tasks:**
 
-- [ ] Delete `client/src/components/r3f/` directory
-- [ ] Remove R3F packages: `@react-three/fiber`, `@react-three/drei`, `@react-three/postprocessing`, `postprocessing`, `three`, `@types/three`
-- [ ] Verify no remaining imports reference `r3f/` or `three`
-- [ ] New device assignment: when `device:new` SSE event fires, show a toast with "New device: [name]" and option to assign to a section (auto-assigned to Home by default)
-- [ ] Offline device mid-interaction: add `onError` to `stateMutation` that shows a toast and reverts optimistic update
-- [ ] Loading states: skeleton cards while SSE connects
-- [ ] Responsive polish: verify grid at mobile, tablet, desktop breakpoints
-- [ ] Run `bun run system:check --force`
+- [x] Delete `client/src/components/r3f/` directory
+- [x] Remove R3F packages: `@react-three/fiber`, `@react-three/drei`, `@react-three/postprocessing`, `postprocessing`, `three`, `@types/three`
+- [x] Verify no remaining imports reference `r3f/` or `three`
+- [x] New device assignment: when `device:new` SSE event fires, show a toast with "New device: [name]" and option to assign to a section (auto-assigned to Home by default)
+- [x] Offline device mid-interaction: add `onError` to `stateMutation` that shows a toast and reverts optimistic update
+- [x] Loading states: skeleton cards while SSE connects
+- [x] Responsive polish: verify grid at mobile, tablet, desktop breakpoints
+- [x] Run `bun run system:check --force`
 
 **Success criteria:** No R3F code or dependencies remain. New device discovery shows a notification. Error states are handled gracefully. Layout is responsive.
 
