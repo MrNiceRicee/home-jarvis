@@ -52,6 +52,7 @@ const NATIVE_MATTER_BRANDS = new Set(['hue', 'aqara'])
 interface DeviceCardProps {
 	device: Device
 	isSelected?: boolean
+	onExpand?: (device: Device) => void
 	onMatterToggle?: (deviceId: string, enabled: boolean) => Promise<void>
 	onStateChange?: (deviceId: string, state: Partial<DeviceState>) => Promise<void>
 	onToggleSelect?: () => void
@@ -60,6 +61,7 @@ interface DeviceCardProps {
 export function DeviceCard({
 	device,
 	isSelected,
+	onExpand,
 	onStateChange,
 	onMatterToggle,
 	onToggleSelect,
@@ -83,6 +85,7 @@ export function DeviceCard({
 		<CardShell
 			device={device}
 			onMatterToggle={onMatterToggle}
+			onExpand={onExpand}
 			accent={accent}
 			isSelected={isSelected}
 			onToggleSelect={onToggleSelect}
@@ -127,6 +130,7 @@ interface CardShellProps {
 	children: React.ReactNode
 	device: Device
 	isSelected?: boolean
+	onExpand?: (device: Device) => void
 	onMatterToggle?: (deviceId: string, enabled: boolean) => Promise<void>
 	onToggleSelect?: () => void
 }
@@ -136,6 +140,7 @@ function CardShell({
 	children,
 	device,
 	isSelected,
+	onExpand,
 	onMatterToggle,
 	onToggleSelect,
 }: Readonly<CardShellProps>) {
@@ -199,7 +204,20 @@ function CardShell({
 							</p>
 						</div>
 					</div>
-					<OnlineBadge online={device.online} accented={!!accent} />
+					<div className="flex items-center gap-1.5 shrink-0">
+						<OnlineBadge online={device.online} accented={!!accent} />
+						{onExpand && (
+							<Button
+								onPress={() => onExpand(device)}
+								className="w-7 h-7 flex items-center justify-center rounded-lg text-stone-400 hover:text-stone-600 hover:bg-stone-100 transition-colors cursor-default"
+								aria-label={`Expand ${device.name}`}
+							>
+								<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+									<path d="M8.5 1.5h4v4M5.5 12.5h-4v-4M12.5 1.5L8 6M1.5 12.5L6 8" />
+								</svg>
+							</Button>
+						)}
+					</div>
 				</div>
 			</CardHeader>
 

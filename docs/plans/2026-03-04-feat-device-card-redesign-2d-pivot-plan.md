@@ -235,18 +235,18 @@ Full-control modal per device type, triggered from compact card.
 
 **Tasks:**
 
-- [ ] Add expand affordance to `DeviceCard` header — small icon button (chevron or expand icon), `RaisedButton` variant ghost
-- [ ] Create `DeviceDetailDialog` using `RaisedModal` — receives `device` + `onStateChange` + `onClose`
-- [ ] Dispatch to per-type full-control layouts inside the dialog:
+- [x] Add expand affordance to `DeviceCard` header — small icon button (chevron or expand icon), `RaisedButton` variant ghost
+- [x] Create `DeviceDetailDialog` using `RaisedModal` — receives `device` + `onStateChange` + `onClose`
+- [x] Dispatch to per-type full-control layouts inside the dialog:
   - Light: brightness slider, CCT slider, color wheel, scene presets, hex input
   - Air purifier: PM2.5 readout (large), AQ level, fan speed, filter life bar, mode control
   - Thermostat: large temp display, target adjustment, mode buttons (heat/cool/auto/off)
   - Vacuum: status, battery, start/pause/dock
   - Media: volume, transport controls, now-playing
   - Others: full state display
-- [ ] Wire `expandedDevice` state in dashboard → open/close dialog
-- [ ] Animate dialog enter/exit using React Aria `entering:`/`exiting:` classes
-- [ ] Run `bun run system:check --force`
+- [x] Wire `expandedDevice` state in dashboard → open/close dialog
+- [x] Animate dialog enter/exit using React Aria `entering:`/`exiting:` classes
+- [x] Run `bun run system:check --force`
 
 **Success criteria:** Every device type has a detail dialog with full controls. Dialog opens from expand button, closes on outside click or Escape. Smooth enter/exit animation.
 
