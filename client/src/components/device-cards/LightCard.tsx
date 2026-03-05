@@ -56,6 +56,7 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 	const [brightness, setBrightness] = useState(state.brightness ?? 100)
 	const [colorTemp, setColorTemp] = useState(state.colorTemp ?? 4000)
 	const [mode, setMode] = useState<'white' | 'color'>('white')
+	const [lastScene, setLastScene] = useState<string | null>(null)
 	const [pickerColor, setPickerColor] = useState<Color>(() => {
 		if (state.color) {
 			const { r, g, b } = state.color
@@ -99,6 +100,7 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 	function handleScene(scene: (typeof SCENES)[number]) {
 		setColorTemp(scene.colorTemp)
 		setBrightness(scene.brightness)
+		setLastScene(scene.name)
 		void onStateChange?.(device.id, {
 			on: true,
 			colorTemp: scene.colorTemp,
@@ -149,7 +151,7 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 					label="SCENES"
 					mode="action"
 					options={SCENE_OPTIONS}
-					value={null}
+					value={lastScene}
 					onChange={(key) => {
 						const scene = SCENES.find((s) => s.name === key)
 						if (scene) handleScene(scene)
@@ -189,7 +191,7 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 									style={{ width: `${s.getThumbPercent(0) * 100}%` }}
 								/>
 								<SliderThumb
-									className="z-10 w-3 h-[22px] rounded-[3px] border border-stone-300 cursor-default focus:outline-none relative after:absolute after:content-[''] after:inset-x-[2px] after:top-1/2 after:-translate-y-1/2 after:h-px after:bg-stone-400/40"
+									className="z-10 w-3 h-[22px] rounded-[3px] border border-stone-300 cursor-default outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-1 relative after:absolute after:content-[''] after:inset-x-[2px] after:top-1/2 after:-translate-y-1/2 after:h-px after:bg-stone-400/40"
 									style={{
 										top: '38%',
 										transform: 'translate(-50%, -50%)',
@@ -236,7 +238,7 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 										}}
 									/>
 									<SliderThumb
-										className="z-10 w-3 h-[22px] rounded-[3px] border border-stone-300 cursor-default focus:outline-none relative after:absolute after:content-[''] after:inset-x-[2px] after:top-1/2 after:-translate-y-1/2 after:h-px after:bg-stone-400/40"
+										className="z-10 w-3 h-[22px] rounded-[3px] border border-stone-300 cursor-default outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-1 relative after:absolute after:content-[''] after:inset-x-[2px] after:top-1/2 after:-translate-y-1/2 after:h-px after:bg-stone-400/40"
 										style={{
 											top: '38%',
 											transform: 'translate(-50%, -50%)',
@@ -259,7 +261,7 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 														onAccentChange?.(null)
 														void onStateChange?.(device.id, { colorTemp: k, on: true })
 													}}
-													className={cn('absolute w-px bg-stone-500 cursor-default', isEndpoint ? 'h-3' : 'h-2')}
+													className={cn('absolute w-px bg-stone-500 cursor-default outline-none focus-visible:ring-2 focus-visible:ring-stone-400', isEndpoint ? 'h-3' : 'h-2')}
 													style={{ left: `${pct}%`, padding: '0 4px', backgroundClip: 'content-box' }}
 													aria-label={`${k}K`}
 												/>

@@ -185,7 +185,7 @@ function CardShell({
 							<button
 								type="button"
 								onClick={onToggleSelect}
-								className="w-4 h-4 shrink-0 rounded-full border transition-all cursor-default"
+								className="w-4 h-4 shrink-0 rounded-full border transition-all cursor-default outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-1"
 								style={{
 									borderColor: isSelected ? '#d97706' : '#c4c0b8',
 									background: isSelected
@@ -210,7 +210,7 @@ function CardShell({
 						{onExpand && (
 							<Button
 								onPress={() => onExpand(device)}
-								className="w-7 h-7 flex items-center justify-center cursor-default"
+								className="w-7 h-7 flex items-center justify-center cursor-default outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-1 rounded-lg"
 								aria-label={`Expand ${device.name}`}
 							>
 								<svg
