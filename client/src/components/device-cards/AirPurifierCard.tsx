@@ -1,9 +1,8 @@
-import { Button } from 'react-aria-components'
-
 import type { Device, DeviceState } from '../../types'
 
 import { cn } from '../../lib/cn'
 import { ReadoutDisplay } from '../ui/readout-display'
+import { SteppedRadialDial } from '../ui/stepped-radial-dial'
 
 const AQI_LEVELS = [
 	{ max: 1, label: 'Good', color: 'text-emerald-700 bg-emerald-50', barColor: 'bg-emerald-400' },
@@ -23,6 +22,8 @@ const FAN_STEPS = [
 	{ label: '3', value: 80 },
 ] as const
 
+const FAN_DIAL_OPTIONS = FAN_STEPS.map((s) => ({ key: String(s.value), label: s.label }))
+
 function aqiLabel(value: number): { label: string; color: string } {
 	return AQI_LEVELS.find((l) => value <= l.max) ?? AQI_LEVELS[AQI_LEVELS.length - 1]
 }
@@ -33,18 +34,17 @@ function filterLifeColor(life: number): string {
 	return 'bg-red-400'
 }
 
-// map continuous fan speed to nearest discrete step index
-function fanSpeedToStepIndex(speed: number): number {
-	let closest = 0
+// map continuous fan speed to nearest discrete step value
+function fanSpeedToStepValue(speed: number): number {
+	let closest: number = FAN_STEPS[0].value
 	let minDist = Math.abs(speed - FAN_STEPS[0].value)
 	for (let i = 1; i < FAN_STEPS.length; i++) {
 		const dist = Math.abs(speed - FAN_STEPS[i].value)
-		if (dist < minDist) { closest = i; minDist = dist }
+		if (dist < minDist) { closest = FAN_STEPS[i].value; minDist = dist }
 	}
 	return closest
 }
 
-// map air quality value to number of lit AQI segments (1-4)
 function aqiToSegments(airQuality: number): number {
 	if (airQuality <= 1) return 1
 	if (airQuality <= 2) return 2
@@ -60,12 +60,6 @@ function buildReadoutLabel(pm25: number | undefined, aqiLabelText: string | unde
 	return isOn ? 'Air purifier on' : 'Air purifier off'
 }
 
-function fanStepAriaLabel(label: string): string {
-	if (label === 'AUTO') return 'Auto'
-	if (label === 'SLP') return 'Sleep'
-	return `Speed ${label}`
-}
-
 interface AirPurifierCardProps {
 	device: Device
 	variant?: 'compact' | 'full'
@@ -79,7 +73,7 @@ export function AirPurifierCard({ device, variant = 'compact', onStateChange }: 
 
 	const aqi = state.airQuality !== undefined ? aqiLabel(state.airQuality) : null
 	const litSegments = state.airQuality !== undefined ? aqiToSegments(state.airQuality) : 0
-	const activeStep = state.fanSpeed !== undefined ? fanSpeedToStepIndex(state.fanSpeed) : -1
+	const activeFanValue = state.fanSpeed !== undefined ? fanSpeedToStepValue(state.fanSpeed) : 0
 
 	const readoutLabel = buildReadoutLabel(state.pm25, aqi?.label, isOn)
 
@@ -138,31 +132,18 @@ export function AirPurifierCard({ device, variant = 'compact', onStateChange }: 
 				</div>
 			)}
 
-			{/* ── Fan speed stepped buttons (full view only) ─────────── */}
+			{/* ── Fan speed radial dial (full view only) ──────────────── */}
 			{isFull && state.fanSpeed !== undefined && device.online && (
-				<div>
-					<span className="font-michroma text-2xs uppercase tracking-widest text-stone-400 mb-1.5 block" aria-label="Fan Speed">FAN</span>
-					<div className="flex gap-1">
-						{FAN_STEPS.map((step, i) => (
-							<Button
-								key={step.label}
-								onPress={() => { void onStateChange?.(device.id, { fanSpeed: step.value }) }}
-								className={cn(
-									'flex-1 py-1.5 text-2xs font-michroma uppercase tracking-wider',
-									'rounded-md border transition-colors cursor-default',
-									i === activeStep
-										? 'bg-amber-50 text-amber-800 border-amber-300 shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]'
-										: 'bg-stone-50 text-stone-500 border-stone-200 hover:bg-stone-100 pressed:bg-stone-200',
-								)}
-								aria-label={fanStepAriaLabel(step.label)}
-							>
-								{step.label}
-							</Button>
-						))}
-					</div>
+				<div className="flex justify-center">
+					<SteppedRadialDial
+						label="FAN"
+						options={FAN_DIAL_OPTIONS}
+						value={String(activeFanValue)}
+						onChange={(key) => { void onStateChange?.(device.id, { fanSpeed: Number(key) }) }}
+						disabled={!device.online}
+					/>
 				</div>
 			)}
-
-			</div>
+		</div>
 	)
 }
