@@ -22,6 +22,18 @@ import type { Device, DeviceState } from '../../types'
 import { cn } from '../../lib/cn'
 import { CCT_SWATCHES, COLOR_PRESETS, SCENES, tempToColor } from '../../lib/color-utils'
 import { ReadoutDisplay } from '../ui/readout-display'
+import { ToggleBank } from '../ui/toggle-bank'
+
+const SCENE_OPTIONS = SCENES.map((s) => ({
+	key: s.name,
+	label: s.name === 'Energize' ? 'ENRG' : s.name.toUpperCase().slice(0, 5),
+}))
+
+const COLOR_PRESET_OPTIONS = COLOR_PRESETS.map((p) => ({
+	key: p.label,
+	label: p.label.slice(0, 3).toUpperCase(),
+	ledColor: `rgb(${p.value.r},${p.value.g},${p.value.b})`,
+}))
 
 interface LightCardProps {
 	device: Device
@@ -133,20 +145,16 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 
 			{/* ── Scene presets (full view, CCT lights) ───────────────── */}
 			{isFull && isCCT && device.online && (
-				<div>
-					<span className="font-michroma text-2xs uppercase tracking-widest text-stone-400 mb-1.5 block" aria-label="Scenes">SCENES</span>
-					<div className="flex gap-1 flex-wrap">
-						{SCENES.map((scene) => (
-							<Button
-								key={scene.name}
-								onPress={() => handleScene(scene)}
-								className="text-2xs font-michroma uppercase tracking-wider px-2.5 py-1 rounded-full bg-white/80 text-stone-600 hover:bg-white border border-stone-200 hover:border-stone-300 transition-colors cursor-default pressed:bg-stone-100"
-							>
-								{scene.name}
-							</Button>
-						))}
-					</div>
-				</div>
+				<ToggleBank
+					label="SCENES"
+					mode="action"
+					options={SCENE_OPTIONS}
+					value={null}
+					onChange={(key) => {
+						const scene = SCENES.find((s) => s.name === key)
+						if (scene) handleScene(scene)
+					}}
+				/>
 			)}
 
 			{/* ── Mode toggle (full view, full-color lights) ──────────── */}
@@ -223,33 +231,7 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 						<span className="font-ioskeley text-xs" style={{ color: cctTextColor(colorTemp) }}>{colorTemp}K</span>
 					</div>
 
-					{/* swatch rail — full view only */}
-					{isFull && (
-						<div className="flex gap-2 mb-2 justify-center">
-							{CCT_SWATCHES.map((k) => (
-								<Button
-									key={k}
-									onPress={() => {
-										setColorTemp(k)
-										void onStateChange?.(device.id, { colorTemp: k, on: true })
-									}}
-									style={{
-										background: tempToColor(k),
-										boxShadow: '0 2px 6px rgba(0,0,0,0.25), inset 0 1px 2px rgba(255,255,255,0.4)',
-									}}
-									className={cn(
-										'w-6 h-6 rounded-full cursor-default transition-transform hover:scale-110',
-										Math.abs(colorTemp - k) < 200
-											? 'ring-2 ring-stone-600 ring-offset-1'
-											: 'ring-1 ring-white/40',
-									)}
-									aria-label={`${k}K`}
-								/>
-							))}
-						</div>
-					)}
-
-					{/* color temp fader */}
+					{/* color temp fader with tappable detent stops */}
 					<Slider
 						value={colorTemp}
 						minValue={2700}
@@ -273,15 +255,44 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 											top: '38%',
 											transform: 'translate(-50%, -50%)',
 											backgroundColor: '#d4d0ca',
-										backgroundImage: 'linear-gradient(180deg, #e8e4de 0%, #d4d0ca 40%, #c0bcb6 60%, #d4d0ca 100%)',
+											backgroundImage: 'linear-gradient(180deg, #e8e4de 0%, #d4d0ca 40%, #c0bcb6 60%, #d4d0ca 100%)',
 											boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
 										}}
 									/>
-									<div className="absolute inset-x-0 top-[60%] pointer-events-none">
+									{/* tappable detent notch marks */}
+									<div className="absolute inset-x-0 top-[60%]">
 										{CCT_SWATCHES.map((k) => {
 											const pct = ((k - 2700) / (6500 - 2700)) * 100
 											const isEndpoint = k === 2700 || k === 6500
-											return <div key={k} className={cn('absolute w-px bg-stone-400', isEndpoint ? 'h-2.5' : 'h-1.5')} style={{ left: `${pct}%` }} />
+											return (
+												<button
+													key={k}
+													type="button"
+													onClick={() => {
+														setColorTemp(k)
+														onAccentChange?.(null)
+														void onStateChange?.(device.id, { colorTemp: k, on: true })
+													}}
+													className={cn('absolute w-px bg-stone-500 cursor-default', isEndpoint ? 'h-3' : 'h-2')}
+													style={{ left: `${pct}%`, padding: '0 4px', backgroundClip: 'content-box' }}
+													aria-label={`${k}K`}
+												/>
+											)
+										})}
+									</div>
+									{/* detent labels */}
+									<div className="absolute inset-x-0 top-[85%]">
+										{CCT_SWATCHES.map((k) => {
+											const pct = ((k - 2700) / (6500 - 2700)) * 100
+											return (
+												<span
+													key={k}
+													className="absolute font-michroma text-2xs text-stone-400 -translate-x-1/2"
+													style={{ left: `${pct}%` }}
+												>
+													{cctDetentLabel(k)}
+												</span>
+											)
 										})}
 									</div>
 								</>
@@ -334,32 +345,33 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 						</div>
 					</ColorPicker>
 
-					{/* preset dots + hex input */}
-					<div className="flex items-center gap-1.5">
-						{COLOR_PRESETS.map((preset) => (
-							<Button
-								key={preset.label}
-								onPress={() => handleColorPreset(preset.value)}
+					{/* color presets toggle bank */}
+					<ToggleBank
+						label="COLOR"
+						mode="action"
+						options={COLOR_PRESET_OPTIONS}
+						value={null}
+						onChange={(key) => {
+							const preset = COLOR_PRESETS.find((p) => p.label === key)
+							if (preset) handleColorPreset(preset.value)
+						}}
+					/>
+
+					{/* hex input */}
+					<ColorPicker
+						value={pickerColor}
+						onChange={(c) => { setPickerColor(c); commitPickerColor(c) }}
+					>
+						<ColorField>
+							<Input
+								className="w-20 bg-[#2a2924] rounded border border-[#1a1914] px-2 py-1 font-ioskeley text-xs text-[#faf0dc] caret-[#faf0dc] selection:bg-stone-600 focus:outline-none"
 								style={{
-									background: `rgb(${preset.value.r} ${preset.value.g} ${preset.value.b})`,
-									boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
+									boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.5), inset 0 0 2px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.2)',
 								}}
-								className="w-5 h-5 rounded-full ring-1 ring-white/40 cursor-default hover:scale-110 transition-transform"
-								aria-label={preset.label}
+								aria-label="Hex color"
 							/>
-						))}
-						<ColorPicker
-							value={pickerColor}
-							onChange={(c) => { setPickerColor(c); commitPickerColor(c) }}
-						>
-							<ColorField className="ml-1">
-								<Input
-									className="w-16 text-xs border border-stone-200 rounded-lg px-1.5 py-0.5 font-ioskeley text-stone-600 focus:outline-none focus:border-blue-400"
-									aria-label="Hex color"
-								/>
-							</ColorField>
-						</ColorPicker>
-					</div>
+						</ColorField>
+					</ColorPicker>
 				</div>
 			)}
 
@@ -391,6 +403,12 @@ function ReadoutSecondary({
 // darken tempToColor for readable text on light backgrounds
 function cctTextColor(kelvin: number): string {
 	return `color-mix(in srgb, ${tempToColor(kelvin)} 60%, #1c1917)`
+}
+
+function cctDetentLabel(k: number): string {
+	if (k < 1000) return `${k}`
+	if (k < 10000) return k % 1000 === 0 ? `${k / 1000}K` : `${(k / 1000).toFixed(1)}`
+	return `${k / 1000}K`
 }
 
 function buildReadoutLabel(isOn: boolean, brightness: number, showCCT: boolean, colorTemp: number, showColor: boolean, pickerColor: Color): string {
