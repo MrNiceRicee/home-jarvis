@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
+import { toast } from 'sonner'
 
 import type { Device, DeviceState, Section } from '../types'
 
+import { CreateSectionDialog } from '../components/CreateSectionDialog'
 import { SectionGroup } from '../components/SectionGroup'
 import { useStreamStatus } from '../hooks/useDeviceStream'
 import { api } from '../lib/api'
@@ -45,10 +47,27 @@ function Dashboard() {
 		stateMutation.mutate({ id, state })
 	}
 
-	async function handleAddSection() {
-		const name = window.prompt('Section name:')
-		if (!name?.trim()) return
-		await api.api.sections.post({ name: name.trim() })
+	async function handleAddSection(name: string) {
+		const { error } = await api.api.sections.post({ name })
+		if (error) throw error
+		await queryClient.invalidateQueries({ queryKey: ['sections'] })
+	}
+
+	async function handleRenameSection(sectionId: string, name: string) {
+		const { error } = await api.api.sections({ id: sectionId }).patch({ name })
+		if (error) {
+			toast.error('Failed to rename section')
+			throw error
+		}
+		await queryClient.invalidateQueries({ queryKey: ['sections'] })
+	}
+
+	async function handleDeleteSection(sectionId: string) {
+		const { error } = await api.api.sections({ id: sectionId }).delete()
+		if (error) {
+			toast.error('Cannot delete section — move devices out first')
+			return
+		}
 		await queryClient.invalidateQueries({ queryKey: ['sections'] })
 	}
 
@@ -56,13 +75,13 @@ function Dashboard() {
 		return (
 			<div className="flex flex-col items-center justify-center py-24 text-center">
 				<span className="text-5xl mb-4">🏠</span>
-				<h2 className="text-lg font-semibold text-stone-900 mb-1">No devices yet</h2>
-				<p className="text-sm text-stone-500 mb-6">
+				<h2 className="text-lg font-commit font-medium text-stone-900 mb-1">No devices yet</h2>
+				<p className="text-sm font-commit text-stone-500 mb-6">
 					Add an integration to start discovering your smart home devices.
 				</p>
 				<Link
 					to="/integrations"
-					className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg bg-linear-to-b from-stone-700 to-stone-800 text-white border border-stone-600/50 shadow-[0_1px_3px_rgba(0,0,0,0.2),0_4px_12px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] hover:from-stone-600 hover:to-stone-700 transition-all"
+					className="inline-flex items-center px-4 py-2 text-sm font-commit font-medium rounded-lg bg-linear-to-b from-stone-700 to-stone-800 text-white border border-stone-600/50 shadow-[0_1px_3px_rgba(0,0,0,0.2),0_4px_12px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] hover:from-stone-600 hover:to-stone-700 transition-all"
 				>
 					Add Integration →
 				</Link>
@@ -100,7 +119,6 @@ function Dashboard() {
 			<div className="space-y-8">
 				{orderedSections.map((section) => {
 					const sectionDevices = devicesBySection.get(section.id) ?? []
-					// skip empty sections that aren't from the DB
 					if (sectionDevices.length === 0 && !sections.some((s) => s.id === section.id)) {
 						return null
 					}
@@ -110,24 +128,15 @@ function Dashboard() {
 							section={section}
 							devices={sectionDevices}
 							onStateChange={handleStateChange}
+							onRename={handleRenameSection}
+							onDelete={handleDeleteSection}
 						/>
 					)
 				})}
 			</div>
 
 			<div className="mt-8 flex justify-center">
-				<button
-					type="button"
-					onClick={() => { void handleAddSection() }}
-					className={cn(
-						'px-4 py-2 text-sm rounded-lg transition-all',
-						'text-stone-500 hover:text-stone-700',
-						'border border-dashed border-stone-300 hover:border-stone-400',
-						'hover:bg-white/50',
-					)}
-				>
-					+ Add Section
-				</button>
+				<CreateSectionDialog onSubmit={handleAddSection} />
 			</div>
 		</div>
 	)
@@ -138,7 +147,7 @@ function StreamStatusBadge({ status }: Readonly<{ status: string }>) {
 	return (
 		<span
 			className={cn(
-				'inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full',
+				'inline-flex items-center gap-1.5 text-xs font-commit px-2.5 py-1 rounded-full',
 				'bg-linear-to-b from-white to-stone-50',
 				'border border-stone-200/80',
 				'shadow-[var(--shadow-raised),var(--shadow-inner-glow)]',

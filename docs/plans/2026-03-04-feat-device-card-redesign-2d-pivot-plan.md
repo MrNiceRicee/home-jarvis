@@ -180,14 +180,14 @@ Replace `window.prompt` with proper React Aria UI.
 
 **Tasks:**
 
-- [ ] Create `CreateSectionDialog` using `RaisedModal` — text input for section name, validation (alphanumeric + spaces, max 50 chars), error display for duplicates
-- [ ] Replace `window.prompt` in dashboard with dialog trigger
-- [ ] Add inline rename to `SectionGroup`: click section name → editable input, commit on Enter/blur
-- [ ] Add section delete: small "x" or trash icon on section header, only enabled when section is empty
-- [ ] Show error toast via `sonner` when delete fails (section not empty)
-- [ ] Handle 409 conflict on duplicate section name — show inline error
+- [x] Create `CreateSectionDialog` using `RaisedModal` — text input for section name, validation (alphanumeric + spaces, max 50 chars), error display for duplicates
+- [x] Replace `window.prompt` in dashboard with dialog trigger
+- [x] Add inline rename to `SectionGroup`: click section name → editable input, commit on Enter/blur
+- [x] Add section delete: small "x" or trash icon on section header, only enabled when section is empty
+- [x] Show error toast via `sonner` when delete fails (section not empty)
+- [x] Handle 409 conflict on duplicate section name — show inline error
 - [ ] Add section reorder: up/down arrows on section header, `PATCH /api/sections/:id` with new position
-- [ ] Run `bun run system:check --force`
+- [x] Run `bun run system:check --force`
 
 **Success criteria:** Sections can be created, renamed, deleted (when empty), and reordered through styled UI. No `window.prompt`.
 
