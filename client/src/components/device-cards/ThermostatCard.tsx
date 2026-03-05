@@ -1,38 +1,24 @@
-import { Button } from 'react-aria-components'
-
 import type { Device, DeviceState } from '../../types'
 
-import { cn } from '../../lib/cn'
+import { PanelButton } from '../ui/panel-button'
 import { ReadoutDisplay } from '../ui/readout-display'
+import { ToggleBank } from '../ui/toggle-bank'
 
 const MODES = ['heat', 'cool', 'auto', 'off'] as const
 type ThermostatMode = (typeof MODES)[number]
 
-const MODE_LABELS: Record<ThermostatMode, string> = {
-	heat: 'HEAT',
-	cool: 'COOL',
-	auto: 'AUTO',
-	off: 'OFF',
+const MODE_LED_COLORS: Record<ThermostatMode, string | undefined> = {
+	heat: 'rgb(249,115,22)',
+	cool: 'rgb(59,130,246)',
+	auto: 'rgb(245,158,11)',
+	off: undefined,
 }
 
-const MODE_ARIA_LABELS: Record<ThermostatMode, string> = {
-	heat: 'Heat',
-	cool: 'Cool',
-	auto: 'Auto',
-	off: 'Off',
-}
-
-// mode-specific active styling
-function modeActiveStyle(mode: ThermostatMode): string {
-	switch (mode) {
-		case 'heat':
-			return 'bg-orange-50 text-orange-800 border-orange-300 shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]'
-		case 'cool':
-			return 'bg-blue-50 text-blue-800 border-blue-300 shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]'
-		default:
-			return 'bg-amber-50 text-amber-800 border-amber-300 shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]'
-	}
-}
+const MODE_OPTIONS = MODES.map((m) => ({
+	key: m,
+	label: m.toUpperCase(),
+	ledColor: MODE_LED_COLORS[m],
+}))
 
 interface ThermostatCardProps {
 	device: Device
@@ -40,20 +26,19 @@ interface ThermostatCardProps {
 	onStateChange?: (deviceId: string, state: Partial<DeviceState>) => Promise<void>
 }
 
-export function ThermostatCard({ device, variant = 'compact', onStateChange }: Readonly<ThermostatCardProps>) {
+export function ThermostatCard({ device, onStateChange }: Readonly<ThermostatCardProps>) {
 	const state = device.state
 	const currentMode = (state.mode ?? 'auto') as ThermostatMode
 	const target = state.targetTemperature
-	const isFull = variant === 'full'
 
 	async function adjustTarget(delta: number) {
 		if (!onStateChange || target === undefined) return
 		await onStateChange(device.id, { targetTemperature: Math.round((target + delta) * 2) / 2 })
 	}
 
-	async function setMode(mode: ThermostatMode) {
+	function setMode(mode: string) {
 		if (!onStateChange) return
-		await onStateChange(device.id, { mode })
+		void onStateChange(device.id, { mode })
 	}
 
 	// build readout aria label
@@ -79,54 +64,43 @@ export function ThermostatCard({ device, variant = 'compact', onStateChange }: R
 				</ReadoutDisplay>
 			)}
 
-			{/* ── Target temp ─────────────────────────────────────────── */}
+			{/* ── Target temp stepper ─────────────────────────────────── */}
 			{target !== undefined && (
-				<div className="flex items-center gap-2">
-					<span className="font-michroma text-2xs uppercase tracking-widest text-stone-400 flex-1" aria-label="Target Temperature">TARGET</span>
-					<Button
-						onPress={() => { void adjustTarget(-0.5) }}
-						isDisabled={!device.online}
-						className="w-7 h-7 rounded-full bg-stone-100 text-stone-600 text-sm font-medium hover:bg-stone-200 pressed:bg-stone-300 disabled:opacity-40 cursor-default flex items-center justify-center"
-					>
-						−
-					</Button>
-					<span className="font-ioskeley text-sm font-semibold text-stone-800 w-14 text-center">
-						{target.toFixed(1)}°C
-					</span>
-					<Button
-						onPress={() => { void adjustTarget(0.5) }}
-						isDisabled={!device.online}
-						className="w-7 h-7 rounded-full bg-stone-100 text-stone-600 text-sm font-medium hover:bg-stone-200 pressed:bg-stone-300 disabled:opacity-40 cursor-default flex items-center justify-center"
-					>
-						+
-					</Button>
+				<div>
+					<span className="font-michroma text-2xs uppercase tracking-widest text-stone-400 mb-1.5 block">TARGET</span>
+					<div className="flex items-center gap-2">
+						<PanelButton
+							size="sm"
+							onPress={() => { void adjustTarget(-0.5) }}
+							isDisabled={!device.online}
+							aria-label="Decrease target temperature"
+						>
+							−
+						</PanelButton>
+						<ReadoutDisplay size="sm" aria-label={`Target: ${target.toFixed(1)}°C`}>
+							{target.toFixed(1)}°
+						</ReadoutDisplay>
+						<PanelButton
+							size="sm"
+							onPress={() => { void adjustTarget(0.5) }}
+							isDisabled={!device.online}
+							aria-label="Increase target temperature"
+						>
+							+
+						</PanelButton>
+					</div>
 				</div>
 			)}
 
-			{/* ── Mode buttons (transport-style) ──────────────────────── */}
-			<div>
-				<span className="font-michroma text-2xs uppercase tracking-widest text-stone-400 mb-1.5 block" aria-label="Mode">MODE</span>
-				<div className="flex gap-1">
-					{MODES.map((m) => (
-						<Button
-							key={m}
-							onPress={() => { void setMode(m) }}
-							isDisabled={!device.online}
-							className={cn(
-								'flex-1 font-michroma uppercase tracking-wider cursor-default transition-colors disabled:opacity-40',
-								'rounded-md border',
-								isFull ? 'py-2 text-[11px]' : 'py-1.5 text-2xs',
-								currentMode === m
-									? modeActiveStyle(m)
-									: 'bg-stone-50 text-stone-500 border-stone-200 hover:bg-stone-100 pressed:bg-stone-200',
-							)}
-							aria-label={MODE_ARIA_LABELS[m]}
-						>
-							{MODE_LABELS[m]}
-						</Button>
-					))}
-				</div>
-			</div>
+			{/* ── Mode toggle bank ────────────────────────────────────── */}
+			<ToggleBank
+				label="MODE"
+				mode="selection"
+				options={MODE_OPTIONS}
+				value={currentMode}
+				onChange={setMode}
+				disabled={!device.online}
+			/>
 		</div>
 	)
 }
