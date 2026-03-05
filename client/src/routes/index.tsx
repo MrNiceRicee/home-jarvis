@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
 import { toast } from 'sonner'
 
 import type { Device, DeviceState, Section } from '../types'
 
 import { CreateSectionDialog } from '../components/CreateSectionDialog'
+import { DeviceDetailDialog } from '../components/DeviceDetailDialog'
 import { SectionGroup } from '../components/SectionGroup'
 import { useStreamStatus } from '../hooks/useDeviceStream'
 import { api } from '../lib/api'
@@ -15,6 +17,7 @@ export const Route = createFileRoute('/')({ component: Dashboard })
 function Dashboard() {
 	const queryClient = useQueryClient()
 	const status = useStreamStatus()
+	const [expandedDevice, setExpandedDevice] = useState<Device | null>(null)
 
 	const { data: devices = [] } = useQuery<Device[]>({
 		queryKey: ['devices'],
@@ -70,6 +73,11 @@ function Dashboard() {
 		}
 		await queryClient.invalidateQueries({ queryKey: ['sections'] })
 	}
+
+	// keep expanded device in sync with SSE updates
+	const liveExpandedDevice = expandedDevice
+		? devices.find((d) => d.id === expandedDevice.id) ?? expandedDevice
+		: null
 
 	if (devices.length === 0 && status === 'connected') {
 		return (
@@ -127,6 +135,7 @@ function Dashboard() {
 							key={section.id}
 							section={section}
 							devices={sectionDevices}
+							onExpand={setExpandedDevice}
 							onStateChange={handleStateChange}
 							onRename={handleRenameSection}
 							onDelete={handleDeleteSection}
@@ -138,6 +147,12 @@ function Dashboard() {
 			<div className="mt-8 flex justify-center">
 				<CreateSectionDialog onSubmit={handleAddSection} />
 			</div>
+
+			<DeviceDetailDialog
+				device={liveExpandedDevice}
+				onClose={() => setExpandedDevice(null)}
+				onStateChange={handleStateChange}
+			/>
 		</div>
 	)
 }

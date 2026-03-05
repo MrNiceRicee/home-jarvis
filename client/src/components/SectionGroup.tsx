@@ -9,12 +9,13 @@ import { DeviceCard } from './DeviceCard'
 interface SectionGroupProps {
 	section: Section
 	devices: Device[]
+	onExpand?: (device: Device) => void
 	onStateChange: (deviceId: string, state: Partial<DeviceState>) => Promise<void>
 	onRename?: (sectionId: string, name: string) => Promise<void>
 	onDelete?: (sectionId: string) => Promise<void>
 }
 
-export function SectionGroup({ section, devices, onStateChange, onRename, onDelete }: Readonly<SectionGroupProps>) {
+export function SectionGroup({ section, devices, onExpand, onStateChange, onRename, onDelete }: Readonly<SectionGroupProps>) {
 	const [editing, setEditing] = useState(false)
 	const [editName, setEditName] = useState(section.name)
 	const inputRef = useRef<HTMLInputElement>(null)
@@ -83,6 +84,7 @@ export function SectionGroup({ section, devices, onStateChange, onRename, onDele
 						<DeviceCard
 							key={device.id}
 							device={device}
+							onExpand={onExpand}
 							onStateChange={onStateChange}
 						/>
 					))}
