@@ -81,7 +81,7 @@ export function DeviceDetailDialog({ device, onClose, onStateChange }: Readonly<
 							<Heading slot="title" className="text-sm font-michroma text-stone-800 truncate">
 								{device.name}
 							</Heading>
-							<p className="font-michroma text-[10px] uppercase tracking-wider text-stone-400 truncate">
+							<p className="font-michroma text-2xs uppercase tracking-wider text-stone-400 truncate">
 								{BRAND_LABEL[device.brand] ?? device.brand}
 								{!device.online && ' · Offline'}
 							</p>

@@ -82,7 +82,7 @@ export function ThermostatCard({ device, variant = 'compact', onStateChange }: R
 			{/* ── Target temp ─────────────────────────────────────────── */}
 			{target !== undefined && (
 				<div className="flex items-center gap-2">
-					<span className="font-michroma text-[10px] uppercase tracking-widest text-stone-400 flex-1" aria-label="Target Temperature">TARGET</span>
+					<span className="font-michroma text-2xs uppercase tracking-widest text-stone-400 flex-1" aria-label="Target Temperature">TARGET</span>
 					<Button
 						onPress={() => { void adjustTarget(-0.5) }}
 						isDisabled={!device.online}
@@ -105,7 +105,7 @@ export function ThermostatCard({ device, variant = 'compact', onStateChange }: R
 
 			{/* ── Mode buttons (transport-style) ──────────────────────── */}
 			<div>
-				<span className="font-michroma text-[10px] uppercase tracking-widest text-stone-400 mb-1.5 block" aria-label="Mode">MODE</span>
+				<span className="font-michroma text-2xs uppercase tracking-widest text-stone-400 mb-1.5 block" aria-label="Mode">MODE</span>
 				<div className="flex gap-1">
 					{MODES.map((m) => (
 						<Button
@@ -115,7 +115,7 @@ export function ThermostatCard({ device, variant = 'compact', onStateChange }: R
 							className={cn(
 								'flex-1 font-michroma uppercase tracking-wider cursor-default transition-colors disabled:opacity-40',
 								'rounded-md border',
-								isFull ? 'py-2 text-[11px]' : 'py-1.5 text-[10px]',
+								isFull ? 'py-2 text-[11px]' : 'py-1.5 text-2xs',
 								currentMode === m
 									? modeActiveStyle(m)
 									: 'bg-stone-50 text-stone-500 border-stone-200 hover:bg-stone-100 pressed:bg-stone-200',

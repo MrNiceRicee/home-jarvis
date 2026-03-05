@@ -105,12 +105,12 @@ export function AirPurifierCard({ device, variant = 'compact', onStateChange }: 
 						<span className="text-xs text-[#faf0dc]/50 ml-1.5">ug/m3</span>
 					</ReadoutDisplay>
 				) : (
-					<span className={cn('text-[10px] font-michroma uppercase tracking-wider', isOn ? 'text-blue-600' : 'text-stone-400')}>
+					<span className={cn('text-2xs font-michroma uppercase tracking-wider', isOn ? 'text-blue-600' : 'text-stone-400')}>
 						{isOn ? 'On' : 'Off'}
 					</span>
 				)}
 				{aqi && (
-					<span className={cn('text-[10px] font-michroma uppercase tracking-wider px-2 py-0.5 rounded-full', aqi.color)}>
+					<span className={cn('text-2xs font-michroma uppercase tracking-wider px-2 py-0.5 rounded-full', aqi.color)}>
 						{aqi.label}
 					</span>
 				)}
@@ -119,7 +119,7 @@ export function AirPurifierCard({ device, variant = 'compact', onStateChange }: 
 			{/* ── Segmented AQI bar ──────────────────────────────────── */}
 			{state.airQuality !== undefined && (
 				<div>
-					<span className="font-michroma text-[10px] uppercase tracking-widest text-stone-400 mb-1.5 block" aria-label="Air Quality Index">AQI</span>
+					<span className="font-michroma text-2xs uppercase tracking-widest text-stone-400 mb-1.5 block" aria-label="Air Quality Index">AQI</span>
 					<div className="flex gap-1" role="meter" aria-label={`Air quality level: ${aqi?.label ?? 'unknown'}`} aria-valuemin={1} aria-valuemax={4} aria-valuenow={litSegments}>
 						{AQI_SEGMENT_COLORS.map((segColor, i) => (
 							<div
@@ -138,7 +138,7 @@ export function AirPurifierCard({ device, variant = 'compact', onStateChange }: 
 			{state.filterLife !== undefined && (
 				<div>
 					<div className="flex items-center justify-between mb-1">
-						<span className="font-michroma text-[10px] uppercase tracking-widest text-stone-400" aria-label="Filter Life">FILTER</span>
+						<span className="font-michroma text-2xs uppercase tracking-widest text-stone-400" aria-label="Filter Life">FILTER</span>
 						<span className="font-ioskeley text-xs text-stone-500">{state.filterLife}%</span>
 					</div>
 					<div className="h-1 bg-stone-200/80 rounded-full overflow-hidden">
@@ -153,14 +153,14 @@ export function AirPurifierCard({ device, variant = 'compact', onStateChange }: 
 			{/* ── Fan speed stepped buttons (full view only) ─────────── */}
 			{isFull && state.fanSpeed !== undefined && device.online && (
 				<div>
-					<span className="font-michroma text-[10px] uppercase tracking-widest text-stone-400 mb-1.5 block" aria-label="Fan Speed">FAN</span>
+					<span className="font-michroma text-2xs uppercase tracking-widest text-stone-400 mb-1.5 block" aria-label="Fan Speed">FAN</span>
 					<div className="flex gap-1">
 						{FAN_STEPS.map((step, i) => (
 							<Button
 								key={step.label}
 								onPress={() => { void onStateChange?.(device.id, { fanSpeed: step.value }) }}
 								className={cn(
-									'flex-1 py-1.5 text-[10px] font-michroma uppercase tracking-wider',
+									'flex-1 py-1.5 text-2xs font-michroma uppercase tracking-wider',
 									'rounded-md border transition-colors cursor-default',
 									i === activeStep
 										? 'bg-amber-50 text-amber-800 border-amber-300 shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]'
@@ -181,18 +181,18 @@ export function AirPurifierCard({ device, variant = 'compact', onStateChange }: 
 					onPress={handlePowerToggle}
 					isDisabled={toggling}
 					className={cn(
-						'w-full flex items-center justify-center gap-2 py-1.5 text-[10px] font-michroma uppercase tracking-wider',
+						'w-full flex items-center justify-center gap-2 py-1.5 text-2xs font-michroma uppercase tracking-wider',
 						'rounded-md border cursor-default disabled:opacity-40',
-						'transition-[box-shadow,transform] duration-100',
+						'transition-shadow duration-100',
 						isOn
 							? 'bg-stone-200 text-stone-700 border-stone-300 shadow-[inset_0_1px_3px_rgba(0,0,0,0.12)]'
 							: 'bg-stone-50 text-stone-500 border-stone-300 shadow-[0_1px_3px_rgba(0,0,0,0.08)]',
-						'pressed:translate-y-px pressed:shadow-[inset_0_1px_2px_rgba(0,0,0,0.12)]',
+						'pressed:shadow-[inset_0_1px_2px_rgba(0,0,0,0.12)]',
 					)}
 				>
 					<span
-						className={cn('w-2 h-2 rounded-full transition-all', isOn ? 'bg-blue-400' : 'bg-stone-400')}
-						style={isOn ? { boxShadow: '0 0 4px rgba(96,165,250,0.7), 0 0 10px rgba(96,165,250,0.3)' } : undefined}
+						className={cn('w-2 h-2 rounded-full transition-all', isOn ? 'bg-emerald-400' : 'bg-stone-400')}
+						style={isOn ? { boxShadow: '0 0 4px rgba(52,211,153,0.7), 0 0 10px rgba(52,211,153,0.3)' } : undefined}
 					/>
 					{toggling ? '...' : 'POWER'}
 				</Button>

@@ -23,6 +23,7 @@
 		"@tanstack/react-router-devtools": "^1.163.3",
 		"clsx": "^2.1.1",
 		"home-jarvis-server": "workspace:*",
+		"motion": "^12.35.0",
 		"react": "^19.2.0",
 		"react-aria-components": "^1.15.1",
 		"react-dom": "^19.2.0",

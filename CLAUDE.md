@@ -15,6 +15,11 @@ bun run db:studio              # visual DB browser
 
 **Always run `bun run system:check --force` after every code change.**
 
+## Screenshots
+
+Save all screenshots and images to `.tmp/screenshots/`. This directory is git-ignored.
+After screenshots are no longer needed (e.g., design iteration is done), delete them from `.tmp/screenshots/`.
+
 ## Type Safety Rules
 
 - **No `as any`** — never cast to `any`. If a type is genuinely unknown, use `unknown` and narrow it.
