@@ -276,7 +276,7 @@ interface InnerProps {
 	onCancel: () => void
 }
 
-function IntegrationFormInner({ meta, prefill, onSubmit, onCancel }: Readonly<InnerProps>) {
+export function IntegrationFormInner({ meta, prefill, onSubmit, onCancel }: Readonly<InnerProps>) {
 	const [values, setValues] = useState<Record<string, string>>(() =>
 		Object.fromEntries(meta.fields.map((f) => [f.key, prefill?.[f.key] ?? ''])),
 	)
