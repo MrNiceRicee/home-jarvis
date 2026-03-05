@@ -2,12 +2,19 @@ import { randomUUID } from 'crypto'
 import { eq } from 'drizzle-orm'
 import Elysia, { status, t } from 'elysia'
 
+import type { Integration } from '../db/schema'
+
 import { db } from '../db'
 import { integrations } from '../db/schema'
 import { startPolling, stopPolling } from '../discovery/cloud-poller'
 import { discoverHueBridges, createHueApiKey } from '../integrations/hue/adapter'
 import { INTEGRATION_META, createAdapter } from '../integrations/registry'
 import { log } from '../lib/logger'
+
+/** strip sensitive fields (config contains credentials, session contains auth tokens) */
+function stripSensitive({ config: _config, session: _session, ...safe }: Integration): Omit<Integration, 'config' | 'session'> {
+	return safe
+}
 
 export const integrationsController = new Elysia({ prefix: '/api/integrations' })
 	.decorate('db', db)
@@ -16,8 +23,7 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 	.get('', ({ db }) => {
 		const configured = db.select().from(integrations).all()
 		return {
-			// Omit config blob (contains API keys/passwords) — client only needs id, brand, enabled
-			configured: configured.map(({ config: _config, ...rest }) => rest),
+			configured: configured.map(stripSensitive),
 			available: Object.values(INTEGRATION_META),
 		}
 	})
@@ -55,17 +61,20 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 			const now = Date.now()
 
 			if (existing) {
+				// clear session + authError on config change — forces re-auth on next poll
 				db.update(integrations)
-					.set({ config: JSON.stringify(config), enabled: true, updatedAt: now })
+					.set({ config: JSON.stringify(config), session: null, authError: null, enabled: true, updatedAt: now })
 					.where(eq(integrations.brand, brand))
 					.run()
 
-				// Restart polling with new config
+				const updated = db.select().from(integrations).where(eq(integrations.brand, brand)).get()!
+
+				// restart polling with new config (session cleared)
 				stopPolling(existing.id)
-				startPolling(db, existing.id, brand, config)
+				startPolling(db, updated)
 
 				log.info('addIntegration updated', { brand, integrationId: existing.id })
-				return db.select().from(integrations).where(eq(integrations.brand, brand)).get()
+				return stripSensitive(updated)
 			}
 
 			const id = randomUUID()
@@ -80,11 +89,13 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 				})
 				.run()
 
+			const inserted = db.select().from(integrations).where(eq(integrations.id, id)).get()!
+
 			// Start polling
-			startPolling(db, id, brand, config)
+			startPolling(db, inserted)
 
 			log.info('addIntegration created', { brand, integrationId: id })
-			return db.select().from(integrations).where(eq(integrations.id, id)).get()
+			return stripSensitive(inserted)
 		},
 		{
 			body: t.Object({

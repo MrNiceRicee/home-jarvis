@@ -12,6 +12,8 @@ export const integrations = sqliteTable('integrations', {
 	id: text('id').primaryKey(),
 	brand: text('brand').notNull().unique(),
 	config: text('config').notNull().default('{}'), // JSON blob — credentials, API keys
+	session: text('session'), // JSON blob — runtime auth state (tokens, expiry). plaintext, same threat model as config
+	authError: text('auth_error'), // last auth error message, null = healthy
 	enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
 	createdAt: integer('created_at').notNull(),
 	updatedAt: integer('updated_at').notNull(),

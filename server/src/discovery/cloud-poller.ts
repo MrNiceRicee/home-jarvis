@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto'
 import { eq } from 'drizzle-orm'
 
 import type { DB } from '../db'
-import type { Device } from '../db/schema'
+import type { Device, Integration } from '../db/schema'
 import type { DeviceState } from '../integrations/types'
 
 import { devices, integrations } from '../db/schema'
@@ -37,25 +37,50 @@ const GRACE_PERIOD_MS = 60_000
 
 const timers = new Map<string, ReturnType<typeof setInterval>>()
 
+/** read session from an adapter instance (only cloud adapters expose this) */
+function adapterSession(adapter: unknown): string | null {
+	if (adapter && typeof adapter === 'object' && 'session' in adapter) {
+		return (adapter as { session: string | null }).session
+	}
+	return null
+}
+
+/** persist session + authError back to the integrations row */
+function persistSession(db: DB, integrationId: string, session: string | null, authError: string | null) {
+	db.update(integrations)
+		.set({ session, authError, updatedAt: Date.now() })
+		.where(eq(integrations.id, integrationId))
+		.run()
+}
+
 /** Start polling for a single integration */
-export function startPolling(
-	db: DB,
-	integrationId: string,
-	brand: string,
-	config: Record<string, string>,
-) {
+export function startPolling(db: DB, integration: Integration) {
+	const { id: integrationId, brand } = integration
+	const config = parseJson<Record<string, string>>(integration.config).unwrapOr({})
+
 	stopPolling(integrationId)
+
+	// mutable session state — updated after each adapter operation
+	let session = integration.session ?? null
 
 	const pollCfg = DEFAULTS[brand] ?? { stateIntervalMs: 60_000, discoverIntervalMs: 5 * 60_000 }
 	log.info('poller start', { brand, integrationId, discoverIntervalMs: pollCfg.discoverIntervalMs })
 
-	runDiscovery(db, integrationId, brand, config).catch((err: unknown) => {
+	const doDiscovery = async () => {
+		session = await runDiscovery(db, integrationId, brand, config, session)
+	}
+
+	const doStatePoll = async () => {
+		session = await runStatePoll(db, integrationId, brand, config, session)
+	}
+
+	doDiscovery().catch((err: unknown) => {
 		log.error('poller runDiscovery unexpected error', { brand, error: err instanceof Error ? err.message : String(err) })
 	})
 
 	const discoverTimer = setInterval(
 		() =>
-			runDiscovery(db, integrationId, brand, config).catch((err: unknown) => {
+			doDiscovery().catch((err: unknown) => {
 				log.error('poller runDiscovery unexpected error', { brand, error: err instanceof Error ? err.message : String(err) })
 			}),
 		pollCfg.discoverIntervalMs,
@@ -68,7 +93,7 @@ export function startPolling(
 	if (!meta?.discoveryOnly && pollCfg.stateIntervalMs < pollCfg.discoverIntervalMs) {
 		const stateTimer = setInterval(
 			() =>
-				runStatePoll(db, integrationId, brand, config).catch((err: unknown) => {
+				doStatePoll().catch((err: unknown) => {
 					log.error('poller runStatePoll unexpected error', { brand, error: err instanceof Error ? err.message : String(err) })
 				}),
 			pollCfg.stateIntervalMs,
@@ -151,21 +176,30 @@ function markAbsentDevicesOffline(db: DB, integrationId: string, brand: string, 
 	}
 }
 
-/** Lightweight state poll — update existing devices only, no upsert/offline logic */
+/** Lightweight state poll — update existing devices only, no upsert/offline logic. Returns updated session. */
 async function runStatePoll(
 	db: DB,
 	integrationId: string,
 	brand: string,
 	config: Record<string, string>,
-) {
-	const adapterResult = createAdapter(brand, config)
-	if (adapterResult.isErr()) return
+	session: string | null,
+): Promise<string | null> {
+	const adapterResult = createAdapter(brand, config, session)
+	if (adapterResult.isErr()) return session
 
-	const discoveredResult = await adapterResult.value.discover()
+	const adapter = adapterResult.value
+	const discoveredResult = await adapter.discover()
+
+	// persist session after adapter operation
+	const updatedSession = adapterSession(adapter) ?? session
+
 	if (discoveredResult.isErr()) {
 		log.debug('poller state poll failed', { brand, error: discoveredResult.error.message })
-		return
+		persistSession(db, integrationId, updatedSession, discoveredResult.error.message)
+		return updatedSession
 	}
+
+	persistSession(db, integrationId, updatedSession, null)
 
 	const now = Date.now()
 	const knownDevices = db.select().from(devices).where(eq(devices.integrationId, integrationId)).all()
@@ -190,38 +224,50 @@ async function runStatePoll(
 			source: 'poller',
 		})
 	}
+
+	return updatedSession
 }
 
-/** Run device discovery + upsert results into DB */
+/** Run device discovery + upsert results into DB. Returns updated session. */
 async function runDiscovery(
 	db: DB,
 	integrationId: string,
 	brand: string,
 	config: Record<string, string>,
-) {
+	session: string | null,
+): Promise<string | null> {
 	const meta = INTEGRATION_META[brand]
 
-	// discovery-only brands: poll each device individually from stored metadata
+	// discovery-only brands: poll each device individually from stored metadata (no session needed)
 	if (meta?.discoveryOnly) {
 		const deviceRows = db.select().from(devices)
 			.where(eq(devices.integrationId, integrationId)).all()
 		await pollDevicesIndividually(db, brand, deviceRows)
-		return
+		return session
 	}
 
 	// standard integration-level discovery
-	const adapterResult = createAdapter(brand, config)
+	const adapterResult = createAdapter(brand, config, session)
 	if (adapterResult.isErr()) {
 		log.debug('poller adapter unavailable', { brand })
-		return
+		return session
 	}
 
+	const adapter = adapterResult.value
 	log.debug('poller discovery run', { brand })
-	const discoveredResult = await adapterResult.value.discover()
+	const discoveredResult = await adapter.discover()
+
+	// persist session after adapter operation
+	const updatedSession = adapterSession(adapter) ?? session
+
 	if (discoveredResult.isErr()) {
 		log.error('poller discovery failed', { brand, error: discoveredResult.error.message })
-		return
+		persistSession(db, integrationId, updatedSession, discoveredResult.error.message)
+		return updatedSession
 	}
+
+	// clear authError on success
+	persistSession(db, integrationId, updatedSession, null)
 
 	const discovered = discoveredResult.value
 	log.info('poller discovery ok', { brand, deviceCount: discovered.length })
@@ -236,6 +282,8 @@ async function runDiscovery(
 
 	markAbsentDevicesOffline(db, integrationId, brand, seenExternalIds, now)
 	eventBus.publish({ type: 'discovery:complete', brand, timestamp: now, source: 'poller' })
+
+	return updatedSession
 }
 
 /** Poll each device individually using its stored metadata (for discovery-only brands) */
@@ -329,7 +377,6 @@ export async function startAllPolling(db: DB) {
 	const enabled = allIntegrations.filter((i) => i.enabled)
 	log.info('startAllPolling', { total: allIntegrations.length, enabled: enabled.length, brands: enabled.map((i) => i.brand) })
 	for (const integration of enabled) {
-		const config = parseJson<Record<string, string>>(integration.config).unwrapOr({})
-		startPolling(db, integration.id, integration.brand, config)
+		startPolling(db, integration)
 	}
 }

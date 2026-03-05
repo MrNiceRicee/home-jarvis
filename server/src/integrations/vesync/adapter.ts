@@ -1,10 +1,9 @@
 import { createHash } from 'crypto'
-import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { ResultAsync, errAsync } from 'neverthrow'
-import { join } from 'path'
 
 import type { DeviceAdapter, DeviceState, DeviceType, DiscoveredDevice } from '../types'
 
+import { parseJson } from '../../lib/parse-json'
 import { getStatusMethod, mapVeSyncType, parseStateByType } from './parsers'
 
 const BASE_URL = 'https://smartapi.vesync.com'
@@ -90,35 +89,7 @@ interface VeSyncDeviceMeta {
 	deviceRegion: string
 }
 
-// ─── Session cache (persisted to disk, survives hot reloads) ─────────────────
-
-const SESSION_FILE = join(import.meta.dir, '../../../data/vesync-sessions.json')
-
-const sessionCache = new Map<string, VeSyncSession>(loadSessionsFromDisk())
-
-function loadSessionsFromDisk(): Array<[string, VeSyncSession]> {
-	try {
-		if (!existsSync(SESSION_FILE)) return []
-		const raw = readFileSync(SESSION_FILE, 'utf-8')
-		const entries = JSON.parse(raw) as Array<[string, VeSyncSession]>
-		// filter out expired sessions
-		return entries.filter(([, s]) => Date.now() < s.expiresAt)
-	} catch {
-		return []
-	}
-}
-
-function persistSessions(): void {
-	try {
-		writeFileSync(SESSION_FILE, JSON.stringify([...sessionCache.entries()]))
-	} catch {
-		// non-fatal — worst case we re-login next restart
-	}
-}
-
-function sessionKey(email: string, password: string): string {
-	return `${email}:${md5(password)}`
-}
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function md5(input: string): string {
 	// eslint-disable-next-line sonarjs/hashing -- vesync API requires MD5-hashed passwords
@@ -206,24 +177,6 @@ async function login(email: string, password: string): Promise<VeSyncSession> {
 	}
 }
 
-async function getSession(email: string, password: string): Promise<VeSyncSession> {
-	const key = sessionKey(email, password)
-	const cached = sessionCache.get(key)
-	if (cached && Date.now() < cached.expiresAt) return cached
-
-	const session = await login(email, password)
-	sessionCache.set(key, session)
-	persistSessions()
-	return session
-}
-
-function invalidateSession(email: string, password: string): void {
-	sessionCache.delete(sessionKey(email, password))
-	persistSessions()
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function buildDeviceListPayload(session: VeSyncSession): string {
 	return JSON.stringify({
 		acceptLanguage: DEFAULT_LANG,
@@ -281,10 +234,17 @@ export class VeSyncAdapter implements DeviceAdapter {
 
 	private email: string
 	private password: string
+	private _session: VeSyncSession | null
 
-	constructor(config: Record<string, string>) {
+	constructor(config: Record<string, string>, session?: string | null) {
 		this.email = config.email ?? ''
 		this.password = config.password ?? ''
+		this._session = this.parseSession(session ?? null)
+	}
+
+	/** serialized session for the poller to persist back to DB */
+	get session(): string | null {
+		return this._session ? JSON.stringify(this._session) : null
 	}
 
 	validateCredentials(config: Record<string, string>): ResultAsync<void, Error> {
@@ -322,8 +282,24 @@ export class VeSyncAdapter implements DeviceAdapter {
 
 	// ─── Private ────────────────────────────────────────────────────────────────
 
+	private parseSession(raw: string | null): VeSyncSession | null {
+		if (!raw) return null
+		const result = parseJson<VeSyncSession>(raw)
+		if (result.isErr()) return null
+		const s = result.value
+		if (!s.token || !s.accountID || typeof s.expiresAt !== 'number') return null
+		if (Date.now() >= s.expiresAt) return null
+		return s
+	}
+
+	private async getSession(): Promise<VeSyncSession> {
+		if (this._session && Date.now() < this._session.expiresAt) return this._session
+		this._session = await login(this.email, this.password)
+		return this._session
+	}
+
 	private async fetchDevices(): Promise<DiscoveredDevice[]> {
-		const session = await getSession(this.email, this.password)
+		const session = await this.getSession()
 		const res = await fetch(`${BASE_URL}/cloud/v1/deviceManaged/devices`, {
 			method: 'POST',
 			headers: BYPASS_HEADERS,
@@ -489,13 +465,13 @@ export class VeSyncAdapter implements DeviceAdapter {
 	}
 
 	private async withTokenRetry<T>(fn: (session: VeSyncSession) => Promise<T>): Promise<T> {
-		const session = await getSession(this.email, this.password)
+		const session = await this.getSession()
 		try {
 			return await fn(session)
 		} catch (e) {
 			if (e instanceof TokenExpiredError) {
-				invalidateSession(this.email, this.password)
-				const freshSession = await getSession(this.email, this.password)
+				this._session = null
+				const freshSession = await this.getSession()
 				return fn(freshSession)
 			}
 			throw e

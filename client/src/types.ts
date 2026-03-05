@@ -37,8 +37,8 @@ export type Device = Omit<ServerDevice, 'state'> & { state: DeviceState }
 // ─── Client-only composites ───────────────────────────────────────────────────
 
 export interface IntegrationsResponse {
-	// config blob is stripped server-side (contains credentials)
-	configured: Omit<Integration, 'config'>[]
+	// config + session are stripped server-side (contain credentials/tokens)
+	configured: Omit<Integration, 'config' | 'session'>[]
 	available: IntegrationMeta[]
 }
 
