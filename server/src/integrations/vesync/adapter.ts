@@ -5,6 +5,8 @@ import { join } from 'path'
 
 import type { DeviceAdapter, DeviceState, DeviceType, DiscoveredDevice } from '../types'
 
+import { getStatusMethod, mapVeSyncType, parseStateByType } from './parsers'
+
 const BASE_URL = 'https://smartapi.vesync.com'
 const TIMEOUT = 15_000
 const TOKEN_EXPIRED_CODE = -11001000
@@ -222,17 +224,6 @@ function invalidateSession(email: string, password: string): void {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function mapVeSyncType(deviceType: string, type: string): DeviceType {
-	const dt = deviceType.toLowerCase()
-	const t = type.toLowerCase()
-
-	if (dt.includes('wifi-air') || t.startsWith('core') || t.startsWith('lav') || t.startsWith('vital')) return 'air_purifier'
-	if (dt.includes('wifi-switch') || t.startsWith('esw')) return 'switch'
-	if (dt.includes('wifi-humid') || t.startsWith('luh') || t.startsWith('oasis')) return 'air_purifier'
-	if (t.startsWith('esl') || t.startsWith('xyd')) return 'light'
-	return 'switch'
-}
-
 function buildDeviceListPayload(session: VeSyncSession): string {
 	return JSON.stringify({
 		acceptLanguage: DEFAULT_LANG,
@@ -279,73 +270,6 @@ function buildBypassPayload(
 		userCountryCode: DEFAULT_REGION,
 		uuid: meta.uuid,
 	})
-}
-
-function parseAirPurifierState(result: Record<string, unknown>): DeviceState {
-	const state: DeviceState = {}
-	const r = result.result as Record<string, unknown> | undefined
-
-	if (r) {
-		if ('enabled' in r) state.on = r.enabled === true
-		if ('switch_on' in r) state.on = r.switch_on === true
-		if ('fan_level' in r) state.fanSpeed = (r.fan_level as number) * 20 // 1-5 → 0-100
-		if ('air_quality_value' in r) state.airQuality = r.air_quality_value as number
-		if ('filter_life' in r) state.humidity = r.filter_life as number // reuse field for filter %
-		if ('mode' in r) state.mode = r.mode as string
-	}
-
-	return state
-}
-
-function parseSwitchState(result: Record<string, unknown>): DeviceState {
-	const state: DeviceState = {}
-	const r = result.result as Record<string, unknown> | undefined
-
-	if (r) {
-		if ('enabled' in r) state.on = r.enabled === true
-		if ('switch_on' in r) state.on = r.switch_on === true
-	}
-
-	return state
-}
-
-function parseLightState(result: Record<string, unknown>): DeviceState {
-	const state: DeviceState = {}
-	const r = result.result as Record<string, unknown> | undefined
-
-	if (r) {
-		if ('enabled' in r) state.on = r.enabled === true
-		if ('brightness' in r) state.brightness = r.brightness as number
-		if ('colorTemp' in r) state.colorTemp = r.colorTemp as number
-	}
-
-	return state
-}
-
-function getStatusMethod(deviceType: DeviceType): string {
-	switch (deviceType) {
-		case 'air_purifier':
-			return 'getPurifierStatus'
-		case 'switch':
-			return 'getOutletStatus'
-		case 'light':
-			return 'getLightStatus'
-		default:
-			return 'getPurifierStatus'
-	}
-}
-
-function parseStateByType(deviceType: DeviceType, result: Record<string, unknown>): DeviceState {
-	switch (deviceType) {
-		case 'air_purifier':
-			return parseAirPurifierState(result)
-		case 'switch':
-			return parseSwitchState(result)
-		case 'light':
-			return parseLightState(result)
-		default:
-			return parseAirPurifierState(result)
-	}
 }
 
 // ─── Adapter ──────────────────────────────────────────────────────────────────

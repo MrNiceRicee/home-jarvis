@@ -4,9 +4,14 @@ import type { DeviceEvent } from '../integrations/types'
 
 class DeviceEventBus extends EventEmitter<{
 	'device:update': [DeviceEvent]
+	'device:new': [DeviceEvent]
 }> {
 	publish(payload: DeviceEvent) {
-		this.emit('device:update', payload)
+		if (payload.type === 'device:new') {
+			this.emit('device:new', payload)
+		} else {
+			this.emit('device:update', payload)
+		}
 	}
 }
 

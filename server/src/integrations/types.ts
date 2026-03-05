@@ -1,5 +1,7 @@
 import type { ResultAsync } from 'neverthrow'
 
+import type { Device as SchemaDevice } from '../db/schema'
+
 export type DeviceType =
 	| 'light'
 	| 'switch'
@@ -44,7 +46,11 @@ export interface DeviceState {
 	targetCoolTemp?: number // fridge target °C
 	targetFreezeTemp?: number // freezer target °C
 
-	[key: string]: unknown // brand-specific extras
+	// Air purifier metrics
+	pm25?: number // ug/m3
+	filterLife?: number // 0-100 percentage
+
+	extras?: Record<string, unknown> // brand-specific extras
 }
 
 export interface DiscoveredDevice {
@@ -96,13 +102,19 @@ export interface CredentialField {
 
 /** Internal SSE event emitted when device state changes */
 export interface DeviceEvent {
-	type: 'device:update' | 'device:online' | 'device:offline' | 'discovery:complete'
+	type: 'device:update' | 'device:new' | 'device:online' | 'device:offline' | 'discovery:complete'
 	deviceId?: string
 	brand?: string
 	state?: DeviceState
 	online?: boolean
 	timestamp: number
 	source?: 'dashboard' | 'poller' | 'matter' | 'scan'
+	device?: SanitizedDevice
+}
+
+/** Device payload with metadata stripped (safe for SSE) */
+export type SanitizedDevice = Omit<SchemaDevice, 'metadata' | 'state'> & {
+	state: DeviceState
 }
 
 // ─── Scan SSE events ────────────────────────────────────────────────────────

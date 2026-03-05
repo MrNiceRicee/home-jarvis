@@ -3,12 +3,15 @@ import { eq } from 'drizzle-orm'
 
 import type { DB } from '../db'
 import type { Device } from '../db/schema'
+import type { DeviceState } from '../integrations/types'
 
 import { devices, integrations } from '../db/schema'
 import { INTEGRATION_META, createAdapter } from '../integrations/registry'
 import { eventBus } from '../lib/events'
 import { log } from '../lib/logger'
+import { nextPosition } from '../lib/next-position'
 import { parseJson } from '../lib/parse-json'
+import { sanitizeDevice } from '../lib/sanitize'
 
 interface PollConfig {
 	/** State poll interval in ms (default 60s) */
@@ -94,7 +97,7 @@ function upsertDevice(
 	db: DB,
 	integrationId: string,
 	brand: string,
-	d: { externalId: string; name: string; type: string; state: Record<string, unknown>; metadata?: Record<string, unknown>; online: boolean },
+	d: { externalId: string; name: string; type: string; state: DeviceState; metadata?: Record<string, unknown>; online: boolean },
 	now: number,
 ) {
 	const existing = db.select().from(devices).where(eq(devices.externalId, d.externalId)).get()
@@ -118,17 +121,21 @@ function upsertDevice(
 	}
 
 	const id = randomUUID()
+	const position = nextPosition(db, 'home')
 	db.insert(devices)
 		.values({
 			id, integrationId, brand, externalId: d.externalId,
 			name: d.name, type: d.type, state: JSON.stringify(d.state),
 			metadata: d.metadata ? JSON.stringify(d.metadata) : null,
-			online: d.online, lastSeen: now, createdAt: now, updatedAt: now,
+			online: d.online, sectionId: 'home', position, lastSeen: now, createdAt: now, updatedAt: now,
 		})
 		.run()
 
+	const inserted = db.select().from(devices).where(eq(devices.id, id)).get()
 	log.info('poller device discovered', { brand, deviceId: id, deviceName: d.name, type: d.type })
-	eventBus.publish({ type: 'device:update', deviceId: id, brand, state: d.state, online: true, timestamp: now, source: 'poller' })
+	if (inserted) {
+		eventBus.publish({ type: 'device:new', deviceId: id, brand, state: d.state, online: true, timestamp: now, source: 'poller', device: sanitizeDevice(inserted) })
+	}
 }
 
 /** Mark devices not seen this cycle as offline */
@@ -243,7 +250,7 @@ async function pollDevicesIndividually(db: DB, brand: string, deviceRows: Device
 
 	type PollResult = {
 		deviceId: string
-		state: Record<string, unknown>
+		state: DeviceState
 		online: boolean
 		brand: string
 		skippedGrace?: boolean

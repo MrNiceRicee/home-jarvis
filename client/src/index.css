@@ -1,6 +1,18 @@
 @import "tailwindcss";
 @plugin "tailwindcss-react-aria-components";
 
+@font-face {
+	font-family: 'Michroma';
+	src: url('/fonts/Michroma-Regular.ttf') format('truetype');
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'DSEG7';
+	src: url('/fonts/DSEG7Classic-Regular.ttf') format('truetype');
+	font-display: swap;
+}
+
 @theme {
 	/* raised surface shadows — warm-tinted for paper feel */
 	--shadow-raised: 0 1px 2px rgba(120, 90, 50, 0.05), 0 4px 12px rgba(120, 90, 50, 0.04);

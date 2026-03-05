@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm'
 import { Elysia } from 'elysia'
 
 import { db } from './db'
-import { devices, integrations } from './db/schema'
+import { devices, integrations, sections } from './db/schema'
 import { startAllPolling } from './discovery/cloud-poller'
 import { clientAssets, hasClientAssets } from './generated/client-manifest'
 import { createAdapter } from './integrations/registry'
@@ -16,6 +16,7 @@ import { eventsController } from './routes/events.controller'
 import { integrationsController } from './routes/integrations.controller'
 import { matterController } from './routes/matter.controller'
 import { scanController } from './routes/scan.controller'
+import { sectionsController } from './routes/sections.controller'
 
 const PORT = Number(process.env.PORT ?? 3001)
 
@@ -49,6 +50,7 @@ const app = new Elysia()
 	.use(eventsController)
 	.use(scanController)
 	.use(matterController)
+	.use(sectionsController)
 	.get('/api/health', () => ({ ok: true, timestamp: Date.now() }))
 	// ── Embedded client (production only — dev uses Vite on :5173) ───────────
 	.get('/*', ({ request }) => {
@@ -66,6 +68,13 @@ const app = new Elysia()
 		})
 	})
 	.listen(PORT)
+
+// seed default "Home" section if no sections exist
+const now = Date.now()
+db.insert(sections)
+	.values({ id: 'home', name: 'Home', position: 0, createdAt: now, updatedAt: now })
+	.onConflictDoNothing()
+	.run()
 
 // Start polling for all configured integrations
 startAllPolling(db).catch((err: unknown) => {

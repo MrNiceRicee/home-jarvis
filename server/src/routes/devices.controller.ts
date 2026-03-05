@@ -1,15 +1,17 @@
 import { randomUUID } from 'crypto'
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import Elysia, { status, t } from 'elysia'
 
 import type { DeviceState } from '../integrations/types'
 
 import { db } from '../db'
-import { devices, integrations } from '../db/schema'
+import { devices, integrations, sections } from '../db/schema'
 import { createAdapter } from '../integrations/registry'
 import { eventBus } from '../lib/events'
 import { log } from '../lib/logger'
+import { nextPosition } from '../lib/next-position'
 import { parseJson } from '../lib/parse-json'
+import { sanitizeDevice } from '../lib/sanitize'
 import { matterBridge } from '../matter/bridge'
 
 let discoveryInFlight = false
@@ -94,13 +96,14 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 			}
 
 			const now = Date.now()
-			const addedDevices: { id: string; integrationId: string; brand: string; externalId: string; name: string; type: string; state: Record<string, unknown>; online: boolean }[] = []
+			let addedCount = 0
 
 			for (const d of discovered.value) {
 				const existing = db.select().from(devices).where(eq(devices.externalId, d.externalId)).get()
-				if (existing) continue // already in the system
+				if (existing) continue
 
 				const id = randomUUID()
+				const position = nextPosition(db, 'home')
 				db.insert(devices)
 					.values({
 						id,
@@ -112,29 +115,32 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 						state: JSON.stringify(d.state),
 						metadata: d.metadata ? JSON.stringify(d.metadata) : null,
 						online: d.online,
+						sectionId: 'home',
+						position,
 						lastSeen: now,
 						createdAt: now,
 						updatedAt: now,
 					})
 					.run()
 
-				eventBus.publish({
-					type: 'device:update',
-					deviceId: id,
-					brand,
-					state: d.state,
-					online: true,
-					timestamp: now,
-				})
+				const inserted = db.select().from(devices).where(eq(devices.id, id)).get()
+				if (inserted) {
+					eventBus.publish({
+						type: 'device:new',
+						deviceId: id,
+						brand,
+						state: d.state,
+						online: true,
+						timestamp: now,
+						device: sanitizeDevice(inserted),
+					})
+				}
 
-				addedDevices.push({
-					id, integrationId: integration.id, brand, externalId: d.externalId,
-					name: d.name, type: d.type, state: d.state, online: d.online,
-				})
+				addedCount++
 				log.info('addFromScan device added', { brand, deviceId: id, deviceName: d.name, ip })
 			}
 
-			return { ok: true, added: addedDevices.length, devices: addedDevices }
+			return { ok: true, added: addedCount }
 		},
 		{
 			body: t.Object({
@@ -260,9 +266,99 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 				timestamp: now,
 			})
 
-			return db.select().from(devices).where(eq(devices.id, params.id)).get()
+			const updated = db.select().from(devices).where(eq(devices.id, params.id)).get()
+			if (!updated) return { error: 'Device not found' }
+			return sanitizeDevice(updated)
 		},
 		{
 			body: t.Object({ enabled: t.Boolean() }),
+		},
+	)
+
+	/** Update a single device's section + position (DnD persistence) */
+	.patch(
+		'/:id/position',
+		({ db, params, body }) => {
+			const device = db.select().from(devices).where(eq(devices.id, params.id)).get()
+			if (!device) return status(404, { error: 'Device not found' })
+
+			const section = db.select().from(sections).where(eq(sections.id, body.sectionId)).get()
+			if (!section) return status(400, { error: 'Section not found' })
+
+			if (body.position < 0 || !Number.isInteger(body.position)) {
+				return status(400, { error: 'Position must be a non-negative integer' })
+			}
+
+			db.update(devices)
+				.set({ sectionId: body.sectionId, position: body.position, updatedAt: Date.now() })
+				.where(eq(devices.id, params.id))
+				.run()
+
+			return { ok: true }
+		},
+		{
+			body: t.Object({
+				sectionId: t.String(),
+				position: t.Number(),
+			}),
+		},
+	)
+
+	/** Batch update positions for multiple devices (section reorder) */
+	.patch(
+		'/positions',
+		({ db, body }) => {
+			const items = body as Array<{ id: string; sectionId: string; position: number }>
+
+			if (items.length > 200) {
+				return status(400, { error: 'Batch size exceeds limit of 200' })
+			}
+
+			// validate no duplicate device IDs
+			const ids = items.map((i) => i.id)
+			if (new Set(ids).size !== ids.length) {
+				return status(400, { error: 'Duplicate device IDs in batch' })
+			}
+
+			// validate all positions are non-negative integers
+			for (const item of items) {
+				if (item.position < 0 || !Number.isInteger(item.position)) {
+					return status(400, { error: `Invalid position for device ${item.id}` })
+				}
+			}
+
+			// validate all sectionIds and deviceIds exist
+			const sectionIds = [...new Set(items.map((i) => i.sectionId))]
+			const existingSections = db.select().from(sections).where(inArray(sections.id, sectionIds)).all()
+			if (existingSections.length !== sectionIds.length) {
+				return status(400, { error: 'One or more section IDs are invalid' })
+			}
+
+			const existingDevices = db.select().from(devices).where(inArray(devices.id, ids)).all()
+			if (existingDevices.length !== ids.length) {
+				return status(400, { error: 'One or more device IDs are invalid' })
+			}
+
+			const now = Date.now()
+			db.transaction((tx) => {
+				for (const item of items) {
+					tx.update(devices)
+						.set({ sectionId: item.sectionId, position: item.position, updatedAt: now })
+						.where(eq(devices.id, item.id))
+						.run()
+				}
+			})
+
+			log.info('batch positions updated', { count: items.length })
+			return { ok: true }
+		},
+		{
+			body: t.Array(
+				t.Object({
+					id: t.String(),
+					sectionId: t.String(),
+					position: t.Number(),
+				}),
+			),
 		},
 	)
