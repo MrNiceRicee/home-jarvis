@@ -77,7 +77,7 @@ export function CardFooter({ children, className }: Readonly<{ children: ReactNo
 		<div
 			className={cn(
 				'px-3 py-2',
-				'flex items-center justify-between gap-2',
+				'flex items-end justify-between gap-2',
 				className,
 			)}
 		>

@@ -31,7 +31,7 @@ export function ToggleBank({ label, options, value, onChange, mode, disabled }: 
 					aria-label={label}
 				>
 					{options.map((opt) => (
-						<Radio key={opt.key} value={opt.key} className="outline-none" aria-label={opt.label}>
+						<Radio key={opt.key} value={opt.key} className="outline-none focus-visible:[&>div:first-child]:ring-2 focus-visible:[&>div:first-child]:ring-stone-400 focus-visible:[&>div:first-child]:ring-offset-1" aria-label={opt.label}>
 							{({ isSelected }) => (
 								<ToggleBankItem
 									label={opt.label}
