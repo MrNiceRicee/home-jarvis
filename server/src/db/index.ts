@@ -21,8 +21,9 @@ mkdirSync(path.dirname(dbPath), { recursive: true })
 
 const sqlite = new Database(dbPath, { create: true })
 
-// Enable WAL mode for better concurrent read performance
+// WAL mode for concurrent reads, busy_timeout so hot-reload doesn't hit SQLITE_BUSY
 sqlite.run('PRAGMA journal_mode=WAL;')
+sqlite.run('PRAGMA busy_timeout=3000;')
 sqlite.run('PRAGMA foreign_keys=ON;')
 
 export const db = drizzle(sqlite, { schema })
