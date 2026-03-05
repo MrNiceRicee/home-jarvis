@@ -1,16 +1,29 @@
+import { AirQualityServer } from '@matter/main/behaviors/air-quality'
 import { BridgedDeviceBasicInformationServer } from '@matter/main/behaviors/bridged-device-basic-information'
+import { FanControlServer } from '@matter/main/behaviors/fan-control'
+import { HepaFilterMonitoringServer } from '@matter/main/behaviors/hepa-filter-monitoring'
+import { OnOffServer } from '@matter/main/behaviors/on-off'
+import { Pm25ConcentrationMeasurementServer } from '@matter/main/behaviors/pm25-concentration-measurement'
 import { ThermostatServer } from '@matter/main/behaviors/thermostat'
+import { AirQuality } from '@matter/main/clusters/air-quality'
+import { ConcentrationMeasurement } from '@matter/main/clusters/concentration-measurement'
+import { FanControl } from '@matter/main/clusters/fan-control'
+import { ResourceMonitoring } from '@matter/main/clusters/resource-monitoring'
 import { Thermostat } from '@matter/main/clusters/thermostat'
+import { AirPurifierDevice } from '@matter/main/devices/air-purifier'
+import { AirQualitySensorDevice } from '@matter/main/devices/air-quality-sensor'
 import { ExtendedColorLightDevice } from '@matter/main/devices/extended-color-light'
-import { FanDevice } from '@matter/main/devices/fan'
 import { OnOffLightDevice } from '@matter/main/devices/on-off-light'
 import { OnOffPlugInUnitDevice } from '@matter/main/devices/on-off-plug-in-unit'
 import { ThermostatDevice } from '@matter/main/devices/thermostat'
+import { BridgedNodeEndpoint } from '@matter/main/endpoints/bridged-node'
 import { Endpoint } from '@matter/main/node'
 import { type Result, err, ok } from 'neverthrow'
 
 import type { Device } from '../db/schema'
 import type { DeviceState } from '../integrations/types'
+
+import { kelvinToMired, toFanPercent, toMatterAirQuality, toMatterLevel, toMatterTemp } from '../lib/unit-conversions'
 
 // ─── Error types ─────────────────────────────────────────────────────────────
 
@@ -26,40 +39,31 @@ export class FactoryError extends Error {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-// 0-100 brightness → 0-254 matter level
-function toMatterLevel(brightness: number): number {
-	return Math.round(Math.min(100, Math.max(0, brightness)) * 2.54)
-}
-
-// 0-100 fan speed → 0-100 matter percent (same scale, just clamped)
-function toFanPercent(speed: number): number {
-	return Math.round(Math.min(100, Math.max(0, speed)))
-}
-
-// our mode string → matter SystemMode enum value
 function toThermostatSystemMode(mode?: string): number {
 	switch (mode) {
 		case 'heat':
-			return 4 // Heating
+			return 4
 		case 'cool':
-			return 3 // Cooling
+			return 3
 		case 'auto':
-			return 1 // Auto
+			return 1
 		case 'off':
-			return 0 // Off
+			return 0
 		default:
-			return 1 // default to auto
+			return 1
 	}
 }
 
-// celsius → matter temperature (celsius * 100, fixed-point)
-function toMatterTemp(celsius: number): number {
-	return Math.round(celsius * 100)
-}
-
-// kelvin → mireds (micro reciprocal degrees)
-function kelvinToMired(kelvin: number): number {
-	return Math.round(1_000_000 / Math.max(1, kelvin))
+function toFanMode(mode?: string, on?: boolean): number {
+	if (!on) return 0 // Off
+	switch (mode) {
+		case 'auto':
+			return 5 // Auto
+		case 'sleep':
+			return 1 // Low
+		default:
+			return 3 // High
+	}
 }
 
 // ─── Device type detection ───────────────────────────────────────────────────
@@ -117,25 +121,80 @@ function createColorTempLight(device: Device, state: DeviceState): Endpoint {
 	)
 }
 
-function createFan(device: Device, state: DeviceState): Endpoint {
-	return new Endpoint(
-		FanDevice.with(BridgedDeviceBasicInformationServer),
-		{
-			id: device.id,
-			bridgedDeviceBasicInformation: {
-				nodeLabel: device.name,
-				reachable: device.online,
-			},
-			fanControl: {
-				fanMode: state.on ? 3 : 0, // 0=Off, 3=High — simplified
-				percentSetting: state.fanSpeed ? toFanPercent(state.fanSpeed) : 0,
-				percentCurrent: state.fanSpeed ? toFanPercent(state.fanSpeed) : 0,
-			},
-		},
-	)
+// ─── Air purifier (composed device: fan + air quality sensor) ────────────────
+
+// air purifier with Auto fan mode, OnOff, and HEPA filter condition monitoring
+const BridgedAirPurifier = AirPurifierDevice.with(
+	FanControlServer.with(FanControl.Feature.Auto),
+	OnOffServer,
+	HepaFilterMonitoringServer.with(ResourceMonitoring.Feature.Condition),
+)
+
+// air quality sensor with numeric PM2.5 + fair/poor/verypoor quality levels
+const BridgedAirQualitySensor = AirQualitySensorDevice.with(
+	AirQualityServer.with(AirQuality.Feature.Fair, AirQuality.Feature.Moderate, AirQuality.Feature.VeryPoor),
+	Pm25ConcentrationMeasurementServer.with(ConcentrationMeasurement.Feature.NumericMeasurement),
+)
+
+export interface ComposedEndpoint {
+	parent: Endpoint
+	fanEndpoint: Endpoint
+	sensorEndpoint: Endpoint
 }
 
-// thermostat cluster isn't included by default — must add ThermostatServer with feature flags
+function createAirPurifier(device: Device, state: DeviceState): ComposedEndpoint {
+	const fanMode = toFanMode(state.mode, state.on)
+	const isAuto = fanMode === 5
+	const percent = state.fanSpeed ? toFanPercent(state.fanSpeed) : 0
+
+	// parent bridged node — holds identity info
+	const parent = new Endpoint(BridgedNodeEndpoint, {
+		id: device.id,
+		bridgedDeviceBasicInformation: {
+			nodeLabel: device.name,
+			reachable: device.online,
+		},
+	})
+
+	// child 1: air purifier (fan + power + filter)
+	const fanEndpoint = new Endpoint(BridgedAirPurifier, {
+		id: `${device.id}-fan`,
+		onOff: {
+			onOff: state.on ?? false,
+		},
+		fanControl: {
+			fanMode,
+			fanModeSequence: 2, // Off/Low/Med/High/Auto
+			percentSetting: isAuto ? null : percent,
+			percentCurrent: percent,
+		},
+		hepaFilterMonitoring: {
+			condition: state.filterLife ?? 100,
+			degradationDirection: ResourceMonitoring.DegradationDirection.Down,
+			changeIndication: ResourceMonitoring.ChangeIndication.Ok,
+		},
+	})
+
+	// child 2: air quality sensor (AQ level + PM2.5)
+	const sensorEndpoint = new Endpoint(BridgedAirQualitySensor, {
+		id: `${device.id}-aq`,
+		airQuality: {
+			airQuality: toMatterAirQuality(state.airQuality),
+		},
+		pm25ConcentrationMeasurement: {
+			measuredValue: state.pm25 ?? null,
+			minMeasuredValue: 0,
+			maxMeasuredValue: 500,
+			measurementUnit: ConcentrationMeasurement.MeasurementUnit.Ugm3,
+			measurementMedium: ConcentrationMeasurement.MeasurementMedium.Air,
+		},
+	})
+
+	return { parent, fanEndpoint, sensorEndpoint }
+}
+
+// ─── Thermostat ──────────────────────────────────────────────────────────────
+
 const BridgedThermostat = ThermostatDevice.with(
 	BridgedDeviceBasicInformationServer,
 	ThermostatServer.with(Thermostat.Feature.Heating, Thermostat.Feature.Cooling),
@@ -157,6 +216,8 @@ function createThermostat(device: Device, state: DeviceState): Endpoint {
 	})
 }
 
+// ─── Plug ────────────────────────────────────────────────────────────────────
+
 function createOnOffPlugIn(device: Device, state: DeviceState): Endpoint {
 	return new Endpoint(
 		OnOffPlugInUnitDevice.with(BridgedDeviceBasicInformationServer),
@@ -175,21 +236,29 @@ function createOnOffPlugIn(device: Device, state: DeviceState): Endpoint {
 
 // ─── Factory ─────────────────────────────────────────────────────────────────
 
-export function createMatterEndpoint(device: Device, state: DeviceState): Result<Endpoint, FactoryError> {
+export type EndpointResult =
+	| { composed: false; endpoint: Endpoint }
+	| { composed: true; composed_device: ComposedEndpoint }
+
+export function createMatterEndpoint(device: Device, state: DeviceState): Result<EndpointResult, FactoryError> {
 	switch (device.type) {
 		case 'light':
-			return ok(
-				isColorTempLight(state) ? createColorTempLight(device, state) : createOnOffLight(device, state),
-			)
+			return ok({
+				composed: false,
+				endpoint: isColorTempLight(state) ? createColorTempLight(device, state) : createOnOffLight(device, state),
+			})
 
 		case 'air_purifier':
-			return ok(createFan(device, state))
+			return ok({
+				composed: true,
+				composed_device: createAirPurifier(device, state),
+			})
 
 		case 'thermostat':
-			return ok(createThermostat(device, state))
+			return ok({ composed: false, endpoint: createThermostat(device, state) })
 
 		case 'vacuum':
-			return ok(createOnOffPlugIn(device, state))
+			return ok({ composed: false, endpoint: createOnOffPlugIn(device, state) })
 
 		default:
 			return err(new FactoryError(`unsupported device type for matter: ${device.type}`, device.type))
