@@ -115,7 +115,7 @@ export const INTEGRATION_META: Record<string, IntegrationMeta> = {
 }
 
 /** Create an adapter instance from a brand + config stored in DB */
-export function createAdapter(brand: string, config: Record<string, string>): Result<DeviceAdapter, Error> {
+export function createAdapter(brand: string, config: Record<string, string>, session?: string | null): Result<DeviceAdapter, Error> {
 	switch (brand) {
 		case 'elgato':
 			return ok(new ElgatoAdapter(config))
@@ -124,7 +124,7 @@ export function createAdapter(brand: string, config: Record<string, string>): Re
 		case 'hue':
 			return ok(new HueAdapter(config))
 		case 'vesync':
-			return ok(new VeSyncAdapter(config))
+			return ok(new VeSyncAdapter(config, session))
 		default:
 			return err(new Error(`Adapter not yet implemented for brand: ${brand}`))
 	}

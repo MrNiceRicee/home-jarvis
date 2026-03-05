@@ -95,7 +95,7 @@ matterBridge.onCommand((deviceId, state) => {
 	if (!integration) return
 
 	const config = parseJson<Record<string, string>>(integration.config).unwrapOr({})
-	const adapterResult = createAdapter(integration.brand, config)
+	const adapterResult = createAdapter(integration.brand, config, integration.session)
 	if (adapterResult.isErr()) return
 
 	// fire-and-forget — SSE already updated the dashboard, this forwards to the physical device
