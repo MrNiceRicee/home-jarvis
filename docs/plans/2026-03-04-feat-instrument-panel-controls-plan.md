@@ -266,8 +266,8 @@ New toggle bank component, then apply to LightCard's full-dialog controls.
 
 **SteppedRadialDial (`client/src/components/ui/stepped-radial-dial.tsx`):**
 
-- [ ] Create `SteppedRadialDial` component
-- [ ] Props:
+- [x] Create `SteppedRadialDial` component
+- [x] Props:
   ```ts
   interface SteppedRadialDialProps {
     label: string                           // "FAN"
@@ -277,22 +277,22 @@ New toggle bank component, then apply to LightCard's full-dialog controls.
     disabled?: boolean
   }
   ```
-- [ ] Layout: circular arrangement of detent labels around a center knob indicator
+- [x] Layout: circular arrangement of detent labels around a center knob indicator
   - Labels positioned around the circumference using `transform: rotate(Ndeg) translateY(-Rpx)` + counter-rotation for readability
   - Center: knob body (`w-12 h-12 rounded-full`) with metallic gradient (reuse fader thumb gradient: `linear-gradient(180deg, #e8e4de, #d4d0ca, #c0bcb6, #d4d0ca)`)
   - Knob marker: small notch/line pointing toward the active detent position
   - Knob shadow: `0 2px 6px rgba(0,0,0,0.2), inset 0 1px 2px rgba(255,255,255,0.3)`
-- [ ] Each detent position: React Aria `Button`, minimum touch target 44x44px (use padding around the label)
-- [ ] Active detent: label becomes `text-stone-700 font-medium` (vs. `text-stone-400` inactive)
-- [ ] Keyboard: React Aria `RadioGroup` with `Radio` children for proper semantics. Arrow keys step clockwise/counterclockwise through positions
-- [ ] Section label "FAN" above the dial
-- [ ] Overall size: ~120px diameter to fit 5 positions with adequate touch targets
+- [x] Each detent position: React Aria `Button`, minimum touch target 44x44px (use padding around the label)
+- [x] Active detent: label becomes `text-stone-700 font-medium` (vs. `text-stone-400` inactive)
+- [x] Keyboard: React Aria `RadioGroup` with `Radio` children for proper semantics. Arrow keys step clockwise/counterclockwise through positions
+- [x] Section label "FAN" above the dial
+- [x] Overall size: ~120px diameter to fit 5 positions with adequate touch targets
 
 **AirPurifierCard fan speed (`client/src/components/device-cards/AirPurifierCard.tsx`):**
 
-- [ ] Replace `flex gap-1` fan speed buttons with `<SteppedRadialDial />`
-- [ ] Options: AUTO / SLP / 1 / 2 / 3
-- [ ] Full variant only (matches current visibility)
+- [x] Replace `flex gap-1` fan speed buttons with `<SteppedRadialDial />`
+- [x] Options: AUTO / SLP / 1 / 2 / 3
+- [x] Full variant only (matches current visibility)
 
 **Acceptance:**
 - Fan speed is a rotary knob with 5 detent positions
