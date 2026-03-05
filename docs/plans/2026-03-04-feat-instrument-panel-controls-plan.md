@@ -156,8 +156,8 @@ New toggle bank component, then apply to LightCard's full-dialog controls.
 
 **ToggleBank (`client/src/components/ui/toggle-bank.tsx`):**
 
-- [ ] Create `ToggleBank` component
-- [ ] Props:
+- [x] Create `ToggleBank` component
+- [x] Props:
   ```ts
   interface ToggleBankProps {
     label: string                    // section label ("SCENES", "MODE", "COLOR")
@@ -168,37 +168,37 @@ New toggle bank component, then apply to LightCard's full-dialog controls.
     disabled?: boolean
   }
   ```
-- [ ] Layout: section label (`font-michroma text-2xs uppercase tracking-widest text-stone-400`) above, row of option columns below. Each column: option label above (`font-michroma text-2xs uppercase tracking-wider text-stone-400`), square `PanelButton` below
-- [ ] Selection mode: React Aria `RadioGroup` + `Radio`, `aria-checked` on active
-- [ ] Action mode: React Aria `Button` group in a `role="toolbar"` container
-- [ ] Active state: PanelButton with `led="on"` + `ledColor` from option config, inset shadow
-- [ ] Inactive state: PanelButton with `led="off"`, raised shadow
-- [ ] Wrapping: `flex flex-wrap gap-x-3 gap-y-2` to handle 6-option rows (color presets)
+- [x] Layout: section label (`font-michroma text-2xs uppercase tracking-widest text-stone-400`) above, row of option columns below. Each column: option label above (`font-michroma text-2xs uppercase tracking-wider text-stone-400`), square `PanelButton` below
+- [x] Selection mode: React Aria `RadioGroup` + `Radio`, `aria-checked` on active
+- [x] Action mode: React Aria `Button` group in a `role="toolbar"` container
+- [x] Active state: PanelButton with `led="on"` + `ledColor` from option config, inset shadow
+- [x] Inactive state: PanelButton with `led="off"`, raised shadow
+- [x] Wrapping: `flex flex-wrap gap-x-3 gap-y-2` to handle 6-option rows (color presets)
 
 **LightCard scene presets (`client/src/components/device-cards/LightCard.tsx`):**
 
-- [ ] Replace pill-shaped `rounded-full bg-white/80` scene buttons with `<ToggleBank mode="action" label="SCENES" />`
-- [ ] Options: RELAX / READ / FOCUS / ENRG (shortened from ENERGIZE to fit)
-- [ ] `onChange` fires compound state update (colorTemp + brightness + on: true)
-- [ ] No `value` tracking (scenes are fire-and-forget actions) — or track last applied scene
+- [x] Replace pill-shaped `rounded-full bg-white/80` scene buttons with `<ToggleBank mode="action" label="SCENES" />`
+- [x] Options: RELAX / READ / FOCUS / ENRG (shortened from ENERGIZE to fit)
+- [x] `onChange` fires compound state update (colorTemp + brightness + on: true)
+- [x] No `value` tracking (scenes are fire-and-forget actions) — or track last applied scene
 
 **LightCard color presets (`client/src/components/device-cards/LightCard.tsx`):**
 
-- [ ] Replace floating colored circles with `<ToggleBank mode="action" label="COLOR" />`
-- [ ] Options: RED / ORG / YLW / GRN / BLU / PRP
-- [ ] `ledColor` per option: the preset's RGB color
-- [ ] `onChange` fires color state update
+- [x] Replace floating colored circles with `<ToggleBank mode="action" label="COLOR" />`
+- [x] Options: RED / ORG / YLW / GRN / BLU / PRP
+- [x] `ledColor` per option: the preset's RGB color
+- [x] `onChange` fires color state update
 
 **CCT fader detent stops (`client/src/components/device-cards/LightCard.tsx`):**
 
-- [ ] Remove separate `CCT_SWATCHES` button row (full variant only)
-- [ ] Make CCT slider notch marks at `CCT_SWATCHES` positions interactive:
+- [x] Remove separate `CCT_SWATCHES` button row (full variant only)
+- [x] Make CCT slider notch marks at `CCT_SWATCHES` positions interactive:
   - Remove `pointer-events-none` from CCT notch marks
   - Add `onClick` to each major notch mark
   - On click: set slider value to swatch kelvin, fire `onChangeEnd`
   - Add `cursor-default` (matches instrument panel feel)
-- [ ] Add CCT swatch labels below notch marks: `2.7 / 3.5 / 4K / 5K / 6.5` in `font-michroma text-2xs text-stone-400`
-- [ ] Notch marks for CCT should be taller/bolder than decorative BRT notches to signal interactivity
+- [x] Add CCT swatch labels below notch marks: `2.7 / 3.5 / 4K / 5K / 6.5` in `font-michroma text-2xs text-stone-400`
+- [x] Notch marks for CCT should be taller/bolder than decorative BRT notches to signal interactivity
 
 **Acceptance:**
 - Scenes render as labeled toggle bank with square pushbuttons + LEDs
