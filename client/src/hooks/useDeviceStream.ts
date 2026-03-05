@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef } from 'react'
+import { toast } from 'sonner'
 
 import type { Device, SSEEvent } from '../types'
 
@@ -56,6 +57,7 @@ export function useDeviceStream() {
 						// eslint-disable-next-line sonarjs/no-nested-functions -- guard inside SSE callback chain
 						prev.some((d) => d.id === event.device.id) ? prev : [...prev, event.device],
 					)
+					toast(`New device discovered: ${event.device.name}`)
 					break
 				case 'device:offline':
 					queryClient.setQueryData(['devices'], (prev: Device[] = []) =>
