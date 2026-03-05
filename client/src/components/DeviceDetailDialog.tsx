@@ -112,11 +112,11 @@ function renderDetailBody(
 ) {
 	switch (device.type) {
 		case 'light':
-			return <LightCard device={device} onStateChange={onStateChange} />
+			return <LightCard device={device} variant="full" onStateChange={onStateChange} />
 		case 'thermostat':
-			return <ThermostatCard device={device} onStateChange={onStateChange} />
+			return <ThermostatCard device={device} variant="full" onStateChange={onStateChange} />
 		case 'air_purifier':
-			return <AirPurifierCard device={device} onStateChange={onStateChange} />
+			return <AirPurifierCard device={device} variant="full" onStateChange={onStateChange} />
 		case 'vacuum':
 			return <VacuumCard device={device} onStateChange={onStateChange} />
 		case 'washer_dryer':
