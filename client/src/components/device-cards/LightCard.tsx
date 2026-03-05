@@ -41,7 +41,6 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 	const isFullColor = isCCT && isRGB
 
 	// local UI state
-	const [toggling, setToggling] = useState(false)
 	const [brightness, setBrightness] = useState(state.brightness ?? 100)
 	const [colorTemp, setColorTemp] = useState(state.colorTemp ?? 4000)
 	const [mode, setMode] = useState<'white' | 'color'>('white')
@@ -84,16 +83,6 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 		const { r, g, b } = state.color
 		try { setPickerColor(parseColor(`rgb(${r}, ${g}, ${b})`)) } catch { /* ignore */ }
 	}, [state.color])
-
-	async function handlePowerToggle() {
-		if (!onStateChange) return
-		setToggling(true)
-		try {
-			await onStateChange(device.id, { on: !isOn })
-		} finally {
-			setToggling(false)
-		}
-	}
 
 	function handleScene(scene: (typeof SCENES)[number]) {
 		setColorTemp(scene.colorTemp)
@@ -374,29 +363,7 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 				</div>
 			)}
 
-			{/* ── Power push-button ──────────────────────────────────── */}
-			{device.online && (
-				<Button
-					onPress={() => { void handlePowerToggle() }}
-					isDisabled={toggling}
-					className={cn(
-						'w-full flex items-center justify-center gap-2 py-1.5 text-2xs font-michroma uppercase tracking-wider',
-						'rounded-md border cursor-default disabled:opacity-40',
-						'transition-shadow duration-100',
-						isOn
-							? 'bg-stone-200 text-stone-700 border-stone-300 shadow-[inset_0_1px_3px_rgba(0,0,0,0.12)]'
-							: 'bg-stone-50 text-stone-500 border-stone-300 shadow-[0_1px_3px_rgba(0,0,0,0.08)]',
-						'pressed:shadow-[inset_0_1px_2px_rgba(0,0,0,0.12)]',
-					)}
-				>
-					<span
-						className={cn('w-2 h-2 rounded-full transition-all', isOn ? 'bg-emerald-400' : 'bg-stone-400')}
-						style={isOn ? { boxShadow: '0 0 4px rgba(52,211,153,0.7), 0 0 10px rgba(52,211,153,0.3)' } : undefined}
-					/>
-					{toggling ? '...' : 'POWER'}
-				</Button>
-			)}
-		</div>
+			</div>
 	)
 }
 

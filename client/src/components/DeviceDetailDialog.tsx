@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Dialog, Heading, Modal as AriaModal, ModalOverlay } from 'react-aria-components'
 
 import type { Device, DeviceState } from '../types'
@@ -13,6 +14,7 @@ import { SensorCard } from './device-cards/SensorCard'
 import { ThermostatCard } from './device-cards/ThermostatCard'
 import { VacuumCard } from './device-cards/VacuumCard'
 import { RaisedButton } from './ui/button'
+import { PowerButton } from './ui/power-button'
 
 const TYPE_ICON: Record<string, string> = {
 	light: '💡',
@@ -51,9 +53,12 @@ interface DeviceDetailDialogProps {
 }
 
 export function DeviceDetailDialog({ device, onClose, onStateChange }: Readonly<DeviceDetailDialogProps>) {
+	const [powerToggling, setPowerToggling] = useState(false)
+
 	if (!device) return null
 
 	const icon = TYPE_ICON[device.type] ?? '📦'
+	const hasPower = device.state.on !== undefined
 
 	return (
 		<ModalOverlay
@@ -102,7 +107,20 @@ export function DeviceDetailDialog({ device, onClose, onStateChange }: Readonly<
 					</div>
 
 					{/* footer */}
-					<div className="flex justify-end px-6 pb-5">
+					<div className="flex items-end justify-between px-6 pb-5">
+						{hasPower && device.online ? (
+							<PowerButton
+								isOn={device.state.on ?? false}
+								isDisabled={!device.online}
+								isToggling={powerToggling}
+								onToggle={() => {
+									if (!onStateChange) return
+									setPowerToggling(true)
+									void onStateChange(device.id, { on: !(device.state.on ?? false) })
+										.finally(() => setPowerToggling(false))
+								}}
+							/>
+						) : <div />}
 						<RaisedButton variant="ghost" onPress={onClose}>
 							Close
 						</RaisedButton>

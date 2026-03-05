@@ -115,33 +115,33 @@ New shared pushbutton component, then move power from card body to shell footer.
 
 **PanelButton (`client/src/components/ui/panel-button.tsx`):**
 
-- [ ] Create `PanelButton` component wrapping React Aria `Button`
-- [ ] Props: `led?: 'on' | 'off' | 'pulse'`, `ledColor?: string`, `size?: 'sm' | 'md'`, `label?: string`, standard Button props
-- [ ] Visual: square (`rounded-sm`), recessed bezel (mount recess via `shadow-[inset_0_1px_2px_rgba(0,0,0,0.15),_0_1px_0_rgba(255,255,255,0.4)]`), `bg-stone-100 border border-stone-300`
-- [ ] States: OFF = raised shadow, ON = inset shadow (`shadow-[inset_0_1px_3px_rgba(0,0,0,0.12)]`), pressed = deeper inset
-- [ ] LED indicator: `w-1.5 h-1.5 rounded-full` dot inside button face. When `led="on"`: colored dot + glow shadow. When `led="pulse"`: CSS animation `animate-pulse`. When `led="off"`: `bg-stone-400/30`
-- [ ] Sizing: `sm` = `w-7 h-7`, `md` = `w-9 h-9`
-- [ ] Text label (when provided): `font-michroma text-2xs uppercase` below the button (outside, not inside)
+- [x] Create `PanelButton` component wrapping React Aria `Button`
+- [x] Props: `led?: 'on' | 'off' | 'pulse'`, `ledColor?: string`, `size?: 'sm' | 'md'`, `label?: string`, standard Button props
+- [x] Visual: square (`rounded-sm`), recessed bezel (mount recess via `shadow-[inset_0_1px_2px_rgba(0,0,0,0.15),_0_1px_0_rgba(255,255,255,0.4)]`), `bg-stone-100 border border-stone-300`
+- [x] States: OFF = raised shadow, ON = inset shadow (`shadow-[inset_0_1px_3px_rgba(0,0,0,0.12)]`), pressed = deeper inset
+- [x] LED indicator: `w-1.5 h-1.5 rounded-full` dot inside button face. When `led="on"`: colored dot + glow shadow. When `led="pulse"`: CSS animation `animate-pulse`. When `led="off"`: `bg-stone-400/30`
+- [x] Sizing: `sm` = `w-7 h-7`, `md` = `w-9 h-9`
+- [x] Text label (when provided): `font-michroma text-2xs uppercase` below the button (outside, not inside)
 
 **PowerButton extraction:**
 
-- [ ] Create shared `PowerButton` component using `PanelButton` with power-specific logic
-- [ ] Props: `isOn`, `isDisabled`, `isToggling`, `onToggle`
-- [ ] LED: emerald when on (`led="on" ledColor="rgb(52,211,153)"`), off when off, pulse when toggling
-- [ ] Label: "PWR" below the button in `font-michroma text-2xs`
+- [x] Create shared `PowerButton` component using `PanelButton` with power-specific logic
+- [x] Props: `isOn`, `isDisabled`, `isToggling`, `onToggle`
+- [x] LED: emerald when on (`led="on" ledColor="rgb(52,211,153)"`), off when off, pulse when toggling
+- [x] Label: "PWR" below the button in `font-michroma text-2xs`
 
 **Power button relocation — compact cards (`client/src/components/DeviceCard.tsx`):**
 
-- [ ] Add `PowerButton` to `CardFooter` in `CardShell`, left-aligned before MATTER badge
-- [ ] Pass `device.state.on`, `device.online`, and `onStateChange` to `CardShell` for power wiring
-- [ ] Only render when `device.state.on !== undefined`
-- [ ] Remove power button from `LightCard` compact body
-- [ ] Remove power button from `AirPurifierCard` compact body
+- [x] Add `PowerButton` to `CardFooter` in `CardShell`, left-aligned before MATTER badge
+- [x] Pass `device.state.on`, `device.online`, and `onStateChange` to `CardShell` for power wiring
+- [x] Only render when `device.state.on !== undefined`
+- [x] Remove power button from `LightCard` compact body
+- [x] Remove power button from `AirPurifierCard` compact body
 
 **Power button relocation — dialog (`client/src/components/DeviceDetailDialog.tsx`):**
 
-- [ ] Add `PowerButton` to dialog footer, left-aligned alongside close button (right-aligned)
-- [ ] Wire same state/callbacks as compact card
+- [x] Add `PowerButton` to dialog footer, left-aligned alongside close button (right-aligned)
+- [x] Wire same state/callbacks as compact card
 
 **Acceptance:**
 - Power button is compact square with LED in footer, not full-width in body
