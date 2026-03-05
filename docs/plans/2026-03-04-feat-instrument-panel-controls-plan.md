@@ -243,18 +243,18 @@ New toggle bank component, then apply to LightCard's full-dialog controls.
 
 **Mode selection (`client/src/components/device-cards/ThermostatCard.tsx`):**
 
-- [ ] Replace `flex gap-1` mode buttons with `<ToggleBank mode="selection" label="MODE" />`
-- [ ] Options: HEAT / COOL / AUTO / OFF
-- [ ] `ledColor` per mode: orange (`rgb(249,115,22)`) / blue (`rgb(59,130,246)`) / amber (`rgb(245,158,11)`) / none
-- [ ] Renders in both compact and full variants (matches current behavior)
+- [x] Replace `flex gap-1` mode buttons with `<ToggleBank mode="selection" label="MODE" />`
+- [x] Options: HEAT / COOL / AUTO / OFF
+- [x] `ledColor` per mode: orange (`rgb(249,115,22)`) / blue (`rgb(59,130,246)`) / amber (`rgb(245,158,11)`) / none
+- [x] Renders in both compact and full variants (matches current behavior)
 
 **Target temperature stepper (`client/src/components/device-cards/ThermostatCard.tsx`):**
 
-- [ ] Replace `w-7 h-7 rounded-full bg-stone-100` +/− buttons with `PanelButton` (size `sm`)
-- [ ] Engraved labels: `−` and `+` rendered as the button text content
-- [ ] Add `ReadoutDisplay size="sm"` between the +/− buttons showing target temp (`22.0°`)
-- [ ] Layout: `flex items-center gap-2` — `[−] [readout] [+]`
-- [ ] Section label "TARGET" above the row
+- [x] Replace `w-7 h-7 rounded-full bg-stone-100` +/− buttons with `PanelButton` (size `sm`)
+- [x] Engraved labels: `−` and `+` rendered as the button text content
+- [x] Add `ReadoutDisplay size="sm"` between the +/− buttons showing target temp (`22.0°`)
+- [x] Layout: `flex items-center gap-2` — `[−] [readout] [+]`
+- [x] Section label "TARGET" above the row
 
 **Acceptance:**
 - Thermostat modes are a toggle bank with color-tinted LEDs
