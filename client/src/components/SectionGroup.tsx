@@ -28,6 +28,7 @@ interface SectionGroupProps {
 	section: Section
 	devices: Device[]
 	onExpand?: (device: Device) => void
+	onMatterToggle?: (deviceId: string, enabled: boolean) => Promise<void>
 	onReorder?: (updates: Array<{ id: string; sectionId: string; position: number }>) => void
 	onStateChange: (deviceId: string, state: Partial<DeviceState>) => Promise<void>
 	onRename?: (sectionId: string, name: string) => Promise<void>
@@ -36,7 +37,7 @@ interface SectionGroupProps {
 	onToggleSelect?: (deviceId: string) => void
 }
 
-export function SectionGroup({ section, devices, onExpand, onReorder, onStateChange, onRename, onDelete, selectedIds, onToggleSelect }: Readonly<SectionGroupProps>) {
+export function SectionGroup({ section, devices, onExpand, onMatterToggle, onReorder, onStateChange, onRename, onDelete, selectedIds, onToggleSelect }: Readonly<SectionGroupProps>) {
 	const [editing, setEditing] = useState(false)
 	const [editName, setEditName] = useState(section.name)
 	const [activeId, setActiveId] = useState<string | null>(null)
@@ -125,7 +126,7 @@ export function SectionGroup({ section, devices, onExpand, onReorder, onStateCha
 			</div>
 
 			{devices.length === 0 ? (
-				<p className="text-sm font-commit text-stone-400 italic py-4">No devices in this section</p>
+				<p className="text-xs font-michroma text-stone-400 italic py-4">No devices in this section</p>
 			) : (
 				<DndContext
 					sensors={sensors}
@@ -143,6 +144,7 @@ export function SectionGroup({ section, devices, onExpand, onReorder, onStateCha
 										device={device}
 										isSelected={selectedIds?.has(device.id)}
 										onExpand={onExpand}
+										onMatterToggle={onMatterToggle}
 										onStateChange={onStateChange}
 										onToggleSelect={isLight && onToggleSelect ? () => onToggleSelect(device.id) : undefined}
 									/>
@@ -167,11 +169,12 @@ interface SortableDeviceCardProps {
 	device: Device
 	isSelected?: boolean
 	onExpand?: (device: Device) => void
+	onMatterToggle?: (deviceId: string, enabled: boolean) => Promise<void>
 	onStateChange?: (deviceId: string, state: Partial<DeviceState>) => Promise<void>
 	onToggleSelect?: () => void
 }
 
-function SortableDeviceCard({ device, isSelected, onExpand, onStateChange, onToggleSelect }: Readonly<SortableDeviceCardProps>) {
+function SortableDeviceCard({ device, isSelected, onExpand, onMatterToggle, onStateChange, onToggleSelect }: Readonly<SortableDeviceCardProps>) {
 	const {
 		attributes,
 		listeners,
@@ -198,6 +201,7 @@ function SortableDeviceCard({ device, isSelected, onExpand, onStateChange, onTog
 				device={device}
 				isSelected={isSelected}
 				onExpand={onExpand}
+				onMatterToggle={onMatterToggle}
 				onStateChange={onStateChange}
 				onToggleSelect={onToggleSelect}
 			/>

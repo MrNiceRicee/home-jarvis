@@ -61,6 +61,17 @@ function Dashboard() {
 		stateMutation.mutate({ id, state })
 	}
 
+	async function handleMatterToggle(deviceId: string, enabled: boolean) {
+		const { error } = await api.api.devices({ id: deviceId }).matter.patch({ enabled })
+		if (error) {
+			toast.error('Failed to toggle Matter bridge')
+			return
+		}
+		queryClient.setQueryData(['devices'], (prev: Device[] = []) =>
+			prev.map((d) => (d.id === deviceId ? { ...d, matterEnabled: enabled } : d)),
+		)
+	}
+
 	async function handleAddSection(name: string) {
 		const { error } = await api.api.sections.post({ name })
 		if (error) throw error
@@ -136,13 +147,13 @@ function Dashboard() {
 		return (
 			<div className="flex flex-col items-center justify-center py-24 text-center">
 				<span className="text-5xl mb-4">🏠</span>
-				<h2 className="text-lg font-commit font-medium text-stone-900 mb-1">No devices yet</h2>
-				<p className="text-sm font-commit text-stone-500 mb-6">
+				<h2 className="text-lg font-michroma text-stone-900 mb-1">No devices yet</h2>
+				<p className="text-sm font-michroma text-stone-500 mb-6">
 					Add an integration to start discovering your smart home devices.
 				</p>
 				<Link
 					to="/integrations"
-					className="inline-flex items-center px-4 py-2 text-sm font-commit font-medium rounded-lg bg-linear-to-b from-stone-700 to-stone-800 text-white border border-stone-600/50 shadow-[0_1px_3px_rgba(0,0,0,0.2),0_4px_12px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] hover:from-stone-600 hover:to-stone-700 transition-all"
+					className="inline-flex items-center px-4 py-2 text-sm font-michroma rounded-lg bg-linear-to-b from-stone-700 to-stone-800 text-white border border-stone-600/50 shadow-[0_1px_3px_rgba(0,0,0,0.2),0_4px_12px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.1)] hover:from-stone-600 hover:to-stone-700 transition-all"
 				>
 					Add Integration →
 				</Link>
@@ -191,6 +202,7 @@ function Dashboard() {
 							selectedIds={selectedIds}
 							onToggleSelect={handleToggleSelect}
 							onExpand={setExpandedDevice}
+							onMatterToggle={handleMatterToggle}
 							onReorder={handleReorder}
 							onStateChange={handleStateChange}
 							onRename={handleRenameSection}
@@ -250,7 +262,7 @@ function StreamStatusBadge({ status }: Readonly<{ status: string }>) {
 	return (
 		<span
 			className={cn(
-				'inline-flex items-center gap-1.5 text-xs font-commit px-2.5 py-1 rounded-full',
+				'inline-flex items-center gap-1.5 text-[10px] font-michroma uppercase tracking-wider px-2.5 py-1 rounded-full',
 				'bg-linear-to-b from-white to-stone-50',
 				'border border-stone-200/80',
 				'shadow-[var(--shadow-raised),var(--shadow-inner-glow)]',
