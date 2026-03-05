@@ -32,6 +32,7 @@
 		"tailwind-variants": "^3.2.2"
 	},
 	"devDependencies": {
+		"@phosphor-icons/react": "^2.1.10",
 		"@tailwindcss/vite": "^4.2.1",
 		"@tanstack/router-vite-plugin": "^1.164.0",
 		"@types/node": "^24.10.1",

@@ -24,7 +24,7 @@ export function Card({ children, className, accent, glowShadow, muted, selected 
 		<div
 			className={cn(
 				'relative rounded-md overflow-hidden',
-				'bg-[#fffdf8]',
+				'bg-surface-warm',
 				'border border-[rgba(168,151,125,0.12)]',
 				'transition-all duration-200',
 				muted && 'opacity-60',
@@ -44,11 +44,6 @@ export function Card({ children, className, accent, glowShadow, muted, selected 
 				if (!glowShadow) e.currentTarget.style.boxShadow = baseShadow
 			}}
 		>
-			{/* corner mounting dots */}
-			<div className="absolute top-1.5 left-1.5 w-1 h-1 rounded-full bg-stone-300/30 pointer-events-none" />
-			<div className="absolute top-1.5 right-1.5 w-1 h-1 rounded-full bg-stone-300/30 pointer-events-none" />
-			<div className="absolute bottom-1.5 left-1.5 w-1 h-1 rounded-full bg-stone-300/30 pointer-events-none" />
-			<div className="absolute bottom-1.5 right-1.5 w-1 h-1 rounded-full bg-stone-300/30 pointer-events-none" />
 			{children}
 		</div>
 	)

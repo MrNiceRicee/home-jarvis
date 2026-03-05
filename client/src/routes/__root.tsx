@@ -73,7 +73,7 @@ function NavItem({ to, children }: Readonly<{ to: string; children: React.ReactN
 			className={cn(
 				'px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
 				'text-stone-500 hover:text-stone-800',
-				'[&.active]:bg-[#fffdf8] [&.active]:text-stone-800 [&.active]:shadow-[0_1px_3px_rgba(120,90,50,0.05),0_2px_8px_rgba(120,90,50,0.03),inset_0_1px_0_rgba(255,253,245,0.8)]',
+				'[&.active]:bg-surface-warm [&.active]:text-stone-800 [&.active]:shadow-[0_1px_3px_rgba(120,90,50,0.05),0_2px_8px_rgba(120,90,50,0.03),inset_0_1px_0_rgba(255,253,245,0.8)]',
 			)}
 			activeOptions={to === '/' ? { exact: true } : undefined}
 		>

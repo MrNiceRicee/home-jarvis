@@ -15,11 +15,15 @@ interface ReadoutDisplayProps {
 
 function buildBoxShadow(glow?: string): string {
 	const base = [
-		// outer bezel — bottom highlight makes display look recessed
-		'0 1px 0 rgba(255,255,255,0.2)',
-		// inset cavity
-		'inset 0 2px 6px rgba(0,0,0,0.5)',
-		'inset 0 0 2px rgba(0,0,0,0.3)',
+		// outer bezel — bright highlight below = sunk into panel
+		'0 1px 0 rgba(255,255,255,0.3)',
+		'0 2px 0 rgba(255,255,255,0.06)',
+		// deep inset cavity — dark edges all around
+		'inset 0 4px 10px rgba(0,0,0,0.7)',
+		'inset 0 1px 4px rgba(0,0,0,0.5)',
+		'inset 0 -1px 3px rgba(0,0,0,0.2)',
+		'inset 2px 0 4px rgba(0,0,0,0.15)',
+		'inset -2px 0 4px rgba(0,0,0,0.15)',
 	]
 	if (glow) {
 		base.push(`0 0 14px 3px color-mix(in srgb, ${glow} 35%, transparent)`)
@@ -38,25 +42,43 @@ export function ReadoutDisplay({ children, size = 'sm', glow, glowIntensity = 0,
 			role={rest['aria-label'] ? 'status' : undefined}
 			aria-label={rest['aria-label']}
 			className={cn(
-				'relative inline-flex items-center rounded-md overflow-hidden',
-				'bg-[#2a2924] text-[#faf0dc]',
-				'border border-[#1a1914]',
+				'relative inline-flex items-center overflow-hidden',
+				'text-display-text',
 				size === 'lg'
-					? 'font-ioskeley text-2xl px-3 py-2.5 tracking-tight'
-					: 'font-ioskeley text-sm px-2 py-1 tracking-tight',
+					? 'font-ioskeley text-2xl px-3 py-2.5 tracking-tight rounded-lg'
+					: 'font-ioskeley text-sm px-2 py-1 tracking-tight rounded-md',
 				className,
 			)}
 			style={{
+				// LCD cavity — slightly lighter than faceplate for glass distinction
+				background: 'linear-gradient(180deg, #2e2d27 0%, #272620 50%, #23221c 100%)',
+				border: '1px solid #1a1914',
 				boxShadow: buildBoxShadow(glow),
 				textShadow: textGlow,
 			}}
 		>
-			{/* glass pane — top highlight edge */}
-			<div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent pointer-events-none" />
-			{/* glass pane — vertical gradient for depth under glass */}
-			<div className="absolute inset-0 bg-gradient-to-b from-white/[0.06] via-transparent to-transparent pointer-events-none rounded-md" />
-			{/* glass pane — subtle bottom edge darkening */}
-			<div className="absolute inset-x-0 bottom-0 h-3 bg-gradient-to-t from-black/10 to-transparent pointer-events-none" />
+			{/* glass pane — strong top highlight edge (glass catch-light) */}
+			<div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+			{/* glass pane — secondary highlight just below the edge */}
+			<div className="absolute inset-x-2 top-[1px] h-px bg-gradient-to-r from-transparent via-white/8 to-transparent pointer-events-none" />
+			{/* glass pane — top-down depth gradient (light entering glass) */}
+			<div className="absolute inset-0 bg-gradient-to-b from-white/[0.07] via-white/[0.02] to-transparent pointer-events-none" />
+			{/* glass pane — scanline texture for LCD feel */}
+			<div
+				className="absolute inset-0 pointer-events-none opacity-[0.04]"
+				style={{
+					backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255,255,255,0.5) 1px, rgba(255,255,255,0.5) 2px)',
+				}}
+			/>
+			{/* glass pane — bottom edge darkening (glass thickness shadow) */}
+			<div className="absolute inset-x-0 bottom-0 h-5 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
+			{/* glass pane — corner vignette */}
+			<div
+				className="absolute inset-0 pointer-events-none"
+				style={{
+					background: 'radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.15) 100%)',
+				}}
+			/>
 			{children}
 		</div>
 	)

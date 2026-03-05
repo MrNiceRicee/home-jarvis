@@ -20,6 +20,12 @@
 }
 
 @theme {
+	/* brand color tokens */
+	--color-surface-warm: #fffdf8;
+	--color-display-bg: #2a2924;
+	--color-display-border: #1a1914;
+	--color-display-text: #faf0dc;
+
 	/* font families */
 	--font-commit: 'Commit Mono', monospace;
 	--font-ioskeley: 'IoskeleyMono', monospace;

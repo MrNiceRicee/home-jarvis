@@ -1,40 +1,69 @@
 import type { Device, DeviceState } from '../../types'
 
-import { cn } from '../../lib/cn'
 import { ReadoutDisplay } from '../ui/readout-display'
 import { SteppedRadialDial } from '../ui/stepped-radial-dial'
 
+// ── AQI severity levels ─────────────────────────────────────────────────
+
 const AQI_LEVELS = [
-	{ max: 1, label: 'Good', color: 'text-emerald-700 bg-emerald-50', barColor: 'bg-emerald-400' },
-	{ max: 2, label: 'Fair', color: 'text-yellow-700 bg-yellow-50', barColor: 'bg-yellow-400' },
-	{ max: 4, label: 'Poor', color: 'text-orange-700 bg-orange-50', barColor: 'bg-orange-400' },
-	{ max: 5, label: 'Hazardous', color: 'text-red-700 bg-red-50', barColor: 'bg-red-400' },
+	{ max: 1, label: 'GOOD', css: '#34d399' },
+	{ max: 2, label: 'FAIR', css: '#facc15' },
+	{ max: 4, label: 'POOR', css: '#fb923c' },
+	{ max: Infinity, label: 'HAZ', css: '#f87171' },
 ] as const
 
-const AQI_SEGMENT_COLORS = ['bg-emerald-400', 'bg-yellow-400', 'bg-orange-400', 'bg-red-400'] as const
+// AQI meter: 4 segments, each has its own color (bottom=green, top=red)
+// every segment always shows its color — lit segments glow, unlit are dimmed
+const AQI_SEGMENT_COLORS = [
+	{ color: '#34d399', glow: 'rgba(52,211,153,0.6)', dim: 'rgba(52,211,153,0.12)' },
+	{ color: '#facc15', glow: 'rgba(250,204,21,0.5)', dim: 'rgba(250,204,21,0.10)' },
+	{ color: '#fb923c', glow: 'rgba(251,146,60,0.5)', dim: 'rgba(251,146,60,0.08)' },
+	{ color: '#f87171', glow: 'rgba(248,113,113,0.5)', dim: 'rgba(248,113,113,0.08)' },
+] as const
 
-// discrete fan speed levels — maps to VeSync Core 300S capabilities
+// ── Filter meter: 10 segments, gradient from red (bottom) → green (top) ─
+
+const FILTER_SEGMENT_COUNT = 10
+
+// gradient: bottom segments = red/orange (low filter life), top = green (healthy)
+const FILTER_GRADIENT = [
+	{ color: '#f87171', glow: 'rgba(248,113,113,0.5)', dim: 'rgba(248,113,113,0.08)' },
+	{ color: '#f87171', glow: 'rgba(248,113,113,0.5)', dim: 'rgba(248,113,113,0.08)' },
+	{ color: '#fb923c', glow: 'rgba(251,146,60,0.5)', dim: 'rgba(251,146,60,0.08)' },
+	{ color: '#fbbf24', glow: 'rgba(251,191,36,0.5)', dim: 'rgba(251,191,36,0.08)' },
+	{ color: '#fbbf24', glow: 'rgba(251,191,36,0.5)', dim: 'rgba(251,191,36,0.08)' },
+	{ color: '#a3e635', glow: 'rgba(163,230,53,0.5)', dim: 'rgba(163,230,53,0.08)' },
+	{ color: '#34d399', glow: 'rgba(52,211,153,0.5)', dim: 'rgba(52,211,153,0.08)' },
+	{ color: '#34d399', glow: 'rgba(52,211,153,0.5)', dim: 'rgba(52,211,153,0.08)' },
+	{ color: '#34d399', glow: 'rgba(52,211,153,0.5)', dim: 'rgba(52,211,153,0.08)' },
+	{ color: '#34d399', glow: 'rgba(52,211,153,0.5)', dim: 'rgba(52,211,153,0.08)' },
+] as const
+
+// ── Fan speed steps ─────────────────────────────────────────────────────
+
 const FAN_STEPS = [
-	{ label: 'AUTO', value: 0 },
 	{ label: 'SLP', value: 20 },
 	{ label: '1', value: 40 },
 	{ label: '2', value: 60 },
 	{ label: '3', value: 80 },
+	{ label: 'AUTO', value: 0 },
 ] as const
 
 const FAN_DIAL_OPTIONS = FAN_STEPS.map((s) => ({ key: String(s.value), label: s.label }))
 
-function aqiLabel(value: number): { label: string; color: string } {
+// ── Helpers ─────────────────────────────────────────────────────────────
+
+function aqiLevel(value: number) {
 	return AQI_LEVELS.find((l) => value <= l.max) ?? AQI_LEVELS[AQI_LEVELS.length - 1]
 }
 
-function filterLifeColor(life: number): string {
-	if (life > 30) return 'bg-emerald-400'
-	if (life > 10) return 'bg-amber-400'
-	return 'bg-red-400'
+function aqiToSegments(airQuality: number): number {
+	if (airQuality <= 1) return 1
+	if (airQuality <= 2) return 2
+	if (airQuality <= 4) return 3
+	return 4
 }
 
-// map continuous fan speed to nearest discrete step value
 function fanSpeedToStepValue(speed: number): number {
 	let closest: number = FAN_STEPS[0].value
 	let minDist = Math.abs(speed - FAN_STEPS[0].value)
@@ -45,13 +74,6 @@ function fanSpeedToStepValue(speed: number): number {
 	return closest
 }
 
-function aqiToSegments(airQuality: number): number {
-	if (airQuality <= 1) return 1
-	if (airQuality <= 2) return 2
-	if (airQuality <= 4) return 3
-	return 4
-}
-
 function buildReadoutLabel(pm25: number | undefined, aqiLabelText: string | undefined, isOn: boolean): string {
 	if (pm25 !== undefined) {
 		const base = `PM2.5: ${pm25} micrograms per cubic meter`
@@ -59,6 +81,8 @@ function buildReadoutLabel(pm25: number | undefined, aqiLabelText: string | unde
 	}
 	return isOn ? 'Air purifier on' : 'Air purifier off'
 }
+
+// ── Component ───────────────────────────────────────────────────────────
 
 interface AirPurifierCardProps {
 	device: Device
@@ -71,79 +95,178 @@ export function AirPurifierCard({ device, variant = 'compact', onStateChange }: 
 	const isOn = state.on ?? false
 	const isFull = variant === 'full'
 
-	const aqi = state.airQuality !== undefined ? aqiLabel(state.airQuality) : null
+	const aqi = state.airQuality !== undefined ? aqiLevel(state.airQuality) : null
 	const litSegments = state.airQuality !== undefined ? aqiToSegments(state.airQuality) : 0
 	const activeFanValue = state.fanSpeed !== undefined ? fanSpeedToStepValue(state.fanSpeed) : 0
+	const filterLit = state.filterLife !== undefined ? Math.round(state.filterLife / 10) : 0
 
 	const readoutLabel = buildReadoutLabel(state.pm25, aqi?.label, isOn)
 
+	const hasMeterData = state.airQuality !== undefined || state.filterLife !== undefined
+	const hasFanControl = state.fanSpeed !== undefined && device.online
+
 	return (
 		<div className="space-y-3">
-			{/* ── PM2.5 readout + AQI badge ──────────────────────────── */}
-			<div className="flex items-center justify-between gap-2">
-				{state.pm25 !== undefined ? (
-					<ReadoutDisplay size="lg" glowIntensity={isOn ? 1 : 0} aria-label={readoutLabel}>
-						{state.pm25}
-						<span className="text-xs text-[#faf0dc]/50 ml-1.5">ug/m3</span>
-					</ReadoutDisplay>
+			{/* ── PM2.5 readout with AQI label ────────────────────────── */}
+			<ReadoutDisplay size="lg" glowIntensity={isOn ? 1 : 0} aria-label={readoutLabel} className="w-full justify-between">
+				{isOn ? (
+					<>
+						{state.pm25 !== undefined ? (
+							<span>{state.pm25}<span className="text-xs text-display-text/50 ml-0.5">ug/m3</span></span>
+						) : (
+							<span>ON</span>
+						)}
+						{aqi && (
+							<span className="text-sm font-michroma" style={{ color: aqi.css, textShadow: `0 0 8px ${aqi.css}` }}>{aqi.label}</span>
+						)}
+					</>
 				) : (
-					<span className={cn('text-2xs font-michroma uppercase tracking-wider', isOn ? 'text-blue-600' : 'text-stone-400')}>
-						{isOn ? 'On' : 'Off'}
-					</span>
+					<span className="text-display-text/30">OFF</span>
 				)}
-				{aqi && (
-					<span className={cn('text-2xs font-michroma uppercase tracking-wider px-2 py-0.5 rounded-full', aqi.color)}>
-						{aqi.label}
-					</span>
-				)}
-			</div>
+			</ReadoutDisplay>
 
-			{/* ── Segmented AQI bar ──────────────────────────────────── */}
-			{state.airQuality !== undefined && (
-				<div>
-					<span className="font-michroma text-2xs uppercase tracking-widest text-stone-400 mb-1.5 block" aria-label="Air Quality Index">AQI</span>
-					<div className="flex gap-1" role="meter" aria-label={`Air quality level: ${aqi?.label ?? 'unknown'}`} aria-valuemin={1} aria-valuemax={4} aria-valuenow={litSegments}>
-						{AQI_SEGMENT_COLORS.map((segColor, i) => (
-							<div
-								key={segColor}
-								className={cn(
-									'h-2 flex-1 rounded-sm transition-colors',
-									i < litSegments ? segColor : 'bg-stone-200/60',
-								)}
-							/>
-						))}
-					</div>
-				</div>
+			{/* ── Meter panel — matte instrument faceplate ── */}
+			{(hasMeterData || hasFanControl) && (
+				<MeterPanel
+					litAqi={litSegments}
+					filterLit={filterLit}
+					filterLife={state.filterLife}
+					aqi={aqi}
+					hasAqi={state.airQuality !== undefined}
+					hasFilter={state.filterLife !== undefined}
+					hasFan={hasFanControl}
+					activeFanValue={activeFanValue}
+					isFull={isFull}
+					onFanChange={(key) => { void onStateChange?.(device.id, { fanSpeed: Number(key) }) }}
+					disabled={!device.online}
+				/>
 			)}
+		</div>
+	)
+}
 
-			{/* ── Filter life bar ────────────────────────────────────── */}
-			{state.filterLife !== undefined && (
-				<div>
-					<div className="flex items-center justify-between mb-1">
-						<span className="font-michroma text-2xs uppercase tracking-widest text-stone-400" aria-label="Filter Life">FILTER</span>
-						<span className="font-ioskeley text-xs text-stone-500">{state.filterLife}%</span>
+// ── Meter panel — matte instrument faceplate ────────────────────────────
+
+interface MeterPanelProps {
+	litAqi: number
+	filterLit: number
+	filterLife: number | undefined
+	aqi: { label: string; css: string } | null
+	hasAqi: boolean
+	hasFilter: boolean
+	hasFan: boolean
+	activeFanValue: number
+	isFull: boolean
+	onFanChange: (key: string) => void
+	disabled: boolean
+}
+
+function MeterPanel({
+	litAqi, filterLit, filterLife, aqi,
+	hasAqi, hasFilter, hasFan,
+	activeFanValue, isFull, onFanChange, disabled,
+}: Readonly<MeterPanelProps>) {
+	return (
+		<div
+			className="rounded-lg overflow-hidden px-3 py-3"
+			style={{
+				background: 'linear-gradient(180deg, #1e1d18 0%, #181712 100%)',
+				border: '1px solid #0f0e0a',
+				boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.6), inset 0 0 3px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.15)',
+			}}
+		>
+			<div className="flex items-end justify-between gap-2">
+				{/* ── Left: AQI vertical meter ──────────────────────── */}
+				{hasAqi && (
+					<div className="flex flex-col items-center gap-1 shrink-0">
+						<span className="font-michroma text-[8px] uppercase tracking-widest text-display-text/60">AQI</span>
+						<VerticalMeter
+							segments={AQI_SEGMENT_COLORS.length}
+							lit={litAqi}
+							getColor={(i) => AQI_SEGMENT_COLORS[i]}
+						/>
+						{aqi && (
+							<span
+								className="font-michroma text-[8px] uppercase tracking-wider"
+								style={{ color: aqi.css, textShadow: `0 0 6px ${aqi.css}` }}
+							>
+								{aqi.label}
+							</span>
+						)}
 					</div>
-					<div className="h-1 bg-stone-200/80 rounded-full overflow-hidden">
-						<div
-							className={cn('h-full rounded-full transition-all', filterLifeColor(state.filterLife))}
-							style={{ width: `${state.filterLife}%` }}
+				)}
+
+				{/* ── Center: Fan dial ──────────────────────────────── */}
+				{hasFan && (
+					<div className="flex-1 flex justify-center min-w-0">
+						<SteppedRadialDial
+							label={isFull ? 'FAN' : ''}
+							options={FAN_DIAL_OPTIONS}
+							value={String(activeFanValue)}
+							onChange={onFanChange}
+							disabled={disabled}
 						/>
 					</div>
-				</div>
-			)}
+				)}
 
-			{/* ── Fan speed radial dial (full view only) ──────────────── */}
-			{isFull && state.fanSpeed !== undefined && device.online && (
-				<div className="flex justify-center">
-					<SteppedRadialDial
-						label="FAN"
-						options={FAN_DIAL_OPTIONS}
-						value={String(activeFanValue)}
-						onChange={(key) => { void onStateChange?.(device.id, { fanSpeed: Number(key) }) }}
-						disabled={!device.online}
+				{/* ── Right: Filter vertical meter ──────────────────── */}
+				{hasFilter && (
+					<div className="flex flex-col items-center gap-1 shrink-0">
+						<span className="font-michroma text-[8px] uppercase tracking-widest text-display-text/60">FLTR</span>
+						<VerticalMeter
+							segments={FILTER_SEGMENT_COUNT}
+							lit={filterLit}
+							getColor={(i) => FILTER_GRADIENT[i]}
+						/>
+						<span className="font-ioskeley text-[10px] text-display-text/60">
+							{filterLife}%
+						</span>
+					</div>
+				)}
+			</div>
+		</div>
+	)
+}
+
+// ── Vertical LED meter — stacked horizontal segments ────────────────────
+
+interface SegmentColor {
+	color: string
+	glow: string
+	dim: string
+}
+
+interface VerticalMeterProps {
+	segments: number
+	lit: number
+	getColor: (segIndex: number, totalLit: number) => SegmentColor
+}
+
+function VerticalMeter({ segments, lit, getColor }: Readonly<VerticalMeterProps>) {
+	// render top-to-bottom, lit fills from bottom
+	const segArray = Array.from({ length: segments }, (_, i) => {
+		const bottomIndex = segments - 1 - i
+		return { isLit: bottomIndex < lit, colorIndex: bottomIndex }
+	})
+
+	return (
+		<div className="flex flex-col gap-[2px]" role="meter" aria-valuemin={0} aria-valuemax={segments} aria-valuenow={lit}>
+			{segArray.map((seg, i) => {
+				const { color, glow, dim } = getColor(seg.colorIndex, lit)
+				return (
+					<div
+						key={i}
+						className="w-5 h-1.5 rounded-[1px] transition-all duration-300"
+						style={seg.isLit ? {
+							background: color,
+							boxShadow: `0 0 4px ${glow}, 0 0 1px ${glow}`,
+						} : {
+							background: dim,
+							boxShadow: 'inset 0 0.5px 1px rgba(0,0,0,0.3)',
+						}}
 					/>
-				</div>
-			)}
+				)
+			})}
 		</div>
 	)
 }

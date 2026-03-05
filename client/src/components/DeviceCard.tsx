@@ -1,19 +1,12 @@
-import { useCallback, useState } from 'react'
+import { memo, useCallback, useState } from 'react'
 import { Button, Tooltip, TooltipTrigger } from 'react-aria-components'
 
 import type { Device, DeviceState } from '../types'
 
 import { cn } from '../lib/cn'
 import { type LightAccent, lightAccentStyle, tempToColor } from '../lib/color-utils'
-import { AirPurifierCard } from './device-cards/AirPurifierCard'
-import { ApplianceCard } from './device-cards/ApplianceCard'
-import { FridgeCard } from './device-cards/FridgeCard'
-import { GenericCard } from './device-cards/GenericCard'
-import { LightCard } from './device-cards/LightCard'
-import { MediaCard } from './device-cards/MediaCard'
-import { SensorCard } from './device-cards/SensorCard'
-import { ThermostatCard } from './device-cards/ThermostatCard'
-import { VacuumCard } from './device-cards/VacuumCard'
+import { BRAND_LABEL } from '../lib/device-constants'
+import { DeviceBody } from '../lib/device-labels'
 import { Card, CardBody, CardFooter, CardHeader } from './ui/card'
 import { PowerButton } from './ui/power-button'
 
@@ -32,22 +25,7 @@ const TYPE_LABEL: Record<string, string> = {
 	media_player: 'MEDIA',
 }
 
-const BRAND_LABEL: Record<string, string> = {
-	aqara: 'Aqara',
-	elgato: 'Elgato',
-	eufy: 'Eufy',
-	ge: 'GE',
-	govee: 'Govee',
-	hue: 'Hue',
-	lg: 'LG',
-	resideo: 'Resideo',
-	samsung: 'Samsung',
-	smartthings: 'SmartThings',
-	sonos: 'Sonos',
-	vesync: 'VeSync',
-}
-
-// brands with native Matter support — show "Native ✓" instead of toggle
+// brands with native Matter support — show "Native" instead of toggle
 const NATIVE_MATTER_BRANDS = new Set(['hue', 'aqara'])
 
 interface DeviceCardProps {
@@ -59,7 +37,7 @@ interface DeviceCardProps {
 	onToggleSelect?: () => void
 }
 
-export function DeviceCard({
+export const DeviceCard = memo(function DeviceCard({
 	device,
 	isSelected,
 	onExpand,
@@ -92,40 +70,10 @@ export function DeviceCard({
 			isSelected={isSelected}
 			onToggleSelect={onToggleSelect}
 		>
-			{renderBody(device, onStateChange, handleAccentChange)}
+			<DeviceBody device={device} onStateChange={onStateChange} onAccentChange={handleAccentChange} />
 		</CardShell>
 	)
-}
-
-function renderBody(
-	device: Device,
-	onStateChange?: (deviceId: string, state: Partial<DeviceState>) => Promise<void>,
-	onAccentChange?: (override: { brightness?: number; colorTemp?: number; color?: { r: number; g: number; b: number } } | null) => void,
-) {
-	switch (device.type) {
-		case 'light':
-			return <LightCard device={device} onStateChange={onStateChange} onAccentChange={onAccentChange} />
-		case 'thermostat':
-			return <ThermostatCard device={device} onStateChange={onStateChange} />
-		case 'air_purifier':
-			return <AirPurifierCard device={device} onStateChange={onStateChange} />
-		case 'vacuum':
-			return <VacuumCard device={device} onStateChange={onStateChange} />
-		case 'washer_dryer':
-		case 'dishwasher':
-		case 'oven':
-			return <ApplianceCard device={device} />
-		case 'tv':
-		case 'media_player':
-			return <MediaCard device={device} onStateChange={onStateChange} />
-		case 'fridge':
-			return <FridgeCard device={device} />
-		case 'sensor':
-			return <SensorCard device={device} />
-		default:
-			return <GenericCard device={device} onStateChange={onStateChange} />
-	}
-}
+})
 
 interface CardShellProps {
 	accent?: LightAccent
@@ -178,6 +126,9 @@ function CardShell({
 			muted={!device.online}
 			selected={isSelected}
 		>
+			{/* top status bar — universal online/state indicator */}
+			<StatusBar device={device} />
+
 			<CardHeader>
 				<div className="flex items-start justify-between gap-2">
 					<div className="flex items-center gap-2 min-w-0">
@@ -206,7 +157,6 @@ function CardShell({
 						</div>
 					</div>
 					<div className="flex items-center gap-1.5 shrink-0">
-						<RecessedLed online={device.online} />
 						{onExpand && (
 							<Button
 								onPress={() => onExpand(device)}
@@ -235,7 +185,6 @@ function CardShell({
 			<CardBody>{children}</CardBody>
 
 			<CardFooter>
-				{/* control row — PWR button + MATTER LED indicator */}
 				<div className="px-3 py-2 flex items-center justify-between">
 					{hasPower && device.online ? (
 						<PowerButton
@@ -253,8 +202,7 @@ function CardShell({
 
 					{isNativeMatter ? (
 						<TooltipTrigger delay={200}>
-							<Button className="inline-flex items-center gap-2 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-1 rounded-sm px-1 py-0.5">
-								<MatterLed active />
+							<Button className="inline-flex items-center gap-1.5 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-1 rounded-sm px-1 py-0.5">
 								<span className="font-michroma text-2xs uppercase tracking-wider text-stone-400">MATTER</span>
 							</Button>
 							<Tooltip className="bg-stone-900 text-white text-xs rounded-lg px-3 py-1.5 shadow-lg max-w-[200px] text-center">
@@ -262,98 +210,77 @@ function CardShell({
 							</Tooltip>
 						</TooltipTrigger>
 					) : (
-						<Button
-							onPress={() => { void handleMatterToggle(!device.matterEnabled) }}
-							isDisabled={matterLoading || !device.online}
-							className="inline-flex items-center gap-2 cursor-pointer disabled:opacity-40 outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-1 rounded-sm px-1 py-0.5"
-							aria-label={device.matterEnabled ? 'Disable Matter bridge' : 'Enable Matter bridge'}
-						>
-							<MatterLed active={device.matterEnabled} />
-							<span className="font-michroma text-2xs uppercase tracking-wider text-stone-400">MATTER</span>
-						</Button>
+						<TooltipTrigger delay={200}>
+							<Button
+								onPress={() => { void handleMatterToggle(!device.matterEnabled) }}
+								isDisabled={matterLoading || !device.online}
+								className={cn(
+									'inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-40 outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-1 rounded-sm px-1 py-0.5',
+									device.matterEnabled && 'text-emerald-600',
+								)}
+								aria-label={device.matterEnabled ? 'Disable Matter bridge' : 'Enable Matter bridge'}
+							>
+								<span className={cn(
+									'font-michroma text-2xs uppercase tracking-wider',
+									device.matterEnabled ? 'text-emerald-600' : 'text-stone-400',
+								)}>
+									MATTER
+								</span>
+							</Button>
+							<Tooltip className="bg-stone-900 text-white text-xs rounded-lg px-3 py-1.5 shadow-lg max-w-[200px] text-center">
+								{device.matterEnabled ? 'Remove from Matter bridge' : 'Expose to Matter bridge'}
+							</Tooltip>
+						</TooltipTrigger>
 					)}
 				</div>
-
-				{/* full-bleed light bar — flush to card edges */}
-				<LightBar device={device} />
 			</CardFooter>
 		</Card>
 	)
 }
 
-// recessed LED indicator — inset bezel with color glow when online
-function RecessedLed({ online }: Readonly<{ online: boolean }>) {
-	return (
-		<div
-			className="w-3 h-3 rounded-full shrink-0"
-			style={{
-				background: 'linear-gradient(180deg, #d4d0ca, #c0bcb6)',
-				boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.4)',
-			}}
-			title={online ? 'Online' : 'Offline'}
-		>
-			<div
-				className={cn('w-1.5 h-1.5 rounded-full m-auto mt-[3px]', online ? 'bg-emerald-400' : 'bg-stone-400/50')}
-				style={online ? {
-					boxShadow: '0 0 4px rgba(52,211,153,0.6), 0 0 8px rgba(52,211,153,0.3)',
-				} : {
-					boxShadow: 'inset 0 0.5px 1px rgba(0,0,0,0.2)',
-				}}
-			/>
-		</div>
-	)
-}
-
-// recessed LED for Matter status — same bezel style as header online LED
-function MatterLed({ active }: Readonly<{ active: boolean }>) {
-	return (
-		<div
-			className="w-3 h-3 rounded-full shrink-0"
-			style={{
-				background: 'linear-gradient(180deg, #d4d0ca, #c0bcb6)',
-				boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.4)',
-			}}
-		>
-			<div
-				className={cn('w-1.5 h-1.5 rounded-full m-auto mt-[3px]', active ? 'bg-emerald-400' : 'bg-stone-400/50')}
-				style={active ? {
-					boxShadow: '0 0 4px rgba(52,211,153,0.6), 0 0 8px rgba(52,211,153,0.3)',
-				} : {
-					boxShadow: 'inset 0 0.5px 1px rgba(0,0,0,0.2)',
-				}}
-			/>
-		</div>
-	)
-}
-
-// routered LED strip — recessed channel milled into the panel surface
-function LightBar({ device }: Readonly<{ device: Device }>) {
+// top-edge status strip — shows connectivity + light state at a glance
+function StatusBar({ device }: Readonly<{ device: Device }>) {
 	const { state } = device
 	const isOn = state.on ?? false
 	const brightness = (state.brightness ?? 100) / 100
 
-	// determine bar color from device state
-	let barColor = '#d6d3cd' // off — neutral warm gray
-	if (isOn && device.type === 'light') {
-		if (state.color) {
+	let barColor: string
+	let glowColor: string | undefined
+
+	if (!device.online) {
+		// offline — flat muted bar, no glow
+		barColor = '#c8c4be'
+		glowColor = undefined
+	} else if (isOn && device.type === 'light') {
+		// light on — prefer colorTemp (pure hue) since RGB values have brightness baked in
+		if (state.colorTemp !== undefined) {
+			barColor = tempToColor(state.colorTemp)
+		} else if (state.color) {
 			const { r, g, b } = state.color
 			barColor = `rgb(${r} ${g} ${b})`
-		} else if (state.colorTemp !== undefined) {
-			barColor = tempToColor(state.colorTemp)
 		} else {
-			barColor = '#fbbf24' // warm amber fallback
+			barColor = '#fbbf24'
 		}
+		glowColor = barColor
+	} else if (isOn) {
+		// non-light device on — emerald
+		barColor = '#34d399'
+		glowColor = barColor
+	} else {
+		// online but off — subtle warm idle
+		barColor = '#d6d3cd'
+		glowColor = undefined
 	}
 
 	return (
-		<div className="px-3 pb-2.5">
+		<div className="px-3 pt-2">
 			<div
 				className="w-full h-1.5 rounded-full transition-all duration-300"
 				style={{
-					background: isOn ? barColor : '#d6d3cd',
-					opacity: isOn ? 0.7 + brightness * 0.3 : 1,
-					boxShadow: isOn
-						? `inset 0 1px 2px rgba(0,0,0,0.2), 0 0 10px color-mix(in srgb, ${barColor} 60%, transparent), 0 0 4px color-mix(in srgb, ${barColor} 40%, transparent)`
+					background: barColor,
+					opacity: glowColor ? 0.7 + brightness * 0.3 : 1,
+					boxShadow: glowColor
+						? `inset 0 1px 2px rgba(0,0,0,0.2), 0 0 10px color-mix(in srgb, ${glowColor} 60%, transparent), 0 0 4px color-mix(in srgb, ${glowColor} 40%, transparent)`
 						: 'inset 0 1px 2px rgba(0,0,0,0.18), inset 0 0 1px rgba(0,0,0,0.12)',
 				}}
 			/>

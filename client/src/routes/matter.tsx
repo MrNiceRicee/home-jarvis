@@ -54,7 +54,7 @@ function MatterPage() {
 	if (isLoading) {
 		return (
 			<div className="flex items-center justify-center py-24">
-				<span className="font-mono text-xs text-stone-400 animate-pulse tracking-widest">
+				<span className="font-ioskeley text-xs text-stone-400 animate-pulse tracking-widest">
 					CONNECTING...
 				</span>
 			</div>
@@ -104,7 +104,7 @@ function MatterPage() {
 							>
 								<span className="text-2xl">✓</span>
 							</div>
-							<p className="font-mono text-xs text-stone-500 mt-3 tracking-wide">
+							<p className="font-ioskeley text-xs text-stone-500 mt-3 tracking-wide">
 								COMMISSIONED
 							</p>
 						</div>
@@ -116,7 +116,7 @@ function MatterPage() {
 			{status === 'running' && (
 				<div className="mt-6 flex items-center gap-3 px-4 py-2.5 rounded-lg bg-stone-100/60 border border-stone-200/50">
 					<span className="text-xs">ℹ️</span>
-					<p className="font-mono text-2xs text-stone-500 tracking-wide leading-relaxed">
+					<p className="font-ioskeley text-2xs text-stone-500 tracking-wide leading-relaxed">
 						MATTER BRIDGE EXPOSES YOUR DEVICES VIA THE MATTER PROTOCOL. COMPATIBLE WITH APPLE HOME, GOOGLE HOME, AND AMAZON ALEXA.
 						{!paired && ' SCAN THE QR CODE WITH YOUR SMART HOME APP TO PAIR.'}
 					</p>
@@ -142,10 +142,10 @@ function StatusPanel({ status, paired, deviceCount, port }: Readonly<{
 			<div className="flex items-center gap-4 mb-6">
 				<StatusLed status={status} />
 				<div>
-					<p className="font-mono text-sm font-semibold text-stone-800 uppercase tracking-wide">
+					<p className="font-michroma text-sm font-semibold text-stone-800 uppercase tracking-wide">
 						{statusHeadline(status, paired)}
 					</p>
-					<p className="font-mono text-2xs text-stone-400 mt-0.5 tracking-wider">
+					<p className="font-ioskeley text-2xs text-stone-400 mt-0.5 tracking-wider">
 						{statusSubline(status, paired, deviceCount)}
 					</p>
 				</div>
@@ -170,7 +170,7 @@ function ConsolePanel({ children, className }: Readonly<{ children: React.ReactN
 		<div
 			className={cn(
 				'rounded-xl overflow-hidden',
-				'bg-linear-to-b from-[#fffdf8] to-stone-50/80',
+				'bg-linear-to-b from-surface-warm to-stone-50/80',
 				'border border-[rgba(168,151,125,0.15)]',
 				'shadow-[var(--shadow-raised),var(--shadow-inner-glow)]',
 				'p-5',
@@ -185,7 +185,7 @@ function ConsolePanel({ children, className }: Readonly<{ children: React.ReactN
 function ConsolePanelLabel({ children }: Readonly<{ children: React.ReactNode }>) {
 	return (
 		<div className="flex items-center gap-2 mb-4">
-			<span className="font-mono text-2xs font-semibold text-stone-400 tracking-[0.15em] uppercase">
+			<span className="font-michroma text-2xs font-semibold text-stone-400 tracking-[0.15em] uppercase">
 				{children}
 			</span>
 			<div className="flex-1 h-px bg-stone-200/60" />
@@ -234,10 +234,10 @@ function GaugeReadout({ label, value, valueClass }: Readonly<{ label: string; va
 				'shadow-[var(--shadow-inset)]',
 			)}
 		>
-			<p className={cn('font-mono text-lg font-semibold tabular-nums', valueClass ?? 'text-stone-800')}>
+			<p className={cn('font-ioskeley text-lg font-semibold tabular-nums', valueClass ?? 'text-stone-800')}>
 				{value}
 			</p>
-			<p className="font-mono text-[9px] text-stone-400 tracking-[0.2em] mt-0.5 uppercase">
+			<p className="font-michroma text-[9px] text-stone-400 tracking-[0.2em] mt-0.5 uppercase">
 				{label}
 			</p>
 		</div>
@@ -268,14 +268,14 @@ function QrPanel({ qrDataUrl }: Readonly<{ qrDataUrl?: string }>) {
 					/>
 				) : (
 					<div className="w-full h-full flex items-center justify-center">
-						<span className="font-mono text-2xs text-stone-500 animate-pulse tracking-widest">
+						<span className="font-ioskeley text-2xs text-stone-500 animate-pulse tracking-widest">
 							LOADING...
 						</span>
 					</div>
 				)}
 			</div>
 
-			<p className="font-mono text-2xs text-stone-400 text-center mt-3 tracking-wide leading-relaxed">
+			<p className="font-michroma text-2xs text-stone-400 text-center mt-3 tracking-wide leading-relaxed">
 				OPEN YOUR SMART HOME APP AND SCAN THIS CODE
 			</p>
 		</ConsolePanel>

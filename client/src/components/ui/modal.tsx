@@ -16,7 +16,7 @@ export function RaisedModal({ children, className }: Readonly<RaisedModalProps>)
 			<AriaModal
 				className={cn(
 					'w-full max-w-md mx-4',
-					'bg-linear-to-b from-[#fffdf8] to-stone-50/80',
+					'bg-linear-to-b from-surface-warm to-stone-50/80',
 					'rounded-2xl',
 					'border border-[rgba(168,151,125,0.15)]',
 					'shadow-[0_8px_40px_rgba(120,90,50,0.08),0_2px_8px_rgba(120,90,50,0.06),inset_0_1px_0_rgba(255,253,245,0.8)]',

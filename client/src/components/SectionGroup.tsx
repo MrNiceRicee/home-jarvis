@@ -16,7 +16,7 @@ import {
 	useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useRef, useState } from 'react'
+import { memo, useRef, useState } from 'react'
 import { Button } from 'react-aria-components'
 
 import type { Device, DeviceState, Section } from '../types'
@@ -174,7 +174,7 @@ interface SortableDeviceCardProps {
 	onToggleSelect?: () => void
 }
 
-function SortableDeviceCard({ device, isSelected, onExpand, onMatterToggle, onStateChange, onToggleSelect }: Readonly<SortableDeviceCardProps>) {
+const SortableDeviceCard = memo(function SortableDeviceCard({ device, isSelected, onExpand, onMatterToggle, onStateChange, onToggleSelect }: Readonly<SortableDeviceCardProps>) {
 	const {
 		attributes,
 		listeners,
@@ -207,4 +207,4 @@ function SortableDeviceCard({ device, isSelected, onExpand, onMatterToggle, onSt
 			/>
 		</div>
 	)
-}
+})
