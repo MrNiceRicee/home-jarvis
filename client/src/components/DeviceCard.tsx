@@ -193,8 +193,8 @@ function CardShell({
 							</span>
 						)}
 						<div className="min-w-0">
-							<p className="text-sm font-semibold text-stone-900 truncate">{device.name}</p>
-							<p className="text-xs text-stone-500 truncate">
+							<p className="text-sm font-commit font-medium text-stone-900 truncate">{device.name}</p>
+							<p className="text-xs font-commit text-stone-500 truncate">
 								{BRAND_LABEL[device.brand] ?? device.brand}
 							</p>
 						</div>
@@ -206,7 +206,7 @@ function CardShell({
 			<CardBody>{children}</CardBody>
 
 			<CardFooter>
-				<span className="text-xs text-stone-400">Matter</span>
+				<span className="text-xs font-commit text-stone-400 uppercase tracking-wide">Matter</span>
 				{isNativeMatter ? (
 					<TooltipTrigger delay={200}>
 						<Button className="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 cursor-default focus:outline-none">
@@ -242,7 +242,7 @@ function badgeBg(online: boolean, accented: boolean): string {
 function OnlineBadge({ online, accented }: Readonly<{ online: boolean; accented: boolean }>) {
 	return (
 		<span
-			className={cn('flex items-center gap-1 text-xs font-medium shrink-0 px-1.5 py-0.5 rounded-full', badgeBg(online, accented), online ? 'text-emerald-700' : 'text-stone-400')}
+			className={cn('flex items-center gap-1 text-xs font-commit font-medium shrink-0 px-1.5 py-0.5 rounded-full', badgeBg(online, accented), online ? 'text-emerald-700' : 'text-stone-400')}
 		>
 			<span className={cn('w-1.5 h-1.5 rounded-full', online ? 'bg-emerald-500' : 'bg-stone-300')} />
 			{online ? 'Online' : 'Offline'}

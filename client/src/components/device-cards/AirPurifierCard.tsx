@@ -4,6 +4,7 @@ import { Button, Label, Slider, SliderOutput, SliderThumb, SliderTrack } from 'r
 import type { Device, DeviceState } from '../../types'
 
 import { cn } from '../../lib/cn'
+import { ReadoutDisplay } from '../ui/readout-display'
 
 const AQI_LEVELS = [
 	{ max: 1, label: 'Good', color: 'text-emerald-700 bg-emerald-50' },
@@ -14,6 +15,12 @@ const AQI_LEVELS = [
 
 function aqiLabel(value: number): { label: string; color: string } {
 	return AQI_LEVELS.find((l) => value <= l.max) ?? AQI_LEVELS[AQI_LEVELS.length - 1]
+}
+
+function filterLifeColor(life: number): string {
+	if (life > 30) return 'bg-emerald-400'
+	if (life > 10) return 'bg-amber-400'
+	return 'bg-red-400'
 }
 
 interface AirPurifierCardProps {
@@ -47,16 +54,43 @@ export function AirPurifierCard({ device, onStateChange }: Readonly<AirPurifierC
 
 	return (
 		<div className="space-y-3">
-			<div className="flex items-center justify-between">
-				<span className={cn('text-xs font-medium', isOn ? 'text-blue-600' : 'text-stone-400')}>
-					{isOn ? 'On' : 'Off'}
-				</span>
+			{/* pm2.5 + AQI row */}
+			<div className="flex items-center justify-between gap-2">
+				{state.pm25 !== undefined ? (
+					<ReadoutDisplay size="lg">
+						{state.pm25}
+						<span className="text-xs text-[#faf0dc]/50 ml-1.5">ug/m3</span>
+					</ReadoutDisplay>
+				) : (
+					<span className={cn('text-xs font-commit font-medium', isOn ? 'text-blue-600' : 'text-stone-400')}>
+						{isOn ? 'On' : 'Off'}
+					</span>
+				)}
 				{aqi && (
-					<span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', aqi.color)}>
+					<span className={cn('text-xs font-commit font-medium px-2 py-0.5 rounded-full', aqi.color)}>
 						{aqi.label}
 					</span>
 				)}
 			</div>
+
+			{/* filter life bar */}
+			{state.filterLife !== undefined && (
+				<div>
+					<div className="flex items-center justify-between mb-1">
+						<span className="text-xs font-commit uppercase tracking-wide text-stone-500">Filter</span>
+						<span className="text-xs font-commit text-stone-400">{state.filterLife}%</span>
+					</div>
+					<div className="h-1 bg-stone-200 rounded-full overflow-hidden">
+						<div
+							className={cn(
+								'h-full rounded-full transition-all',
+								filterLifeColor(state.filterLife),
+							)}
+							style={{ width: `${state.filterLife}%` }}
+						/>
+					</div>
+				</div>
+			)}
 
 			{device.online && (
 				<Button
