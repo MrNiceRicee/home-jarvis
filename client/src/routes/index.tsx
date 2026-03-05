@@ -236,20 +236,27 @@ function SkeletonCard() {
 	return (
 		<div
 			className={cn(
-				'rounded-lg overflow-hidden',
+				'relative rounded-lg overflow-hidden',
 				'bg-[#fffdf8]',
-				'border-2 border-[rgba(168,151,125,0.15)]',
-				'shadow-[var(--shadow-raised)]',
+				'border border-[rgba(168,151,125,0.12)]',
 				'animate-pulse',
 				'p-4 space-y-3',
 			)}
+			style={{
+				boxShadow: '0 1px 2px rgba(120,90,50,0.05), 0 4px 12px rgba(120,90,50,0.04), 0 8px 24px rgba(120,90,50,0.02), inset 0 0.5px 0 rgba(255,255,255,0.5)',
+			}}
 		>
+			{/* corner mounting dots */}
+			<div className="absolute top-1.5 left-1.5 w-1 h-1 rounded-full bg-stone-300/30" />
+			<div className="absolute top-1.5 right-1.5 w-1 h-1 rounded-full bg-stone-300/30" />
+			<div className="absolute bottom-1.5 left-1.5 w-1 h-1 rounded-full bg-stone-300/30" />
+			<div className="absolute bottom-1.5 right-1.5 w-1 h-1 rounded-full bg-stone-300/30" />
 			<div className="flex items-center gap-3">
 				<div className="flex-1">
 					<div className="w-24 h-3.5 rounded bg-stone-200/60 mb-1.5" />
 					<div className="w-16 h-2.5 rounded bg-stone-200/40" />
 				</div>
-				<div className="w-2 h-2 rounded-full bg-stone-200/60" />
+				<div className="w-3 h-3 rounded-full bg-stone-200/60" />
 			</div>
 			<div className="w-full h-10 rounded-md bg-stone-200/30" />
 			<div className="w-full h-6 rounded bg-stone-200/20" />

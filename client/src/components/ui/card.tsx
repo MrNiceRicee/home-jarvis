@@ -16,28 +16,39 @@ interface CardProps {
 }
 
 export function Card({ children, className, accent, glowShadow, muted, selected }: Readonly<CardProps>) {
+	// emboss + warm shadow layers for stamped faceplate feel
+	const baseShadow = '0 1px 2px rgba(120,90,50,0.05), 0 4px 12px rgba(120,90,50,0.04), 0 8px 24px rgba(120,90,50,0.02), inset 0 0.5px 0 rgba(255,255,255,0.5)'
+	const hoverShadow = '0 2px 4px rgba(120,90,50,0.06), 0 8px 20px rgba(120,90,50,0.06), 0 12px 32px rgba(120,90,50,0.03), inset 0 0.5px 0 rgba(255,255,255,0.5)'
+
 	return (
 		<div
 			className={cn(
 				'relative rounded-lg overflow-hidden',
 				'bg-[#fffdf8]',
-				'border-2',
+				'border border-[rgba(168,151,125,0.12)]',
 				'transition-all duration-200',
-				// non-glow cards: tailwind handles base + hover shadow
-				!glowShadow && '[box-shadow:var(--shadow-raised),inset_0_1px_0_rgba(255,255,255,0.9)]',
-				!glowShadow && 'hover:[box-shadow:var(--shadow-raised-hover),inset_0_1px_0_rgba(255,255,255,0.9)]',
 				muted && 'opacity-60',
 				selected && 'ring-2 ring-amber-500/70 ring-offset-1',
 				className,
 			)}
 			style={{
-				borderColor: accent ?? (muted ? '#e7e5e0' : 'rgba(168,151,125,0.15)'),
-				// glow cards: inline shadow includes the edge glow layer
-				...(glowShadow && {
-					boxShadow: `var(--shadow-raised), inset 0 1px 0 rgba(255,255,255,0.9), ${glowShadow}`,
-				}),
+				borderColor: accent ?? (muted ? '#e7e5e0' : 'rgba(168,151,125,0.12)'),
+				boxShadow: glowShadow
+					? `${baseShadow}, ${glowShadow}`
+					: baseShadow,
+			}}
+			onMouseEnter={(e) => {
+				if (!glowShadow) e.currentTarget.style.boxShadow = hoverShadow
+			}}
+			onMouseLeave={(e) => {
+				if (!glowShadow) e.currentTarget.style.boxShadow = baseShadow
 			}}
 		>
+			{/* corner mounting dots */}
+			<div className="absolute top-1.5 left-1.5 w-1 h-1 rounded-full bg-stone-300/30 pointer-events-none" />
+			<div className="absolute top-1.5 right-1.5 w-1 h-1 rounded-full bg-stone-300/30 pointer-events-none" />
+			<div className="absolute bottom-1.5 left-1.5 w-1 h-1 rounded-full bg-stone-300/30 pointer-events-none" />
+			<div className="absolute bottom-1.5 right-1.5 w-1 h-1 rounded-full bg-stone-300/30 pointer-events-none" />
 			{children}
 		</div>
 	)
