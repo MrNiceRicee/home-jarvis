@@ -352,7 +352,7 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 					>
 						<ColorField>
 							<Input
-								className="w-20 bg-[#2a2924] rounded border border-[#1a1914] px-2 py-1 font-ioskeley text-xs text-[#faf0dc] caret-[#faf0dc] selection:bg-stone-600 focus:outline-none"
+								className="w-20 bg-[#2a2924] rounded border border-[#1a1914] px-2 py-1 font-ioskeley text-xs text-[#faf0dc] caret-[#faf0dc] selection:bg-stone-600 outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-1"
 								style={{
 									boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.5), inset 0 0 2px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.2)',
 								}}

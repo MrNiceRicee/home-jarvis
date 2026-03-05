@@ -1,7 +1,7 @@
 ---
 title: "feat: Instrument Panel Controls Redesign"
 type: feat
-status: active
+status: completed
 date: 2026-03-04
 origin: docs/brainstorms/2026-03-04-instrument-panel-controls-brainstorm.md
 ---
@@ -305,22 +305,22 @@ New toggle bank component, then apply to LightCard's full-dialog controls.
 
 **Hex color input (`client/src/components/device-cards/LightCard.tsx`):**
 
-- [ ] Restyle `ColorField` + `Input` with ReadoutDisplay visual treatment:
+- [x] Restyle `ColorField` + `Input` with ReadoutDisplay visual treatment:
   - Container: `bg-[#2a2924] rounded border border-[#1a1914]` with ReadoutDisplay's inset shadow
   - Text: `font-ioskeley text-xs text-[#faf0dc]`
   - Input is always editable (no tap-to-edit mode — just an input that looks like a display)
   - Cursor color: set `caret-color: #faf0dc` for visibility against dark background
   - Selection highlight: add `selection:bg-stone-600` for contrast
-- [ ] Keep React Aria `ColorField` + `Input` for validation and color picker sync
+- [x] Keep React Aria `ColorField` + `Input` for validation and color picker sync
 
 **Visual verification — all states:**
 
-- [ ] Light card compact: ReadoutDisplay, BRT fader, CCT fader (with detent labels), footer with PWR + LightBar
-- [ ] Light card full: above + scenes toggle bank, White/Color two-position toggle, color wheel, color presets toggle bank, hex readout input
-- [ ] Thermostat compact: ReadoutDisplay (temp + humidity), target stepper (PanelButton − + ReadoutDisplay + PanelButton +), mode toggle bank
-- [ ] Thermostat full: same as compact (no additional full-only controls)
-- [ ] Air purifier compact: ReadoutDisplay (PM2.5 + AQI badge), AQI segment bar, filter bar, footer with PWR
-- [ ] Air purifier full: above + stepped radial dial for fan speed
+- [x] Light card compact: ReadoutDisplay, BRT fader, CCT fader (with detent labels), footer with PWR + LightBar
+- [x] Light card full: above + scenes toggle bank, White/Color two-position toggle, color wheel, color presets toggle bank, hex readout input
+- [x] Thermostat compact: ReadoutDisplay (temp + humidity), target stepper (PanelButton − + ReadoutDisplay + PanelButton +), mode toggle bank
+- [x] Thermostat full: same as compact (no additional full-only controls)
+- [x] Air purifier compact: ReadoutDisplay (PM2.5 + AQI badge), AQI segment bar, filter bar, footer with PWR
+- [x] Air purifier full: above + stepped radial dial for fan speed
 - [ ] Offline state: all controls disabled, muted opacity, LED indicators dark
 - [ ] Multi-select mode: selection ring + corner dots don't conflict
 - [ ] DnD ghost: physical treatment renders at reduced opacity
@@ -350,31 +350,31 @@ No API changes. All changes are client-side component/CSS only.
 
 ### Functional Requirements
 
-- [ ] Card shell has visible but subtle physical character (emboss + shadow + corner dots)
-- [ ] Header online dot is a recessed LED with bezel
-- [ ] Header expand is a debossed chevron mark
-- [ ] Power button is compact square in footer with LED indicator
-- [ ] Scene presets use toggle bank (labeled pushbuttons + LEDs)
-- [ ] White/Color mode uses two-position toggle (receiver selector style)
-- [ ] CCT swatches replaced by tappable fader detent stops with labels
-- [ ] Thermostat modes use toggle bank with semantic color LEDs
-- [ ] Thermostat +/− are PanelButtons flanking a ReadoutDisplay
-- [ ] Air purifier fan speed uses stepped radial dial
-- [ ] Dialog shell matches card physical treatment
-- [ ] Hex color input looks like an editable ReadoutDisplay
+- [x] Card shell has visible but subtle physical character (emboss + shadow + corner dots)
+- [x] Header online dot is a recessed LED with bezel
+- [x] Header expand is a debossed chevron mark
+- [x] Power button is compact square in footer with glowing icon
+- [x] Scene presets use toggle bank (labeled pushbuttons + LEDs)
+- [x] White/Color mode uses two-position toggle (receiver selector style)
+- [x] CCT swatches replaced by tappable fader detent stops with labels
+- [x] Thermostat modes use toggle bank with semantic color LEDs
+- [x] Thermostat +/− are PanelButtons flanking a ReadoutDisplay
+- [x] Air purifier fan speed uses stepped radial dial
+- [x] Dialog shell matches card physical treatment
+- [x] Hex color input looks like an editable ReadoutDisplay
 
 ### Non-Functional Requirements
 
-- [ ] All interactive controls are keyboard accessible
-- [ ] Toggle banks use correct ARIA roles (`radiogroup` for selection, `toolbar` for actions)
-- [ ] Touch targets are minimum 44x44px
-- [ ] No regression in existing fader, ReadoutDisplay, edge glow, or color wheel behavior
-- [ ] `bun run system:check --force` passes after each phase
+- [x] All interactive controls are keyboard accessible
+- [x] Toggle banks use correct ARIA roles (`radiogroup` for selection, `toolbar` for actions)
+- [x] Touch targets are minimum 44x44px
+- [x] No regression in existing fader, ReadoutDisplay, edge glow, or color wheel behavior
+- [x] `bun run system:check --force` passes after each phase
 
 ### Quality Gates
 
 - [ ] Visual verification of all card types × all states (on/off/offline/multi-select/DnD)
-- [ ] Keyboard-only navigation through all new controls
+- [x] Keyboard-only navigation through all new controls
 
 ## Dependencies & Prerequisites
 
