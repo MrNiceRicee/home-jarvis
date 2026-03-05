@@ -69,14 +69,14 @@ export function lightAccentStyle(state: DeviceState): LightAccent | undefined {
 	if (!state.on) return undefined
 
 	const brt = (state.brightness ?? 100) / 100
-	// glow intensity: 15% at 0 brightness → 40% at full brightness
-	const glowPct = Math.round(15 + brt * 25)
+	// glow intensity: 30% at 0 brightness → 75% at full brightness
+	const glowPct = Math.round(30 + brt * 45)
 
 	if (state.colorTemp !== undefined) {
 		const color = tempToColor(state.colorTemp)
 		return {
 			borderColor: color,
-			glowShadow: `0 0 14px 3px color-mix(in srgb, ${color} ${glowPct}%, transparent)`,
+			glowShadow: `0 0 20px 6px color-mix(in srgb, ${color} ${glowPct}%, transparent)`,
 		}
 	}
 
@@ -85,7 +85,7 @@ export function lightAccentStyle(state: DeviceState): LightAccent | undefined {
 		const color = `rgb(${r} ${g} ${b})`
 		return {
 			borderColor: color,
-			glowShadow: `0 0 14px 3px color-mix(in srgb, ${color} ${glowPct}%, transparent)`,
+			glowShadow: `0 0 20px 6px color-mix(in srgb, ${color} ${glowPct}%, transparent)`,
 		}
 	}
 

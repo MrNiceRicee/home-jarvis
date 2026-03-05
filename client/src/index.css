@@ -25,6 +25,10 @@
 	--font-ioskeley: 'IoskeleyMono', monospace;
 	--font-michroma: 'Michroma', sans-serif;
 
+	/* label size — Michroma at 10px for control labels (BRT, CCT, FAN, etc.) */
+	--text-2xs: 0.625rem;
+	--text-2xs--line-height: 0.875rem;
+
 	/* raised surface shadows — warm-tinted for paper feel */
 	--shadow-raised: 0 1px 2px rgba(120, 90, 50, 0.05), 0 4px 12px rgba(120, 90, 50, 0.04);
 	--shadow-raised-hover: 0 2px 4px rgba(120, 90, 50, 0.06), 0 8px 20px rgba(120, 90, 50, 0.06);

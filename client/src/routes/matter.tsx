@@ -116,7 +116,7 @@ function MatterPage() {
 			{status === 'running' && (
 				<div className="mt-6 flex items-center gap-3 px-4 py-2.5 rounded-lg bg-stone-100/60 border border-stone-200/50">
 					<span className="text-xs">ℹ️</span>
-					<p className="font-mono text-[10px] text-stone-500 tracking-wide leading-relaxed">
+					<p className="font-mono text-2xs text-stone-500 tracking-wide leading-relaxed">
 						MATTER BRIDGE EXPOSES YOUR DEVICES VIA THE MATTER PROTOCOL. COMPATIBLE WITH APPLE HOME, GOOGLE HOME, AND AMAZON ALEXA.
 						{!paired && ' SCAN THE QR CODE WITH YOUR SMART HOME APP TO PAIR.'}
 					</p>
@@ -145,7 +145,7 @@ function StatusPanel({ status, paired, deviceCount, port }: Readonly<{
 					<p className="font-mono text-sm font-semibold text-stone-800 uppercase tracking-wide">
 						{statusHeadline(status, paired)}
 					</p>
-					<p className="font-mono text-[10px] text-stone-400 mt-0.5 tracking-wider">
+					<p className="font-mono text-2xs text-stone-400 mt-0.5 tracking-wider">
 						{statusSubline(status, paired, deviceCount)}
 					</p>
 				</div>
@@ -185,7 +185,7 @@ function ConsolePanel({ children, className }: Readonly<{ children: React.ReactN
 function ConsolePanelLabel({ children }: Readonly<{ children: React.ReactNode }>) {
 	return (
 		<div className="flex items-center gap-2 mb-4">
-			<span className="font-mono text-[10px] font-semibold text-stone-400 tracking-[0.15em] uppercase">
+			<span className="font-mono text-2xs font-semibold text-stone-400 tracking-[0.15em] uppercase">
 				{children}
 			</span>
 			<div className="flex-1 h-px bg-stone-200/60" />
@@ -268,14 +268,14 @@ function QrPanel({ qrDataUrl }: Readonly<{ qrDataUrl?: string }>) {
 					/>
 				) : (
 					<div className="w-full h-full flex items-center justify-center">
-						<span className="font-mono text-[10px] text-stone-500 animate-pulse tracking-widest">
+						<span className="font-mono text-2xs text-stone-500 animate-pulse tracking-widest">
 							LOADING...
 						</span>
 					</div>
 				)}
 			</div>
 
-			<p className="font-mono text-[10px] text-stone-400 text-center mt-3 tracking-wide leading-relaxed">
+			<p className="font-mono text-2xs text-stone-400 text-center mt-3 tracking-wide leading-relaxed">
 				OPEN YOUR SMART HOME APP AND SCAN THIS CODE
 			</p>
 		</ConsolePanel>

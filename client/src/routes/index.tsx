@@ -262,7 +262,7 @@ function StreamStatusBadge({ status }: Readonly<{ status: string }>) {
 	return (
 		<span
 			className={cn(
-				'inline-flex items-center gap-1.5 text-[10px] font-michroma uppercase tracking-wider px-2.5 py-1 rounded-full',
+				'inline-flex items-center gap-1.5 text-2xs font-michroma uppercase tracking-wider px-2.5 py-1 rounded-full',
 				'bg-linear-to-b from-white to-stone-50',
 				'border border-stone-200/80',
 				'shadow-[var(--shadow-raised),var(--shadow-inner-glow)]',

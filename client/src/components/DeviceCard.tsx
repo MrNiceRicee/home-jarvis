@@ -193,7 +193,7 @@ function CardShell({
 						)}
 						<div className="min-w-0">
 							<p className="text-sm font-michroma text-stone-800 truncate leading-tight">{device.name}</p>
-							<p className="font-michroma text-[10px] uppercase tracking-wider text-stone-400 truncate mt-0.5">
+							<p className="font-michroma text-2xs uppercase tracking-wider text-stone-400 truncate mt-0.5">
 								{BRAND_LABEL[device.brand] ?? device.brand} · {typeLabel}
 							</p>
 						</div>
@@ -223,7 +223,7 @@ function CardShell({
 			<CardFooter>
 				{isNativeMatter ? (
 					<TooltipTrigger delay={200}>
-						<Button className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-michroma uppercase tracking-wider rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200 cursor-default focus:outline-none">
+						<Button className="inline-flex items-center gap-1.5 px-2.5 py-1 text-2xs font-michroma uppercase tracking-wider rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200 cursor-default focus:outline-none">
 							<span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.6)]" />
 							MATTER
 						</Button>
@@ -236,13 +236,13 @@ function CardShell({
 						onPress={() => { void handleMatterToggle(!device.matterEnabled) }}
 						isDisabled={matterLoading || !device.online}
 						className={cn(
-							'inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-michroma uppercase tracking-wider',
+							'inline-flex items-center gap-1.5 px-2.5 py-1 text-2xs font-michroma uppercase tracking-wider',
 							'rounded-md border cursor-default disabled:opacity-40',
-							'transition-[box-shadow,transform] duration-100',
+							'transition-shadow duration-100',
 							device.matterEnabled
 								? 'bg-stone-200 text-stone-700 border-stone-300 shadow-[inset_0_1px_3px_rgba(0,0,0,0.12)]'
 								: 'bg-stone-50 text-stone-500 border-stone-300 shadow-[0_1px_3px_rgba(0,0,0,0.08)]',
-							'pressed:translate-y-px pressed:shadow-[inset_0_1px_2px_rgba(0,0,0,0.12)]',
+							'pressed:shadow-[inset_0_1px_2px_rgba(0,0,0,0.12)]',
 						)}
 						aria-label={device.matterEnabled ? 'Disable Matter bridge' : 'Enable Matter bridge'}
 					>
@@ -281,12 +281,12 @@ function LightBar({ device }: Readonly<{ device: Device }>) {
 
 	return (
 		<div
-			className="flex-1 h-1.5 rounded-full transition-all duration-300"
+			className="flex-1 h-2 rounded-full transition-all duration-300"
 			style={{
 				background: isOn ? barColor : '#d6d3cd',
-				opacity: isOn ? 0.5 + brightness * 0.5 : 1,
+				opacity: isOn ? 0.7 + brightness * 0.3 : 1,
 				boxShadow: isOn
-					? `0 0 8px color-mix(in srgb, ${barColor} 50%, transparent), 0 0 3px color-mix(in srgb, ${barColor} 30%, transparent)`
+					? `0 0 12px color-mix(in srgb, ${barColor} 70%, transparent), 0 0 4px color-mix(in srgb, ${barColor} 50%, transparent)`
 					: 'inset 0 1px 2px rgba(0,0,0,0.15), inset 0 0 1px rgba(0,0,0,0.1)',
 			}}
 		/>

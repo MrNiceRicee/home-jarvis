@@ -125,16 +125,13 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 		void onStateChange?.(device.id, { color, on: true })
 	}
 
-	// readout display glow color
-	const glowColor = isOn ? readoutGlow(state, showColor) : undefined
-
 	// readout aria-label
 	const readoutLabel = buildReadoutLabel(isOn, brightness, showCCT, colorTemp, showColor, pickerColor)
 
 	return (
 		<div className="space-y-3">
 			{/* ── ReadoutDisplay hero ─────────────────────────────────── */}
-			<ReadoutDisplay size="lg" glow={glowColor} glowIntensity={isOn ? brightness / 100 : 0} aria-label={readoutLabel} className="w-full justify-between">
+			<ReadoutDisplay size="lg" glowIntensity={isOn ? brightness / 100 : 0} aria-label={readoutLabel} className="w-full justify-between">
 				{isOn ? (
 					<>
 						<span>{brightness}<span className="text-xs text-[#faf0dc]/50 ml-0.5">%</span></span>
@@ -148,13 +145,13 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 			{/* ── Scene presets (full view, CCT lights) ───────────────── */}
 			{isFull && isCCT && device.online && (
 				<div>
-					<span className="font-michroma text-[10px] uppercase tracking-widest text-stone-400 mb-1.5 block" aria-label="Scenes">SCENES</span>
+					<span className="font-michroma text-2xs uppercase tracking-widest text-stone-400 mb-1.5 block" aria-label="Scenes">SCENES</span>
 					<div className="flex gap-1 flex-wrap">
 						{SCENES.map((scene) => (
 							<Button
 								key={scene.name}
 								onPress={() => handleScene(scene)}
-								className="text-[10px] font-michroma uppercase tracking-wider px-2.5 py-1 rounded-full bg-white/80 text-stone-600 hover:bg-white border border-stone-200 hover:border-stone-300 transition-colors cursor-default pressed:bg-stone-100"
+								className="text-2xs font-michroma uppercase tracking-wider px-2.5 py-1 rounded-full bg-white/80 text-stone-600 hover:bg-white border border-stone-200 hover:border-stone-300 transition-colors cursor-default pressed:bg-stone-100"
 							>
 								{scene.name}
 							</Button>
@@ -169,7 +166,7 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 					<Button
 						onPress={() => setMode('white')}
 						className={cn(
-							'flex-1 text-[10px] font-michroma uppercase tracking-wider py-1 rounded-full transition-all cursor-default',
+							'flex-1 text-2xs font-michroma uppercase tracking-wider py-1 rounded-full transition-all cursor-default',
 							mode === 'white' ? 'bg-white shadow-sm font-medium text-stone-800' : 'text-stone-500',
 						)}
 					>
@@ -178,7 +175,7 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 					<Button
 						onPress={() => setMode('color')}
 						className={cn(
-							'flex-1 text-[10px] font-michroma uppercase tracking-wider py-1 rounded-full transition-all cursor-default',
+							'flex-1 text-2xs font-michroma uppercase tracking-wider py-1 rounded-full transition-all cursor-default',
 							mode === 'color' ? 'bg-white shadow-sm font-medium text-stone-800' : 'text-stone-500',
 						)}
 					>
@@ -197,7 +194,7 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 					onChangeEnd={(v) => { onAccentChange?.(null); void onStateChange?.(device.id, { brightness: v }) }}
 				>
 					<div className="flex items-center justify-between mb-1">
-						<Label className="font-michroma text-[10px] uppercase tracking-widest text-stone-400">BRT</Label>
+						<Label className="font-michroma text-2xs uppercase tracking-widest text-stone-400">BRT</Label>
 						<SliderOutput className="font-ioskeley text-xs text-stone-500" />
 					</div>
 					<SliderTrack className="relative flex items-center h-9 w-full">
@@ -233,7 +230,7 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 			{showCCT && device.online && (
 				<div>
 					<div className="flex items-center justify-between mb-1">
-						<span className="font-michroma text-[10px] uppercase tracking-widest text-stone-400">CCT</span>
+						<span className="font-michroma text-2xs uppercase tracking-widest text-stone-400">CCT</span>
 						<span className="font-ioskeley text-xs" style={{ color: cctTextColor(colorTemp) }}>{colorTemp}K</span>
 					</div>
 
@@ -383,18 +380,18 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 					onPress={() => { void handlePowerToggle() }}
 					isDisabled={toggling}
 					className={cn(
-						'w-full flex items-center justify-center gap-2 py-1.5 text-[10px] font-michroma uppercase tracking-wider',
+						'w-full flex items-center justify-center gap-2 py-1.5 text-2xs font-michroma uppercase tracking-wider',
 						'rounded-md border cursor-default disabled:opacity-40',
-						'transition-[box-shadow,transform] duration-100',
+						'transition-shadow duration-100',
 						isOn
 							? 'bg-stone-200 text-stone-700 border-stone-300 shadow-[inset_0_1px_3px_rgba(0,0,0,0.12)]'
 							: 'bg-stone-50 text-stone-500 border-stone-300 shadow-[0_1px_3px_rgba(0,0,0,0.08)]',
-						'pressed:translate-y-px pressed:shadow-[inset_0_1px_2px_rgba(0,0,0,0.12)]',
+						'pressed:shadow-[inset_0_1px_2px_rgba(0,0,0,0.12)]',
 					)}
 				>
 					<span
-						className={cn('w-2 h-2 rounded-full transition-all', isOn ? 'bg-amber-400' : 'bg-stone-400')}
-						style={isOn ? { boxShadow: '0 0 4px rgba(251,191,36,0.7), 0 0 10px rgba(251,191,36,0.3)' } : undefined}
+						className={cn('w-2 h-2 rounded-full transition-all', isOn ? 'bg-emerald-400' : 'bg-stone-400')}
+						style={isOn ? { boxShadow: '0 0 4px rgba(52,211,153,0.7), 0 0 10px rgba(52,211,153,0.3)' } : undefined}
 					/>
 					{toggling ? '...' : 'POWER'}
 				</Button>
@@ -427,17 +424,6 @@ function ReadoutSecondary({
 // darken tempToColor for readable text on light backgrounds
 function cctTextColor(kelvin: number): string {
 	return `color-mix(in srgb, ${tempToColor(kelvin)} 60%, #1c1917)`
-}
-
-function readoutGlow(state: DeviceState, showColor: boolean): string | undefined {
-	if (showColor && state.color) {
-		const { r, g, b } = state.color
-		return `rgb(${r} ${g} ${b})`
-	}
-	if (state.colorTemp !== undefined) {
-		return tempToColor(state.colorTemp)
-	}
-	return undefined
 }
 
 function buildReadoutLabel(isOn: boolean, brightness: number, showCCT: boolean, colorTemp: number, showColor: boolean, pickerColor: Color): string {

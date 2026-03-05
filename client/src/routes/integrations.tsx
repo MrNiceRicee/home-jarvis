@@ -4,7 +4,11 @@ import { useEffect } from 'react'
 
 import type { DetectedDevice, Device, IntegrationsResponse } from '../types'
 
-import { AdditionalDeviceCard, IntegrationCard, QuickConnectCard } from '../components/IntegrationForm'
+import {
+	AdditionalDeviceCard,
+	IntegrationCard,
+	QuickConnectCard,
+} from '../components/IntegrationForm'
 import { useScanStream } from '../hooks/useScanStream'
 import { api } from '../lib/api'
 import { cn } from '../lib/cn'
@@ -25,7 +29,10 @@ function resultPillClass(r: { error?: string; count: number }) {
 
 async function fetchIntegrations(): Promise<IntegrationsResponse> {
 	const { data, error } = await api.api.integrations.get()
-	if (error) throw new Error((error.value as { message?: string })?.message ?? 'Failed to fetch integrations')
+	if (error)
+		throw new Error(
+			(error.value as { message?: string })?.message ?? 'Failed to fetch integrations',
+		)
 	return data ?? { configured: [], available: [] }
 }
 
@@ -69,7 +76,8 @@ function Integrations() {
 	const addDeviceMutation = useMutation({
 		mutationFn: async ({ brand, ip }: { brand: string; ip: string }) => {
 			const { data, error } = await api.api.devices['add-from-scan'].post({ brand, ip })
-			if (error) throw new Error((error.value as { error?: string })?.error ?? 'Failed to add device')
+			if (error)
+				throw new Error((error.value as { error?: string })?.error ?? 'Failed to add device')
 			return data
 		},
 		onSuccess: () => {
@@ -172,7 +180,10 @@ function Integrations() {
 							return (
 								<span
 									key={brand}
-									className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium', scanPillClass(result?.error, done))}
+									className={cn(
+										'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium',
+										scanPillClass(result?.error, done),
+									)}
 								>
 									{brandDisplayName(brand)}
 									{!done && ' ...'}
@@ -190,7 +201,10 @@ function Integrations() {
 						{scan.brandResults.map((r) => (
 							<span
 								key={r.brand}
-								className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium', resultPillClass(r))}
+								className={cn(
+									'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium',
+									resultPillClass(r),
+								)}
 							>
 								{brandDisplayName(r.brand)} · {r.error ? 'error' : `${r.count} found`}
 							</span>
@@ -198,9 +212,14 @@ function Integrations() {
 					</div>
 				)}
 
-				{!scanning && newBrandDevices.length === 0 && additionalDevices.length === 0 && scan.status !== 'idle' && (
-					<p className="text-xs text-stone-400">No new devices detected. Make sure your hubs are powered on.</p>
-				)}
+				{!scanning &&
+					newBrandDevices.length === 0 &&
+					additionalDevices.length === 0 &&
+					scan.status !== 'idle' && (
+						<p className="text-xs text-stone-400">
+							No new devices detected. Make sure your hubs are powered on.
+						</p>
+					)}
 
 				<div className="space-y-2">
 					{newBrandDevices.map((detected, i) => {
@@ -226,7 +245,8 @@ function Integrations() {
 							Additional Devices Found
 						</h2>
 						<span className="text-xs text-stone-400">
-							{additionalDevices.length} device{additionalDevices.length !== 1 ? 's' : ''} from connected brands
+							{additionalDevices.length} device{additionalDevices.length !== 1 ? 's' : ''} from
+							connected brands
 						</span>
 					</div>
 					<div className="space-y-2">
