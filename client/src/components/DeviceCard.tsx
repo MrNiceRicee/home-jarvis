@@ -240,9 +240,9 @@ function CardShell({
 							'rounded-md border cursor-default disabled:opacity-40',
 							'transition-[box-shadow,transform] duration-100',
 							device.matterEnabled
-								? 'bg-stone-200 text-stone-700 border-stone-300 shadow-[inset_0_2px_4px_rgba(0,0,0,0.15),inset_0_0_1px_rgba(0,0,0,0.1)]'
-								: 'bg-gradient-to-b from-stone-50 to-stone-100 text-stone-500 border-stone-300 shadow-[0_2px_4px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.7)]',
-							'pressed:translate-y-px pressed:shadow-[inset_0_1px_2px_rgba(0,0,0,0.12),inset_0_0_1px_rgba(0,0,0,0.08)]',
+								? 'bg-stone-200 text-stone-700 border-stone-300 shadow-[inset_0_1px_3px_rgba(0,0,0,0.12)]'
+								: 'bg-stone-50 text-stone-500 border-stone-300 shadow-[0_1px_3px_rgba(0,0,0,0.08)]',
+							'pressed:translate-y-px pressed:shadow-[inset_0_1px_2px_rgba(0,0,0,0.12)]',
 						)}
 						aria-label={device.matterEnabled ? 'Disable Matter bridge' : 'Enable Matter bridge'}
 					>

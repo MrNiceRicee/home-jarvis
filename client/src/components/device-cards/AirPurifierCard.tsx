@@ -126,7 +126,7 @@ export function AirPurifierCard({ device, variant = 'compact', onStateChange }: 
 								key={segColor}
 								className={cn(
 									'h-2 flex-1 rounded-sm transition-colors',
-									i < litSegments ? segColor : 'bg-stone-100',
+									i < litSegments ? segColor : 'bg-stone-200/60',
 								)}
 							/>
 						))}
@@ -141,7 +141,7 @@ export function AirPurifierCard({ device, variant = 'compact', onStateChange }: 
 						<span className="font-michroma text-[10px] uppercase tracking-widest text-stone-400" aria-label="Filter Life">FILTER</span>
 						<span className="font-ioskeley text-xs text-stone-500">{state.filterLife}%</span>
 					</div>
-					<div className="h-1 bg-stone-200 rounded-full overflow-hidden">
+					<div className="h-1 bg-stone-200/80 rounded-full overflow-hidden">
 						<div
 							className={cn('h-full rounded-full transition-all', filterLifeColor(state.filterLife))}
 							style={{ width: `${state.filterLife}%` }}
@@ -185,9 +185,9 @@ export function AirPurifierCard({ device, variant = 'compact', onStateChange }: 
 						'rounded-md border cursor-default disabled:opacity-40',
 						'transition-[box-shadow,transform] duration-100',
 						isOn
-							? 'bg-stone-200 text-stone-700 border-stone-300 shadow-[inset_0_2px_4px_rgba(0,0,0,0.15),inset_0_0_1px_rgba(0,0,0,0.1)]'
-							: 'bg-gradient-to-b from-stone-50 to-stone-100 text-stone-500 border-stone-300 shadow-[0_2px_4px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.7)]',
-						'pressed:translate-y-px pressed:shadow-[inset_0_1px_2px_rgba(0,0,0,0.12),inset_0_0_1px_rgba(0,0,0,0.08)]',
+							? 'bg-stone-200 text-stone-700 border-stone-300 shadow-[inset_0_1px_3px_rgba(0,0,0,0.12)]'
+							: 'bg-stone-50 text-stone-500 border-stone-300 shadow-[0_1px_3px_rgba(0,0,0,0.08)]',
+						'pressed:translate-y-px pressed:shadow-[inset_0_1px_2px_rgba(0,0,0,0.12)]',
 					)}
 				>
 					<span

@@ -236,23 +236,23 @@ function SkeletonCard() {
 	return (
 		<div
 			className={cn(
-				'rounded-xl overflow-hidden',
-				'bg-linear-to-b from-[#fffdf8] to-stone-50/80',
-				'border border-[rgba(168,151,125,0.15)]',
+				'rounded-lg overflow-hidden',
+				'bg-[#fffdf8]',
+				'border-2 border-[rgba(168,151,125,0.15)]',
 				'shadow-[var(--shadow-raised)]',
 				'animate-pulse',
+				'p-4 space-y-3',
 			)}
 		>
-			<div className="px-4 pt-4 pb-3 flex items-center gap-3">
-				<div className="w-8 h-4 rounded bg-stone-200/80" />
+			<div className="flex items-center gap-3">
 				<div className="flex-1">
 					<div className="w-24 h-3.5 rounded bg-stone-200/60 mb-1.5" />
 					<div className="w-16 h-2.5 rounded bg-stone-200/40" />
 				</div>
+				<div className="w-2 h-2 rounded-full bg-stone-200/60" />
 			</div>
-			<div className="px-4 pb-4">
-				<div className="w-full h-8 rounded-lg bg-stone-200/40" />
-			</div>
+			<div className="w-full h-10 rounded-md bg-stone-200/30" />
+			<div className="w-full h-6 rounded bg-stone-200/20" />
 		</div>
 	)
 }
