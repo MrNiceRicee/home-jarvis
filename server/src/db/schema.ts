@@ -46,6 +46,7 @@ export const devices = sqliteTable(
 		unique().on(t.brand, t.externalId),
 		index('idx_devices_integration').on(t.integrationId),
 		index('idx_devices_section_position').on(t.sectionId, t.position),
+		index('idx_devices_external_id').on(t.externalId),
 	],
 )
 

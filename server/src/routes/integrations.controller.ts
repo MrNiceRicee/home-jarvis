@@ -10,6 +10,7 @@ import { startPolling, stopPolling } from '../discovery/cloud-poller'
 import { discoverHueBridges, createHueApiKey } from '../integrations/hue/adapter'
 import { INTEGRATION_META, createAdapter } from '../integrations/registry'
 import { log } from '../lib/logger'
+import { isPrivateIp } from '../lib/validate-ip'
 
 /** strip sensitive fields (config contains credentials, session contains auth tokens) */
 function stripSensitive({ config: _config, session: _session, ...safe }: Integration): Omit<Integration, 'config' | 'session'> {
@@ -143,6 +144,9 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 		'/hue/link',
 		async ({ body }) => {
 			const { bridgeIp } = body
+			if (!isPrivateIp(bridgeIp)) {
+				return status(400, { error: 'Invalid IP address: must be a private network address' })
+			}
 			log.info('hue link', { bridgeIp })
 			const result = await createHueApiKey(bridgeIp)
 			if (result.isErr()) {

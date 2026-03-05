@@ -90,6 +90,8 @@ export interface IntegrationMeta {
 	oauthFlow?: boolean
 	/** true for brands discovered locally without credentials (e.g. Elgato) */
 	discoveryOnly?: boolean
+	/** true for brands that support Matter natively (should not be bridged) */
+	nativeMatter?: boolean
 }
 
 export interface CredentialField {

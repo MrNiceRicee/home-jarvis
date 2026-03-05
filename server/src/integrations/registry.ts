@@ -12,6 +12,7 @@ export const INTEGRATION_META: Record<string, IntegrationMeta> = {
 	hue: {
 		brand: 'hue',
 		displayName: 'Philips Hue',
+		nativeMatter: true,
 		fields: [
 			{
 				key: 'bridgeIp',
@@ -67,6 +68,7 @@ export const INTEGRATION_META: Record<string, IntegrationMeta> = {
 	aqara: {
 		brand: 'aqara',
 		displayName: 'Aqara',
+		nativeMatter: true,
 		fields: [
 			{
 				key: 'accessCode',

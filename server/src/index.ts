@@ -21,7 +21,7 @@ import { sectionsController } from './routes/sections.controller'
 const PORT = Number(process.env.PORT ?? 3001)
 
 const app = new Elysia()
-	.use(cors({ origin: true }))
+	.use(cors({ origin: ['http://localhost:5173', 'http://localhost:3001'] }))
 	// ── Request / response logging ──────────────────────────────────────────
 	.onRequest((ctx) => {
 		log.info('request', {

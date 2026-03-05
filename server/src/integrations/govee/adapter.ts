@@ -82,13 +82,13 @@ function parseCapabilityStates(capabilities: GoveeCapabilityState[]): { state: D
 				state.on = v === 1
 				break
 			case 'brightness':
-				state.brightness = v as number
+				if (typeof v === 'number') state.brightness = v
 				break
 			case 'colorRgb':
-				state.color = unpackRgb(v as number)
+				if (typeof v === 'number') state.color = unpackRgb(v)
 				break
 			case 'colorTemperatureK':
-				state.colorTemp = v as number
+				if (typeof v === 'number') state.colorTemp = v
 				break
 			case 'online':
 				online = v === true || v === 1

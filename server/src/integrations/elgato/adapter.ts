@@ -2,6 +2,8 @@ import { ResultAsync, err, errAsync, ok } from 'neverthrow'
 
 import type { DeviceAdapter, DeviceState, DiscoveredDevice } from '../types'
 
+import { kelvinToMired, miredToKelvin } from '../../lib/unit-conversions'
+
 interface ElgatoLight {
 	on: number // 0 | 1
 	brightness: number // 3–100
@@ -16,14 +18,6 @@ interface ElgatoLightsResponse {
 interface ElgatoAccessoryInfo {
 	displayName: string
 	productName: string
-}
-
-function miredToKelvin(mired: number): number {
-	return Math.round(1_000_000 / mired)
-}
-
-function kelvinToMired(kelvin: number): number {
-	return Math.round(1_000_000 / kelvin)
 }
 
 /** Elgato Key Light / Key Light Air — local HTTP, no auth, port 9123 */
