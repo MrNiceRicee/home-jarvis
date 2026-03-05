@@ -84,24 +84,24 @@ Physical character on the card and dialog surfaces. No interaction changes — p
 
 **Card shell (`client/src/components/ui/card.tsx`):**
 
-- [ ] Add thin emboss: `border border-[rgba(168,151,125,0.12)]` inner edge with `shadow-[inset_0_0.5px_0_rgba(255,255,255,0.5)]` top highlight
-- [ ] Enhance warm shadow: add third shadow layer for depth — `0 1px 2px rgba(120,90,50,0.05), 0 4px 12px rgba(120,90,50,0.04), 0 8px 24px rgba(120,90,50,0.02)`
-- [ ] Add corner mounting dots: four `::before`/`::after` pseudo-elements (or four absolutely positioned tiny divs), `w-1 h-1 rounded-full bg-stone-300/30` at each corner, inset ~6px
-- [ ] Verify glow shadow composition still works with new base shadow layers
+- [x] Add thin emboss: `border border-[rgba(168,151,125,0.12)]` inner edge with `shadow-[inset_0_0.5px_0_rgba(255,255,255,0.5)]` top highlight
+- [x] Enhance warm shadow: add third shadow layer for depth — `0 1px 2px rgba(120,90,50,0.05), 0 4px 12px rgba(120,90,50,0.04), 0 8px 24px rgba(120,90,50,0.02)`
+- [x] Add corner mounting dots: four `::before`/`::after` pseudo-elements (or four absolutely positioned tiny divs), `w-1 h-1 rounded-full bg-stone-300/30` at each corner, inset ~6px
+- [x] Verify glow shadow composition still works with new base shadow layers
 
 **Header indicators (`client/src/components/DeviceCard.tsx`):**
 
-- [ ] Replace online dot with recessed LED: inset bezel shadow (`inset 0 1px 2px rgba(0,0,0,0.3)`) + color glow when online (`0 0 4px rgba(52,211,153,0.6)`). Reuse the `StatusLed` bezel pattern from `client/src/routes/matter.tsx` lines 196-225
-- [ ] Replace expand arrow with engraved chevron: `text-stone-400/40` with `text-shadow: 0 1px 0 rgba(255,255,255,0.6)` (debossed highlight). Remove button styling, keep as React Aria `Button` for accessibility
+- [x] Replace online dot with recessed LED: inset bezel shadow (`inset 0 1px 2px rgba(0,0,0,0.3)`) + color glow when online (`0 0 4px rgba(52,211,153,0.6)`). Reuse the `StatusLed` bezel pattern from `client/src/routes/matter.tsx` lines 196-225
+- [x] Replace expand arrow with engraved chevron: `text-stone-400/40` with `text-shadow: 0 1px 0 rgba(255,255,255,0.6)` (debossed highlight). Remove button styling, keep as React Aria `Button` for accessibility
 
 **Dialog shell (`client/src/components/DeviceDetailDialog.tsx`):**
 
-- [ ] Apply same emboss + shadow + corner dots to the dialog modal panel
-- [ ] Ensure warm shadow layers match the card treatment
+- [x] Apply same emboss + shadow + corner dots to the dialog modal panel
+- [x] Ensure warm shadow layers match the card treatment
 
 **Skeleton card (`client/src/routes/index.tsx`):**
 
-- [ ] Update `SkeletonCard` to show corner dots and emboss to prevent visual jump when real cards mount
+- [x] Update `SkeletonCard` to show corner dots and emboss to prevent visual jump when real cards mount
 
 **Acceptance:**
 - Cards feel like stamped faceplates, not divs

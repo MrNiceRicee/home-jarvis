@@ -64,15 +64,22 @@ export function DeviceDetailDialog({ device, onClose, onStateChange }: Readonly<
 		>
 			<AriaModal
 				className={cn(
-					'w-full max-w-lg mx-4',
+					'w-full max-w-lg mx-4 relative',
 					'bg-[#fffdf8]',
 					'rounded-2xl',
-					'border border-[rgba(168,151,125,0.15)]',
-					'shadow-[0_8px_40px_rgba(120,90,50,0.08),0_2px_8px_rgba(120,90,50,0.06),inset_0_1px_0_rgba(255,253,245,0.8)]',
+					'border border-[rgba(168,151,125,0.12)]',
 					'entering:animate-in entering:zoom-in-95',
 					'exiting:animate-out exiting:zoom-out-95',
 				)}
+				style={{
+					boxShadow: '0 1px 2px rgba(120,90,50,0.05), 0 4px 12px rgba(120,90,50,0.04), 0 8px 24px rgba(120,90,50,0.02), 0 16px 48px rgba(120,90,50,0.06), inset 0 0.5px 0 rgba(255,255,255,0.5)',
+				}}
 			>
+					{/* corner mounting dots */}
+				<div className="absolute top-2 left-2 w-1 h-1 rounded-full bg-stone-300/30 pointer-events-none" />
+				<div className="absolute top-2 right-2 w-1 h-1 rounded-full bg-stone-300/30 pointer-events-none" />
+				<div className="absolute bottom-2 left-2 w-1 h-1 rounded-full bg-stone-300/30 pointer-events-none" />
+				<div className="absolute bottom-2 right-2 w-1 h-1 rounded-full bg-stone-300/30 pointer-events-none" />
 				<Dialog className="outline-none">
 					{/* header */}
 					<div className="flex items-center gap-3 px-6 pt-6 pb-4">

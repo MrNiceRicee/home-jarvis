@@ -199,17 +199,24 @@ function CardShell({
 						</div>
 					</div>
 					<div className="flex items-center gap-1.5 shrink-0">
-						<span
-							className={cn('w-2 h-2 rounded-full shrink-0', device.online ? 'bg-emerald-500' : 'bg-stone-300')}
-							title={device.online ? 'Online' : 'Offline'}
-						/>
+						<RecessedLed online={device.online} />
 						{onExpand && (
 							<Button
 								onPress={() => onExpand(device)}
-								className="w-7 h-7 flex items-center justify-center rounded-lg text-stone-400 hover:text-stone-600 hover:bg-stone-100 transition-colors cursor-default"
+								className="w-7 h-7 flex items-center justify-center cursor-default"
 								aria-label={`Expand ${device.name}`}
 							>
-								<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+								<svg
+									width="14"
+									height="14"
+									viewBox="0 0 14 14"
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="1.5"
+									strokeLinecap="round"
+									className="text-stone-400/40"
+									style={{ filter: 'drop-shadow(0 1px 0 rgba(255,255,255,0.6))' }}
+								>
 									<path d="M8.5 1.5h4v4M5.5 12.5h-4v-4M12.5 1.5L8 6M1.5 12.5L6 8" />
 								</svg>
 							</Button>
@@ -257,6 +264,29 @@ function CardShell({
 				<LightBar device={device} />
 			</CardFooter>
 		</Card>
+	)
+}
+
+// recessed LED indicator — inset bezel with color glow when online
+function RecessedLed({ online }: Readonly<{ online: boolean }>) {
+	return (
+		<div
+			className="w-3 h-3 rounded-full shrink-0"
+			style={{
+				background: 'linear-gradient(180deg, #d4d0ca, #c0bcb6)',
+				boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.4)',
+			}}
+			title={online ? 'Online' : 'Offline'}
+		>
+			<div
+				className={cn('w-1.5 h-1.5 rounded-full m-auto mt-[3px]', online ? 'bg-emerald-400' : 'bg-stone-400/50')}
+				style={online ? {
+					boxShadow: '0 0 4px rgba(52,211,153,0.6), 0 0 8px rgba(52,211,153,0.3)',
+				} : {
+					boxShadow: 'inset 0 0.5px 1px rgba(0,0,0,0.2)',
+				}}
+			/>
+		</div>
 	)
 }
 
