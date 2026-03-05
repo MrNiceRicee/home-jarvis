@@ -117,7 +117,7 @@ export function SectionGroup({ section, devices, onExpand, onMatterToggle, onReo
 				{onDelete && devices.length === 0 && (
 					<Button
 						onPress={() => { void onDelete(section.id) }}
-						className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-stone-400 hover:text-red-500 cursor-default ml-auto"
+						className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-stone-400 hover:text-red-500 cursor-pointer ml-auto"
 						aria-label={`Delete section ${section.name}`}
 					>
 						×

@@ -64,7 +64,7 @@ export function SteppedRadialDial({ label, options, value, onChange, disabled }:
 							key={opt.key}
 							value={opt.key}
 							className={cn(
-								'absolute flex items-center justify-center cursor-default outline-none',
+								'absolute flex items-center justify-center cursor-pointer outline-none',
 								'focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-1 rounded',
 								'min-w-[44px] min-h-[44px]',
 							)}

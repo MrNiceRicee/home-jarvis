@@ -28,9 +28,10 @@ function buildBoxShadow(glow?: string): string {
 }
 
 export function ReadoutDisplay({ children, size = 'sm', glow, glowIntensity = 0, className, ...rest }: Readonly<ReadoutDisplayProps>) {
-	const textGlow = glowIntensity > 0
-		? `0 0 8px rgba(250,240,220,${(0.4 * glowIntensity).toFixed(2)}), 0 0 20px rgba(250,240,220,${(0.15 * glowIntensity).toFixed(2)})`
-		: undefined
+	// constant backlit glow — always visible like an illuminated LCD, intensity scales brightness
+	const baseGlow = 0.15
+	const effectiveIntensity = Math.max(baseGlow, glowIntensity)
+	const textGlow = `0 0 8px rgba(250,240,220,${(0.4 * effectiveIntensity).toFixed(2)}), 0 0 20px rgba(250,240,220,${(0.15 * effectiveIntensity).toFixed(2)})`
 
 	return (
 		<div
