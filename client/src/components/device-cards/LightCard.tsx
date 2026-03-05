@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import {
-	Button,
 	ColorArea,
 	ColorField,
 	ColorPicker,
@@ -23,6 +22,7 @@ import { cn } from '../../lib/cn'
 import { CCT_SWATCHES, COLOR_PRESETS, SCENES, tempToColor } from '../../lib/color-utils'
 import { ReadoutDisplay } from '../ui/readout-display'
 import { ToggleBank } from '../ui/toggle-bank'
+import { TwoPositionToggle } from '../ui/two-position-toggle'
 
 const SCENE_OPTIONS = SCENES.map((s) => ({
 	key: s.name,
@@ -159,26 +159,12 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 
 			{/* ── Mode toggle (full view, full-color lights) ──────────── */}
 			{isFull && isFullColor && (
-				<div className="flex gap-0.5 rounded-full bg-stone-100 p-0.5">
-					<Button
-						onPress={() => setMode('white')}
-						className={cn(
-							'flex-1 text-2xs font-michroma uppercase tracking-wider py-1 rounded-full transition-all cursor-default',
-							mode === 'white' ? 'bg-white shadow-sm font-medium text-stone-800' : 'text-stone-500',
-						)}
-					>
-						White
-					</Button>
-					<Button
-						onPress={() => setMode('color')}
-						className={cn(
-							'flex-1 text-2xs font-michroma uppercase tracking-wider py-1 rounded-full transition-all cursor-default',
-							mode === 'color' ? 'bg-white shadow-sm font-medium text-stone-800' : 'text-stone-500',
-						)}
-					>
-						Color
-					</Button>
-				</div>
+				<TwoPositionToggle
+					label="MODE"
+					options={['WHITE', 'COLOR'] as const}
+					value={mode === 'white' ? 'WHITE' : 'COLOR'}
+					onChange={(v) => setMode(v === 'WHITE' ? 'white' : 'color')}
+				/>
 			)}
 
 			{/* ── Brightness fader ──────────────────────────────────── */}
