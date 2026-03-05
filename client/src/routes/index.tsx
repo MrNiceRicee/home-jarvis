@@ -1,12 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
 
-import type { Device, DeviceState } from '../types'
+import type { Device, DeviceState, Section } from '../types'
 
-import { DeviceCard } from '../components/DeviceCard'
-import { LightMultiSelectBar } from '../components/LightMultiSelectBar'
-import { RaisedButton } from '../components/ui/button'
+import { SectionGroup } from '../components/SectionGroup'
 import { useStreamStatus } from '../hooks/useDeviceStream'
 import { api } from '../lib/api'
 import { cn } from '../lib/cn'
@@ -24,32 +21,12 @@ function Dashboard() {
 		gcTime: Infinity,
 	})
 
-	const [selectedLightIds, setSelectedLightIds] = useState<Set<string>>(new Set())
-
-	function toggleLightSelect(id: string) {
-		setSelectedLightIds((prev) => {
-			const next = new Set(prev)
-			if (next.has(id)) {
-				next.delete(id)
-			} else {
-				next.add(id)
-			}
-			return next
-		})
-	}
-
-	const discoverMutation = useMutation({
-		mutationFn: () => api.api.devices.discover.post({}),
-	})
-
-	const matterMutation = useMutation({
-		mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) => {
-			await api.api.devices({ id }).matter.patch({ enabled })
-		},
-		onMutate: ({ id, enabled }) => {
-			queryClient.setQueryData(['devices'], (prev: Device[] = []) =>
-				prev.map((d) => (d.id === id ? { ...d, matterEnabled: enabled } : d)),
-			)
+	const { data: sections = [] } = useQuery<Section[]>({
+		queryKey: ['sections'],
+		queryFn: async () => {
+			const { data, error } = await api.api.sections.get()
+			if (error) throw error
+			return data
 		},
 	})
 
@@ -58,7 +35,6 @@ function Dashboard() {
 			await api.api.devices({ id }).state.patch(state)
 		},
 		onMutate: ({ id, state }) => {
-			// Optimistic update — SSE will confirm the real state shortly
 			queryClient.setQueryData(['devices'], (prev: Device[] = []) =>
 				prev.map((d) => (d.id === id ? { ...d, state: { ...d.state, ...state } } : d)),
 			)
@@ -66,19 +42,15 @@ function Dashboard() {
 	})
 
 	async function handleStateChange(id: string, state: Partial<DeviceState>) {
-		await stateMutation.mutateAsync({ id, state })
+		stateMutation.mutate({ id, state })
 	}
 
-	// Group by brand
-	const grouped = devices.reduce<Record<string, Device[]>>((acc, d) => {
-		const existing = acc[d.brand]
-		if (existing) {
-			existing.push(d)
-		} else {
-			acc[d.brand] = [d]
-		}
-		return acc
-	}, {})
+	async function handleAddSection() {
+		const name = window.prompt('Section name:')
+		if (!name?.trim()) return
+		await api.api.sections.post({ name: name.trim() })
+		await queryClient.invalidateQueries({ queryKey: ['sections'] })
+	}
 
 	if (devices.length === 0 && status === 'connected') {
 		return (
@@ -98,59 +70,65 @@ function Dashboard() {
 		)
 	}
 
+	// group devices by section, with a fallback "Home" for unsectioned devices
+	const devicesBySection = new Map<string, Device[]>()
+	for (const device of devices) {
+		const sid = device.sectionId ?? 'home'
+		const list = devicesBySection.get(sid) ?? []
+		list.push(device)
+		devicesBySection.set(sid, list)
+	}
+
+	// sort devices within each section by position
+	for (const list of devicesBySection.values()) {
+		list.sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+	}
+
+	// build ordered section list — use DB sections, adding a fallback "Home" if needed
+	const orderedSections: Section[] = sections.length > 0
+		? [...sections].sort((a, b) => a.position - b.position)
+		: [{ id: 'home', name: 'Home', position: 0, createdAt: 0, updatedAt: 0 }]
+
 	return (
 		<div>
-			<div className="flex items-center justify-between mb-6">
-				<div>
-					<h1 className="text-xl font-semibold text-stone-900">Dashboard</h1>
-					<p className="text-sm text-stone-400 mt-0.5">
-						{devices.length} device{devices.length !== 1 ? 's' : ''}
-					</p>
-				</div>
-				<div className="flex items-center gap-2">
-					<RaisedButton
-						variant="raised"
-						size="sm"
-						onPress={() => { void discoverMutation.mutateAsync() }}
-						isDisabled={discoverMutation.isPending}
-					>
-						{discoverMutation.isPending ? 'Discovering…' : 'Discover Now'}
-					</RaisedButton>
+			{status !== 'connected' && (
+				<div className="mb-6">
 					<StreamStatusBadge status={status} />
 				</div>
+			)}
+
+			<div className="space-y-8">
+				{orderedSections.map((section) => {
+					const sectionDevices = devicesBySection.get(section.id) ?? []
+					// skip empty sections that aren't from the DB
+					if (sectionDevices.length === 0 && !sections.some((s) => s.id === section.id)) {
+						return null
+					}
+					return (
+						<SectionGroup
+							key={section.id}
+							section={section}
+							devices={sectionDevices}
+							onStateChange={handleStateChange}
+						/>
+					)
+				})}
 			</div>
 
-			{Object.entries(grouped).map(([brand, brandDevices]) => (
-				<section key={brand} className="mb-8">
-					<div className="flex items-center gap-3 mb-3">
-						<h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider">
-							{brand}
-						</h2>
-						<div className="flex-1 h-px bg-linear-to-r from-stone-200 to-transparent" />
-					</div>
-					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-						{brandDevices.map((device) => (
-							<DeviceCard
-								key={device.id}
-								device={device}
-								onMatterToggle={(id, enabled) => matterMutation.mutateAsync({ id, enabled })}
-								onStateChange={handleStateChange}
-								isSelected={device.type === 'light' ? selectedLightIds.has(device.id) : undefined}
-								onToggleSelect={
-									device.type === 'light' ? () => toggleLightSelect(device.id) : undefined
-								}
-							/>
-						))}
-					</div>
-				</section>
-			))}
-
-			<LightMultiSelectBar
-				selectedIds={selectedLightIds}
-				devices={devices}
-				onClear={() => setSelectedLightIds(new Set())}
-				onStateChange={handleStateChange}
-			/>
+			<div className="mt-8 flex justify-center">
+				<button
+					type="button"
+					onClick={() => { void handleAddSection() }}
+					className={cn(
+						'px-4 py-2 text-sm rounded-lg transition-all',
+						'text-stone-500 hover:text-stone-700',
+						'border border-dashed border-stone-300 hover:border-stone-400',
+						'hover:bg-white/50',
+					)}
+				>
+					+ Add Section
+				</button>
+			</div>
 		</div>
 	)
 }
@@ -160,7 +138,7 @@ function StreamStatusBadge({ status }: Readonly<{ status: string }>) {
 	return (
 		<span
 			className={cn(
-				'flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full',
+				'inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full',
 				'bg-linear-to-b from-white to-stone-50',
 				'border border-stone-200/80',
 				'shadow-[var(--shadow-raised),var(--shadow-inner-glow)]',

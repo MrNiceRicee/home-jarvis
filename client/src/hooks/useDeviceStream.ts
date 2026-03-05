@@ -33,6 +33,7 @@ export function useDeviceStream() {
 
 			switch (event.type) {
 				case 'snapshot':
+					// snapshots bypass coalescing — replace full cache immediately
 					queryClient.setQueryData(['devices'], event.devices)
 					break
 				case 'device:update':
@@ -47,6 +48,13 @@ export function useDeviceStream() {
 									}
 								: d,
 						),
+					)
+					break
+				case 'device:new':
+					// append new device to cache — server already assigned section+position
+					queryClient.setQueryData(['devices'], (prev: Device[] = []) =>
+						// eslint-disable-next-line sonarjs/no-nested-functions -- guard inside SSE callback chain
+						prev.some((d) => d.id === event.device.id) ? prev : [...prev, event.device],
 					)
 					break
 				case 'device:offline':
