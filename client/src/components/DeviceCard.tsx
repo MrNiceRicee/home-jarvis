@@ -15,6 +15,7 @@ import { SensorCard } from './device-cards/SensorCard'
 import { ThermostatCard } from './device-cards/ThermostatCard'
 import { VacuumCard } from './device-cards/VacuumCard'
 import { Card, CardBody, CardFooter, CardHeader } from './ui/card'
+import { PowerButton } from './ui/power-button'
 
 const TYPE_LABEL: Record<string, string> = {
 	light: 'LIGHT',
@@ -85,6 +86,7 @@ export function DeviceCard({
 		<CardShell
 			device={device}
 			onMatterToggle={onMatterToggle}
+			onStateChange={onStateChange}
 			onExpand={onExpand}
 			accent={accent}
 			isSelected={isSelected}
@@ -132,6 +134,7 @@ interface CardShellProps {
 	isSelected?: boolean
 	onExpand?: (device: Device) => void
 	onMatterToggle?: (deviceId: string, enabled: boolean) => Promise<void>
+	onStateChange?: (deviceId: string, state: Partial<DeviceState>) => Promise<void>
 	onToggleSelect?: () => void
 }
 
@@ -142,9 +145,13 @@ function CardShell({
 	isSelected,
 	onExpand,
 	onMatterToggle,
+	onStateChange,
 	onToggleSelect,
 }: Readonly<CardShellProps>) {
 	const [matterLoading, setMatterLoading] = useState(false)
+	const [powerToggling, setPowerToggling] = useState(false)
+
+	const hasPower = device.state.on !== undefined
 	const isNativeMatter = NATIVE_MATTER_BRANDS.has(device.brand)
 
 	async function handleMatterToggle(enabled: boolean) {
@@ -228,6 +235,19 @@ function CardShell({
 			<CardBody>{children}</CardBody>
 
 			<CardFooter>
+				{hasPower && device.online && (
+					<PowerButton
+						isOn={device.state.on ?? false}
+						isDisabled={!device.online}
+						isToggling={powerToggling}
+						onToggle={() => {
+							if (!onStateChange) return
+							setPowerToggling(true)
+							void onStateChange(device.id, { on: !(device.state.on ?? false) })
+								.finally(() => setPowerToggling(false))
+						}}
+					/>
+				)}
 				{isNativeMatter ? (
 					<TooltipTrigger delay={200}>
 						<Button className="inline-flex items-center gap-1.5 px-2.5 py-1 text-2xs font-michroma uppercase tracking-wider rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200 cursor-default focus:outline-none">
