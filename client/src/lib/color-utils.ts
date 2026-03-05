@@ -54,28 +54,29 @@ export function kelvinToMired(kelvin: number): number {
 // ─── Card accent ──────────────────────────────────────────────────────────────
 
 /**
- * Outside: border uses the direct light color (1:1 to actual color).
- * Inside header: brightness-scaled color-mix tint for visual warmth.
- * Content/footer stays neutral white — no tint.
+ * Edge-lit acrylic effect: border uses the direct light color, and a soft
+ * box-shadow glow scales with brightness (like an LED strip behind frosted
+ * panel edge). No header tinting — card surface stays neutral.
  */
 export interface LightAccent {
-	/** Direct light color — no white mixing — for the card border. */
+	/** Direct light color for the card border. */
 	borderColor: string
-	/** Brightness-proportional tint (0–40% mix) for the header zone only. */
-	headerBackground: string
+	/** Pre-computed CSS box-shadow value for the ambient edge glow. */
+	glowShadow: string
 }
 
 export function lightAccentStyle(state: DeviceState): LightAccent | undefined {
 	if (!state.on) return undefined
 
 	const brt = (state.brightness ?? 100) / 100
-	const headerPct = Math.round(brt * 40) // 0–40% depending on brightness
+	// glow intensity: 15% at 0 brightness → 40% at full brightness
+	const glowPct = Math.round(15 + brt * 25)
 
 	if (state.colorTemp !== undefined) {
 		const color = tempToColor(state.colorTemp)
 		return {
 			borderColor: color,
-			headerBackground: `color-mix(in srgb, ${color} ${headerPct}%, white)`,
+			glowShadow: `0 0 14px 3px color-mix(in srgb, ${color} ${glowPct}%, transparent)`,
 		}
 	}
 
@@ -84,7 +85,7 @@ export function lightAccentStyle(state: DeviceState): LightAccent | undefined {
 		const color = `rgb(${r} ${g} ${b})`
 		return {
 			borderColor: color,
-			headerBackground: `color-mix(in srgb, ${color} ${headerPct}%, white)`,
+			glowShadow: `0 0 14px 3px color-mix(in srgb, ${color} ${glowPct}%, transparent)`,
 		}
 	}
 

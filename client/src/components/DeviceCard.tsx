@@ -1,10 +1,10 @@
 import { useCallback, useState } from 'react'
-import { Button, Label, Switch, Tooltip, TooltipTrigger } from 'react-aria-components'
+import { Button, Tooltip, TooltipTrigger } from 'react-aria-components'
 
 import type { Device, DeviceState } from '../types'
 
 import { cn } from '../lib/cn'
-import { type LightAccent, lightAccentStyle } from '../lib/color-utils'
+import { type LightAccent, lightAccentStyle, tempToColor } from '../lib/color-utils'
 import { AirPurifierCard } from './device-cards/AirPurifierCard'
 import { ApplianceCard } from './device-cards/ApplianceCard'
 import { FridgeCard } from './device-cards/FridgeCard'
@@ -16,19 +16,19 @@ import { ThermostatCard } from './device-cards/ThermostatCard'
 import { VacuumCard } from './device-cards/VacuumCard'
 import { Card, CardBody, CardFooter, CardHeader } from './ui/card'
 
-const TYPE_ICON: Record<string, string> = {
-	light: '💡',
-	switch: '🔌',
-	thermostat: '🌡️',
-	air_purifier: '💨',
-	sensor: '📡',
-	vacuum: '🤖',
-	washer_dryer: '🧺',
-	dishwasher: '🍽️',
-	oven: '🫕',
-	fridge: '🧊',
-	tv: '📺',
-	media_player: '🎵',
+const TYPE_LABEL: Record<string, string> = {
+	light: 'LIGHT',
+	switch: 'SWITCH',
+	thermostat: 'THERMO',
+	air_purifier: 'AIR',
+	sensor: 'SENSOR',
+	vacuum: 'VACUUM',
+	washer_dryer: 'WASHER',
+	dishwasher: 'DISHES',
+	oven: 'OVEN',
+	fridge: 'FRIDGE',
+	tv: 'TV',
+	media_player: 'MEDIA',
 }
 
 const BRAND_LABEL: Record<string, string> = {
@@ -162,50 +162,47 @@ function CardShell({
 			? 'Hue supports Matter natively. Add via your smart home app.'
 			: 'Aqara supports Matter natively. Add via your smart home app.'
 
-	const icon = TYPE_ICON[device.type] ?? '📦'
+	const typeLabel = TYPE_LABEL[device.type] ?? device.type.toUpperCase()
 
 	return (
 		<Card
 			accent={accent?.borderColor}
+			glowShadow={accent?.glowShadow}
 			muted={!device.online}
 			selected={isSelected}
 		>
-			<CardHeader style={accent ? { background: accent.headerBackground } : undefined}>
+			<CardHeader>
 				<div className="flex items-start justify-between gap-2">
 					<div className="flex items-center gap-2 min-w-0">
-						{onToggleSelect !== undefined ? (
+						{onToggleSelect !== undefined && (
 							<button
 								type="button"
 								onClick={onToggleSelect}
-								className={cn(
-									'relative text-xl shrink-0 w-9 h-9 flex items-center justify-center rounded-full transition-all',
-									isSelected
-										? 'bg-blue-100 ring-2 ring-blue-500'
-										: 'hover:bg-white/60 hover:ring-2 hover:ring-white/80',
-								)}
+								className="w-4 h-4 shrink-0 rounded-full border transition-all cursor-default"
+								style={{
+									borderColor: isSelected ? '#d97706' : '#c4c0b8',
+									background: isSelected
+										? 'radial-gradient(circle at 35% 30%, #fde68a 0%, #f59e0b 45%, #b45309 100%)'
+										: 'radial-gradient(circle at 35% 30%, #e8e4de 0%, #c4c0b8 45%, #a8a29e 100%)',
+									boxShadow: isSelected
+										? '0 0 6px rgba(251,191,36,0.5), inset 0 1px 2px rgba(255,255,255,0.3)'
+										: 'inset 0 1px 2px rgba(255,255,255,0.4), inset 0 -1px 2px rgba(0,0,0,0.1)',
+								}}
 								aria-label={isSelected ? 'Deselect' : 'Select'}
-							>
-								{icon}
-								{isSelected && (
-									<span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center text-white text-[9px] leading-none font-bold">
-										✓
-									</span>
-								)}
-							</button>
-						) : (
-							<span className="text-xl shrink-0 w-9 h-9 flex items-center justify-center">
-								{icon}
-							</span>
+							/>
 						)}
 						<div className="min-w-0">
-							<p className="text-sm font-commit font-medium text-stone-900 truncate">{device.name}</p>
-							<p className="text-xs font-commit text-stone-500 truncate">
-								{BRAND_LABEL[device.brand] ?? device.brand}
+							<p className="text-sm font-michroma text-stone-800 truncate leading-tight">{device.name}</p>
+							<p className="font-commit text-[10px] text-stone-400 truncate mt-0.5">
+								{BRAND_LABEL[device.brand] ?? device.brand} · {typeLabel}
 							</p>
 						</div>
 					</div>
 					<div className="flex items-center gap-1.5 shrink-0">
-						<OnlineBadge online={device.online} accented={!!accent} />
+						<span
+							className={cn('w-2 h-2 rounded-full shrink-0', device.online ? 'bg-emerald-500' : 'bg-stone-300')}
+							title={device.online ? 'Online' : 'Offline'}
+						/>
 						{onExpand && (
 							<Button
 								onPress={() => onExpand(device)}
@@ -224,46 +221,75 @@ function CardShell({
 			<CardBody>{children}</CardBody>
 
 			<CardFooter>
-				<span className="text-xs font-commit text-stone-400 uppercase tracking-wide">Matter</span>
 				{isNativeMatter ? (
 					<TooltipTrigger delay={200}>
-						<Button className="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 cursor-default focus:outline-none">
-							Native ✓
+						<Button className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-michroma uppercase tracking-wider rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200 cursor-default focus:outline-none">
+							<span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.6)]" />
+							MATTER
 						</Button>
 						<Tooltip className="bg-stone-900 text-white text-xs rounded-lg px-3 py-1.5 shadow-lg max-w-[200px] text-center">
 							{nativeTooltip}
 						</Tooltip>
 					</TooltipTrigger>
 				) : (
-					<Switch
-						isSelected={device.matterEnabled}
-						onChange={handleMatterToggle}
+					<Button
+						onPress={() => { void handleMatterToggle(!device.matterEnabled) }}
 						isDisabled={matterLoading || !device.online}
-						className="group flex items-center gap-2 cursor-default"
+						className={cn(
+							'inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-michroma uppercase tracking-wider',
+							'rounded-md border cursor-default disabled:opacity-40',
+							'transition-[box-shadow,transform] duration-100',
+							device.matterEnabled
+								? 'bg-stone-200 text-stone-700 border-stone-300 shadow-[inset_0_2px_4px_rgba(0,0,0,0.15),inset_0_0_1px_rgba(0,0,0,0.1)]'
+								: 'bg-gradient-to-b from-stone-50 to-stone-100 text-stone-500 border-stone-300 shadow-[0_2px_4px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.7)]',
+							'pressed:translate-y-px pressed:shadow-[inset_0_1px_2px_rgba(0,0,0,0.12),inset_0_0_1px_rgba(0,0,0,0.08)]',
+						)}
+						aria-label={device.matterEnabled ? 'Disable Matter bridge' : 'Enable Matter bridge'}
 					>
-						<div className="w-9 h-5 rounded-full transition-colors bg-stone-200 group-selected:bg-emerald-500 group-disabled:opacity-40">
-							<div className="w-4 h-4 bg-white rounded-full shadow-sm m-0.5 transition-transform group-selected:translate-x-4" />
-						</div>
-						<Label className="sr-only">Enable Matter</Label>
-					</Switch>
+						<span
+							className={cn('w-1.5 h-1.5 rounded-full transition-colors', device.matterEnabled ? 'bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.6)]' : 'bg-stone-400')}
+						/>
+						MATTER
+					</Button>
 				)}
+
+				{/* slim light bar — reflects device brightness & color */}
+				<LightBar device={device} />
 			</CardFooter>
 		</Card>
 	)
 }
 
-function badgeBg(online: boolean, accented: boolean): string {
-	if (accented) return 'bg-white/70'
-	return online ? 'bg-emerald-50' : 'bg-stone-100'
-}
+// sony-inspired slim light bar that reflects the device's current light state
+function LightBar({ device }: Readonly<{ device: Device }>) {
+	const { state } = device
+	const isOn = state.on ?? false
+	const brightness = (state.brightness ?? 100) / 100
 
-function OnlineBadge({ online, accented }: Readonly<{ online: boolean; accented: boolean }>) {
+	// determine bar color from device state
+	let barColor = '#d6d3cd' // off — neutral warm gray
+	if (isOn && device.type === 'light') {
+		if (state.color) {
+			const { r, g, b } = state.color
+			barColor = `rgb(${r} ${g} ${b})`
+		} else if (state.colorTemp !== undefined) {
+			barColor = tempToColor(state.colorTemp)
+		} else {
+			barColor = '#fbbf24' // warm amber fallback
+		}
+	}
+
 	return (
-		<span
-			className={cn('flex items-center gap-1 text-xs font-commit font-medium shrink-0 px-1.5 py-0.5 rounded-full', badgeBg(online, accented), online ? 'text-emerald-700' : 'text-stone-400')}
-		>
-			<span className={cn('w-1.5 h-1.5 rounded-full', online ? 'bg-emerald-500' : 'bg-stone-300')} />
-			{online ? 'Online' : 'Offline'}
-		</span>
+		<div
+			className="flex-1 h-1.5 rounded-full transition-all duration-300"
+			style={{
+				background: isOn ? barColor : '#d6d3cd',
+				opacity: isOn ? 0.5 + brightness * 0.5 : 1,
+				boxShadow: isOn
+					? `0 0 8px color-mix(in srgb, ${barColor} 50%, transparent), 0 0 3px color-mix(in srgb, ${barColor} 30%, transparent)`
+					: 'inset 0 1px 2px rgba(0,0,0,0.15), inset 0 0 1px rgba(0,0,0,0.1)',
+			}}
+		/>
 	)
 }
+
