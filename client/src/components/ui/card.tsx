@@ -23,7 +23,7 @@ export function Card({ children, className, accent, glowShadow, muted, selected 
 	return (
 		<div
 			className={cn(
-				'relative rounded-lg overflow-hidden',
+				'relative rounded-md overflow-hidden',
 				'bg-[#fffdf8]',
 				'border border-[rgba(168,151,125,0.12)]',
 				'transition-all duration-200',
@@ -74,13 +74,7 @@ export function CardBody({ children, className }: Readonly<{ children: ReactNode
 
 export function CardFooter({ children, className }: Readonly<{ children: ReactNode; className?: string }>) {
 	return (
-		<div
-			className={cn(
-				'px-3 py-2',
-				'flex items-end justify-between gap-2',
-				className,
-			)}
-		>
+		<div className={cn('flex flex-col', className)}>
 			{children}
 		</div>
 	)

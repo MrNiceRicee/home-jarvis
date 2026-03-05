@@ -185,7 +185,7 @@ function CardShell({
 							<button
 								type="button"
 								onClick={onToggleSelect}
-								className="w-4 h-4 shrink-0 rounded-full border transition-all cursor-default outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-1"
+								className="w-4 h-4 shrink-0 rounded-full border transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-1"
 								style={{
 									borderColor: isSelected ? '#d97706' : '#c4c0b8',
 									background: isSelected
@@ -210,7 +210,7 @@ function CardShell({
 						{onExpand && (
 							<Button
 								onPress={() => onExpand(device)}
-								className="w-7 h-7 flex items-center justify-center cursor-default outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-1 rounded-lg"
+								className="w-7 h-7 flex items-center justify-center cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-1 rounded-lg"
 								aria-label={`Expand ${device.name}`}
 							>
 								<svg
@@ -235,52 +235,46 @@ function CardShell({
 			<CardBody>{children}</CardBody>
 
 			<CardFooter>
-				{hasPower && device.online && (
-					<PowerButton
-						isOn={device.state.on ?? false}
-						isDisabled={!device.online}
-						isToggling={powerToggling}
-						onToggle={() => {
-							if (!onStateChange) return
-							setPowerToggling(true)
-							void onStateChange(device.id, { on: !(device.state.on ?? false) })
-								.finally(() => setPowerToggling(false))
-						}}
-					/>
-				)}
-				{isNativeMatter ? (
-					<TooltipTrigger delay={200}>
-						<Button className="inline-flex items-center gap-1.5 px-2.5 py-1 text-2xs font-michroma uppercase tracking-wider rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200 cursor-default focus:outline-none">
-							<span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.6)]" />
-							MATTER
-						</Button>
-						<Tooltip className="bg-stone-900 text-white text-xs rounded-lg px-3 py-1.5 shadow-lg max-w-[200px] text-center">
-							{nativeTooltip}
-						</Tooltip>
-					</TooltipTrigger>
-				) : (
-					<Button
-						onPress={() => { void handleMatterToggle(!device.matterEnabled) }}
-						isDisabled={matterLoading || !device.online}
-						className={cn(
-							'inline-flex items-center gap-1.5 px-2.5 py-1 text-2xs font-michroma uppercase tracking-wider',
-							'rounded-md border cursor-default disabled:opacity-40',
-							'transition-shadow duration-100',
-							device.matterEnabled
-								? 'bg-stone-200 text-stone-700 border-stone-300 shadow-[inset_0_1px_3px_rgba(0,0,0,0.12)]'
-								: 'bg-stone-50 text-stone-500 border-stone-300 shadow-[0_1px_3px_rgba(0,0,0,0.08)]',
-							'pressed:shadow-[inset_0_1px_2px_rgba(0,0,0,0.12)]',
-						)}
-						aria-label={device.matterEnabled ? 'Disable Matter bridge' : 'Enable Matter bridge'}
-					>
-						<span
-							className={cn('w-1.5 h-1.5 rounded-full transition-colors', device.matterEnabled ? 'bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.6)]' : 'bg-stone-400')}
+				{/* control row — PWR button + MATTER LED indicator */}
+				<div className="px-3 py-2 flex items-center justify-between">
+					{hasPower && device.online ? (
+						<PowerButton
+							isOn={device.state.on ?? false}
+							isDisabled={!device.online}
+							isToggling={powerToggling}
+							onToggle={() => {
+								if (!onStateChange) return
+								setPowerToggling(true)
+								void onStateChange(device.id, { on: !(device.state.on ?? false) })
+									.finally(() => setPowerToggling(false))
+							}}
 						/>
-						MATTER
-					</Button>
-				)}
+					) : <div />}
 
-				{/* slim light bar — reflects device brightness & color */}
+					{isNativeMatter ? (
+						<TooltipTrigger delay={200}>
+							<Button className="inline-flex items-center gap-2 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-1 rounded-sm px-1 py-0.5">
+								<MatterLed active />
+								<span className="font-michroma text-2xs uppercase tracking-wider text-stone-400">MATTER</span>
+							</Button>
+							<Tooltip className="bg-stone-900 text-white text-xs rounded-lg px-3 py-1.5 shadow-lg max-w-[200px] text-center">
+								{nativeTooltip}
+							</Tooltip>
+						</TooltipTrigger>
+					) : (
+						<Button
+							onPress={() => { void handleMatterToggle(!device.matterEnabled) }}
+							isDisabled={matterLoading || !device.online}
+							className="inline-flex items-center gap-2 cursor-pointer disabled:opacity-40 outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-1 rounded-sm px-1 py-0.5"
+							aria-label={device.matterEnabled ? 'Disable Matter bridge' : 'Enable Matter bridge'}
+						>
+							<MatterLed active={device.matterEnabled} />
+							<span className="font-michroma text-2xs uppercase tracking-wider text-stone-400">MATTER</span>
+						</Button>
+					)}
+				</div>
+
+				{/* full-bleed light bar — flush to card edges */}
 				<LightBar device={device} />
 			</CardFooter>
 		</Card>
@@ -310,7 +304,29 @@ function RecessedLed({ online }: Readonly<{ online: boolean }>) {
 	)
 }
 
-// sony-inspired slim light bar that reflects the device's current light state
+// recessed LED for Matter status — same bezel style as header online LED
+function MatterLed({ active }: Readonly<{ active: boolean }>) {
+	return (
+		<div
+			className="w-3 h-3 rounded-full shrink-0"
+			style={{
+				background: 'linear-gradient(180deg, #d4d0ca, #c0bcb6)',
+				boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.4)',
+			}}
+		>
+			<div
+				className={cn('w-1.5 h-1.5 rounded-full m-auto mt-[3px]', active ? 'bg-emerald-400' : 'bg-stone-400/50')}
+				style={active ? {
+					boxShadow: '0 0 4px rgba(52,211,153,0.6), 0 0 8px rgba(52,211,153,0.3)',
+				} : {
+					boxShadow: 'inset 0 0.5px 1px rgba(0,0,0,0.2)',
+				}}
+			/>
+		</div>
+	)
+}
+
+// routered LED strip — recessed channel milled into the panel surface
 function LightBar({ device }: Readonly<{ device: Device }>) {
 	const { state } = device
 	const isOn = state.on ?? false
@@ -330,16 +346,17 @@ function LightBar({ device }: Readonly<{ device: Device }>) {
 	}
 
 	return (
-		<div
-			className="flex-1 h-2 rounded-full transition-all duration-300"
-			style={{
-				background: isOn ? barColor : '#d6d3cd',
-				opacity: isOn ? 0.7 + brightness * 0.3 : 1,
-				boxShadow: isOn
-					? `0 0 12px color-mix(in srgb, ${barColor} 70%, transparent), 0 0 4px color-mix(in srgb, ${barColor} 50%, transparent)`
-					: 'inset 0 1px 2px rgba(0,0,0,0.15), inset 0 0 1px rgba(0,0,0,0.1)',
-			}}
-		/>
+		<div className="px-3 pb-2.5">
+			<div
+				className="w-full h-1.5 rounded-full transition-all duration-300"
+				style={{
+					background: isOn ? barColor : '#d6d3cd',
+					opacity: isOn ? 0.7 + brightness * 0.3 : 1,
+					boxShadow: isOn
+						? `inset 0 1px 2px rgba(0,0,0,0.2), 0 0 10px color-mix(in srgb, ${barColor} 60%, transparent), 0 0 4px color-mix(in srgb, ${barColor} 40%, transparent)`
+						: 'inset 0 1px 2px rgba(0,0,0,0.18), inset 0 0 1px rgba(0,0,0,0.12)',
+				}}
+			/>
+		</div>
 	)
 }
-

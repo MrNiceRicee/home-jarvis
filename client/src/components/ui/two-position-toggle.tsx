@@ -26,7 +26,7 @@ export function TwoPositionToggle({ label, options, value, onChange, disabled }:
 						key={opt}
 						value={opt}
 						className={cn(
-							'outline-none cursor-default px-3 py-1.5 font-michroma text-2xs uppercase tracking-wider transition-all',
+							'outline-none cursor-pointer px-3 py-1.5 font-michroma text-2xs uppercase tracking-wider transition-all',
 							'focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-inset',
 							i === 0 && 'border-r border-stone-300',
 							value === opt

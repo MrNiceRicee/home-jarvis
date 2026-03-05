@@ -47,7 +47,7 @@ export function LightMultiSelectBar({
 				</span>
 				<Button
 					onPress={onClear}
-					className="text-stone-400 hover:text-stone-600 text-xs leading-none cursor-default"
+					className="text-stone-400 hover:text-stone-600 text-xs leading-none cursor-pointer"
 					aria-label="Clear selection"
 				>
 					✕
@@ -60,13 +60,13 @@ export function LightMultiSelectBar({
 			<div className="flex gap-1 shrink-0">
 				<Button
 					onPress={() => applyToAll({ on: true })}
-					className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 cursor-default"
+					className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 cursor-pointer"
 				>
 					On
 				</Button>
 				<Button
 					onPress={() => applyToAll({ on: false })}
-					className="text-xs px-2.5 py-1 rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 border border-stone-200 cursor-default"
+					className="text-xs px-2.5 py-1 rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 border border-stone-200 cursor-pointer"
 				>
 					Off
 				</Button>
@@ -82,7 +82,7 @@ export function LightMultiSelectBar({
 						onPress={() =>
 							applyToAll({ on: true, colorTemp: scene.colorTemp, brightness: scene.brightness })
 						}
-						className="text-xs px-2.5 py-1 rounded-full bg-stone-50 text-stone-600 hover:bg-stone-100 border border-stone-200 cursor-default"
+						className="text-xs px-2.5 py-1 rounded-full bg-stone-50 text-stone-600 hover:bg-stone-100 border border-stone-200 cursor-pointer"
 					>
 						{scene.name}
 					</Button>
@@ -118,9 +118,8 @@ export function LightMultiSelectBar({
 									transform: 'translate(-50%, -50%)',
 									background:
 										'radial-gradient(circle at 35% 35%, rgba(255,255,255,0.65) 0%, transparent 55%), #fbbf24',
-									boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
 								}}
-								className="w-5 h-5 rounded-full ring-1 ring-white/50 cursor-default focus:outline-none"
+								className="w-5 h-5 rounded-full ring-1 ring-white/50 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-1 shadow-[0_2px_8px_rgba(0,0,0,0.25)]"
 							/>
 						</>
 					)}

@@ -73,7 +73,7 @@ function ToggleBankItem({ label, ledColor, isActive, disabled }: Readonly<{
 	disabled?: boolean
 }>) {
 	return (
-		<div className="flex flex-col items-center gap-1 cursor-default">
+		<div className="flex flex-col items-center gap-1 cursor-pointer">
 			<div
 				className={cn(
 					'w-7 h-7 relative flex items-center justify-center',
@@ -87,10 +87,13 @@ function ToggleBankItem({ label, ledColor, isActive, disabled }: Readonly<{
 				)}
 			>
 				<span
-					className={cn('absolute top-1 right-1 w-1.5 h-1.5 rounded-full', !isActive && 'bg-stone-400/30')}
+					className={cn('absolute top-1 right-1 w-1.5 h-1.5 rounded-full', !isActive && !ledColor && 'bg-stone-400/30')}
 					style={isActive ? {
 						backgroundColor: ledColor ?? 'rgb(52,211,153)',
 						boxShadow: `0 0 4px ${ledColor ?? 'rgb(52,211,153)'}, 0 0 8px color-mix(in srgb, ${ledColor ?? 'rgb(52,211,153)'} 40%, transparent)`,
+					} : ledColor ? {
+						backgroundColor: `color-mix(in srgb, ${ledColor} 60%, #78716c)`,
+						boxShadow: `0 0 2px color-mix(in srgb, ${ledColor} 30%, transparent)`,
 					} : undefined}
 				/>
 			</div>

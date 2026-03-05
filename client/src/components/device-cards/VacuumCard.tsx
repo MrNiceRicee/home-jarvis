@@ -52,21 +52,21 @@ export function VacuumCard({ device, onStateChange }: Readonly<VacuumCardProps>)
 				<Button
 					onPress={() => { void sendCommand('start') }}
 					isDisabled={!device.online || status === 'cleaning'}
-					className="flex-1 py-1.5 rounded-lg text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 pressed:bg-blue-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-default transition-colors"
+					className="flex-1 py-1.5 rounded-lg text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 pressed:bg-blue-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
 				>
 					Start
 				</Button>
 				<Button
 					onPress={() => { void sendCommand('pause') }}
 					isDisabled={!device.online || status !== 'cleaning'}
-					className="flex-1 py-1.5 rounded-lg text-xs font-medium bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border border-yellow-200 pressed:bg-yellow-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-default transition-colors"
+					className="flex-1 py-1.5 rounded-lg text-xs font-medium bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border border-yellow-200 pressed:bg-yellow-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
 				>
 					Pause
 				</Button>
 				<Button
 					onPress={() => { void sendCommand('dock') }}
 					isDisabled={!device.online || status === 'docked'}
-					className="flex-1 py-1.5 rounded-lg text-xs font-medium bg-stone-100 text-stone-600 hover:bg-stone-200 border border-stone-200 pressed:bg-stone-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-default transition-colors"
+					className="flex-1 py-1.5 rounded-lg text-xs font-medium bg-stone-100 text-stone-600 hover:bg-stone-200 border border-stone-200 pressed:bg-stone-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
 				>
 					Dock
 				</Button>

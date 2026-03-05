@@ -45,7 +45,7 @@ export function MediaCard({ device, onStateChange }: Readonly<MediaCardProps>) {
 					onPress={handlePowerToggle}
 					isDisabled={!device.online || toggling}
 					className={cn(
-						'flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-default',
+						'flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer',
 						isOn
 							? 'bg-stone-800 text-stone-100 hover:bg-stone-700 border border-stone-700 pressed:bg-stone-600'
 							: 'bg-stone-100 text-stone-600 hover:bg-stone-200 border border-stone-200 pressed:bg-stone-300',
@@ -58,7 +58,7 @@ export function MediaCard({ device, onStateChange }: Readonly<MediaCardProps>) {
 					<Button
 						onPress={handlePlayPause}
 						isDisabled={!isOn}
-						className="w-9 h-9 rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 pressed:bg-stone-300 disabled:opacity-40 cursor-default flex items-center justify-center text-sm"
+						className="w-9 h-9 rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 pressed:bg-stone-300 disabled:opacity-40 cursor-pointer flex items-center justify-center text-sm"
 					>
 						{state.playing ? '⏸' : '▶'}
 					</Button>
@@ -92,7 +92,7 @@ export function MediaCard({ device, onStateChange }: Readonly<MediaCardProps>) {
 									className="absolute h-1.5 rounded-full bg-stone-500"
 									style={{ width: `${sliderState.getThumbPercent(0) * 100}%` }}
 								/>
-								<SliderThumb className="w-4 h-4 rounded-full bg-white border-2 border-stone-500 shadow-sm cursor-default focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-500" />
+								<SliderThumb className="w-4 h-4 rounded-full bg-white border-2 border-stone-500 shadow-sm cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-500" />
 							</>
 						)}
 					</SliderTrack>

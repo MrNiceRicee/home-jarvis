@@ -49,7 +49,7 @@ export function GenericCard({ device, onStateChange }: Readonly<GenericCardProps
 					onPress={handlePowerToggle}
 					isDisabled={toggling}
 					className={cn(
-						'w-full py-1.5 rounded-lg text-xs font-medium transition-colors cursor-default',
+						'w-full py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer',
 						isOn
 							? 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 pressed:bg-amber-200'
 							: 'bg-stone-100 text-stone-600 hover:bg-stone-200 border border-stone-200 pressed:bg-stone-300',

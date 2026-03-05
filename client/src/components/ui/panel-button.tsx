@@ -22,7 +22,7 @@ export function PanelButton({ led, ledColor = 'rgb(52,211,153)', size = 'md', la
 				className={cn(
 					sizeClass,
 					'relative flex items-center justify-center',
-					'rounded-sm border border-stone-300 cursor-default',
+					'rounded-sm border border-stone-300 cursor-pointer',
 					'bg-stone-100 text-stone-600 text-xs font-medium',
 					'transition-all duration-100',
 					'shadow-[0_1px_2px_rgba(0,0,0,0.1),_inset_0_1px_0_rgba(255,255,255,0.6)]',
@@ -39,11 +39,14 @@ export function PanelButton({ led, ledColor = 'rgb(52,211,153)', size = 'md', la
 						className={cn(
 							'absolute top-1 right-1 w-1.5 h-1.5 rounded-full',
 							led === 'pulse' && 'animate-pulse',
-							led === 'off' && 'bg-stone-400/30',
+							led === 'off' && !ledColor && 'bg-stone-400/30',
 						)}
 						style={led === 'on' || led === 'pulse' ? {
 							backgroundColor: ledColor,
 							boxShadow: `0 0 4px ${ledColor}, 0 0 8px color-mix(in srgb, ${ledColor} 40%, transparent)`,
+						} : led === 'off' && ledColor ? {
+							backgroundColor: `color-mix(in srgb, ${ledColor} 60%, #78716c)`,
+							boxShadow: `0 0 2px color-mix(in srgb, ${ledColor} 30%, transparent)`,
 						} : undefined}
 					/>
 				)}
