@@ -10,24 +10,29 @@ import { DeviceDetailDialog } from '../components/DeviceDetailDialog'
 import { LightMultiSelectBar } from '../components/LightMultiSelectBar'
 import { SectionGroup } from '../components/SectionGroup'
 import { Card } from '../components/ui/card'
-import { useStreamStatus } from '../hooks/useDeviceStream'
 import { api } from '../lib/api'
 import { cn } from '../lib/cn'
+import { useConnectionStore } from '../stores/connection-store'
+import { useDeviceStore } from '../stores/device-store'
 
 export const Route = createFileRoute('/')({ component: Dashboard })
 
+function applyPositionUpdates(updates: Pick<Device, 'id' | 'sectionId' | 'position'>[]) {
+	const posMap = new Map(updates.map((u) => [u.id, u]))
+	useDeviceStore.setState((prev) => ({
+		devices: prev.devices.map((d) => {
+			const update = posMap.get(d.id)
+			return update ? { ...d, sectionId: update.sectionId, position: update.position } : d
+		}),
+	}))
+}
+
 function Dashboard() {
 	const queryClient = useQueryClient()
-	const status = useStreamStatus()
+	const status = useConnectionStore((s) => s.status)
+	const devices = useDeviceStore((s) => s.devices)
 	const [expandedDevice, setExpandedDevice] = useState<Device | null>(null)
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-
-	const { data: devices = [] } = useQuery<Device[]>({
-		queryKey: ['devices'],
-		queryFn: () => [],
-		staleTime: Infinity,
-		gcTime: Infinity,
-	})
 
 	const { data: sections = [] } = useQuery<Section[]>({
 		queryKey: ['sections'],
@@ -43,18 +48,29 @@ function Dashboard() {
 			await api.api.devices({ id }).state.patch(state)
 		},
 		onMutate: ({ id, state }) => {
-			// snapshot for rollback
-			const previous = queryClient.getQueryData<Device[]>(['devices'])
-			queryClient.setQueryData(['devices'], (prev: Device[] = []) =>
-				prev.map((d) => (d.id === id ? { ...d, state: { ...d.state, ...state } } : d)),
-			)
-			return { previous }
+			const device = useDeviceStore.getState().devices.find((d) => d.id === id)
+			const previousValues = device ? { ...device.state } : undefined
+
+			// suppress SSE updates for these properties while mutation is in-flight
+			const properties = Object.keys(state)
+			useDeviceStore.getState().addPending(id, properties)
+
+			// optimistic update
+			useDeviceStore.getState().updateDevice(id, { state })
+
+			return { id, previousValues, properties }
 		},
 		onError: (_err, _vars, context) => {
-			if (context?.previous) {
-				queryClient.setQueryData(['devices'], context.previous)
+			if (context?.previousValues) {
+				// surgical rollback — only revert the properties we changed
+				useDeviceStore.getState().updateDevice(context.id, { state: context.previousValues })
 			}
 			toast.error('Device is offline or unreachable')
+		},
+		onSettled: (_data, _err, _vars, context) => {
+			if (context) {
+				useDeviceStore.getState().removePending(context.id, context.properties)
+			}
 		},
 	})
 
@@ -68,10 +84,14 @@ function Dashboard() {
 			toast.error('Failed to toggle Matter bridge')
 			return
 		}
-		queryClient.setQueryData(['devices'], (prev: Device[] = []) =>
-			prev.map((d) => (d.id === deviceId ? { ...d, matterEnabled: enabled } : d)),
-		)
-	}, [queryClient])
+		useDeviceStore.getState().updateDevice(deviceId, {})
+		// matter toggle updates matterEnabled, not state — update directly
+		useDeviceStore.setState((prev) => ({
+			devices: prev.devices.map((d) =>
+				d.id === deviceId ? { ...d, matterEnabled: enabled } : d,
+			),
+		}))
+	}, [])
 
 	async function handleAddSection(name: string) {
 		const { error } = await api.api.sections.post({ name })
@@ -98,18 +118,23 @@ function Dashboard() {
 	}, [queryClient])
 
 	const handleReorder = useCallback((updates: Array<{ id: string; sectionId: string; position: number }>) => {
-		// optimistic: update positions in query cache
-		queryClient.setQueryData(['devices'], (prev: Device[] = []) => {
-			const posMap = new Map(updates.map((u) => [u.id, u]))
-			return prev.map((d) => {
-				const update = posMap.get(d.id)
-				return update ? { ...d, sectionId: update.sectionId, position: update.position } : d
-			})
-		})
+		// snapshot order for rollback
+		const snapshot = useDeviceStore.getState().devices.map((d) => ({
+			id: d.id,
+			sectionId: d.sectionId,
+			position: d.position,
+		}))
+
+		// optimistic reorder
+		applyPositionUpdates(updates)
+
 		void api.api.devices.positions.patch(updates).then(({ error }) => {
-			if (error) toast.error('Failed to save device order')
+			if (error) {
+				toast.error('Failed to save device order')
+				applyPositionUpdates(snapshot)
+			}
 		})
-	}, [queryClient])
+	}, [])
 
 	const handleToggleSelect = useCallback((deviceId: string) => {
 		setSelectedIds((prev) => {
