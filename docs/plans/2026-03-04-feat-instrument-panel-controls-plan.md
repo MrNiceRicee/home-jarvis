@@ -210,8 +210,8 @@ New toggle bank component, then apply to LightCard's full-dialog controls.
 
 **TwoPositionToggle (`client/src/components/ui/two-position-toggle.tsx`):**
 
-- [ ] Create `TwoPositionToggle` component
-- [ ] Props:
+- [x] Create `TwoPositionToggle` component
+- [x] Props:
   ```ts
   interface TwoPositionToggleProps {
     label: string                      // section label ("MODE")
@@ -221,18 +221,18 @@ New toggle bank component, then apply to LightCard's full-dialog controls.
     disabled?: boolean
   }
   ```
-- [ ] Visual: single rectangle container with center divider (`border-r`), two halves. Active half: inset shadow + bold text + slightly darker bg. Inactive half: raised feel + muted text
-- [ ] Container: `rounded-sm border border-stone-300`, warm background
-- [ ] Divider: thin `border-r border-stone-300` center line (the `┃┃` visual from brainstorm)
-- [ ] Accessibility: React Aria `RadioGroup` with 2 `Radio` options
-- [ ] Keyboard: arrow keys toggle between positions
-- [ ] Section label above: same `font-michroma text-2xs uppercase` pattern
+- [x] Visual: single rectangle container with center divider (`border-r`), two halves. Active half: inset shadow + bold text + slightly darker bg. Inactive half: raised feel + muted text
+- [x] Container: `rounded-sm border border-stone-300`, warm background
+- [x] Divider: thin `border-r border-stone-300` center line (the `┃┃` visual from brainstorm)
+- [x] Accessibility: React Aria `RadioGroup` with 2 `Radio` options
+- [x] Keyboard: arrow keys toggle between positions
+- [x] Section label above: same `font-michroma text-2xs uppercase` pattern
 
 **LightCard White/Color mode (`client/src/components/device-cards/LightCard.tsx`):**
 
-- [ ] Replace `rounded-full bg-stone-100 p-0.5` segmented control with `<TwoPositionToggle />`
-- [ ] Options: `["WHITE", "COLOR"]`
-- [ ] Preserve existing mode switching logic (colorMode state toggle)
+- [x] Replace `rounded-full bg-stone-100 p-0.5` segmented control with `<TwoPositionToggle />`
+- [x] Options: `["WHITE", "COLOR"]`
+- [x] Preserve existing mode switching logic (colorMode state toggle)
 
 **Acceptance:**
 - White/Color mode looks like a receiver source selector, not an iOS toggle
