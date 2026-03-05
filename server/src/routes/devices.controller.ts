@@ -6,12 +6,13 @@ import type { DeviceState } from '../integrations/types'
 
 import { db } from '../db'
 import { devices, integrations, sections } from '../db/schema'
-import { createAdapter } from '../integrations/registry'
+import { INTEGRATION_META, createAdapter } from '../integrations/registry'
 import { eventBus } from '../lib/events'
 import { log } from '../lib/logger'
 import { nextPosition } from '../lib/next-position'
 import { parseJson } from '../lib/parse-json'
 import { sanitizeDevice } from '../lib/sanitize'
+import { isPrivateIp } from '../lib/validate-ip'
 import { matterBridge } from '../matter/bridge'
 
 let discoveryInFlight = false
@@ -73,6 +74,10 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 		'/add-from-scan',
 		async ({ db, body }) => {
 			const { brand, ip } = body
+
+			if (!isPrivateIp(ip)) {
+				return status(400, { error: 'Invalid IP address: must be a private network address' })
+			}
 
 			// find the existing integration for this brand
 			const integration = db.select().from(integrations).where(eq(integrations.brand, brand)).get()
@@ -206,6 +211,7 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 				brand: device.brand,
 				state: newState,
 				timestamp: now,
+				source: 'dashboard',
 			})
 
 			log.info('setState ok', { deviceId: params.id, deviceName: device.name, brand: device.brand })
@@ -237,7 +243,11 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 			}
 
 			// brands with native Matter support — don't bridge, avoid duplicates
-			const nativeMatterBrands = new Set(['hue', 'aqara'])
+			const nativeMatterBrands = new Set(
+				Object.values(INTEGRATION_META)
+					.filter((m) => m.nativeMatter)
+					.map((m) => m.brand),
+			)
 			if (nativeMatterBrands.has(device.brand)) {
 				log.warn('setMatter native brand blocked', { deviceId: params.id, brand: device.brand })
 				return status(400, { error: `${device.brand} supports Matter natively. Add via your smart home app.` })
@@ -264,6 +274,7 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 				deviceId: params.id,
 				brand: device.brand,
 				timestamp: now,
+				source: 'dashboard',
 			})
 
 			const updated = db.select().from(devices).where(eq(devices.id, params.id)).get()

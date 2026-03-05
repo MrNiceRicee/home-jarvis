@@ -8,7 +8,8 @@ import { getStatusMethod, mapVeSyncType, parseStateByType } from './parsers'
 
 const BASE_URL = 'https://smartapi.vesync.com'
 const TIMEOUT = 15_000
-const TOKEN_EXPIRED_CODE = -11001000
+// VeSync returns multiple error codes for auth failures
+const TOKEN_ERROR_CODES = new Set([-11001000, -11001022, -11001001])
 
 // pyvesync-aligned constants
 const APP_VERSION = '5.6.60'
@@ -299,63 +300,57 @@ export class VeSyncAdapter implements DeviceAdapter {
 	}
 
 	private async fetchDevices(): Promise<DiscoveredDevice[]> {
-		const session = await this.getSession()
-		const res = await fetch(`${BASE_URL}/cloud/v1/deviceManaged/devices`, {
-			method: 'POST',
-			headers: BYPASS_HEADERS,
-			body: buildDeviceListPayload(session),
-			signal: AbortSignal.timeout(TIMEOUT),
-		})
+		return this.withTokenRetry(async (session) => {
+			const res = await fetch(`${BASE_URL}/cloud/v1/deviceManaged/devices`, {
+				method: 'POST',
+				headers: BYPASS_HEADERS,
+				body: buildDeviceListPayload(session),
+				signal: AbortSignal.timeout(TIMEOUT),
+			})
 
-		if (!res.ok) throw new Error(`VeSync device list error: ${res.status}`)
-		const data = (await res.json()) as VeSyncDeviceListResponse
-		if (data.code !== 0) throw new Error(`VeSync device list error code: ${data.code}`)
+			if (!res.ok) throw new Error(`VeSync device list error: ${res.status}`)
+			const data = (await res.json()) as VeSyncDeviceListResponse
+			if (TOKEN_ERROR_CODES.has(data.code)) throw new TokenExpiredError()
+			if (data.code !== 0) throw new Error(`VeSync device list error code: ${data.code}`)
 
-		const deviceList = data.result?.list ?? []
-		const results: DiscoveredDevice[] = []
-		const concurrency = 3
+			const deviceList = data.result?.list ?? []
+			const results: DiscoveredDevice[] = []
 
-		for (let i = 0; i < deviceList.length; i += concurrency) {
-			const batch = deviceList.slice(i, i + concurrency)
-			const settled = await Promise.allSettled(
-				batch.map(async (d) => {
-					const type = mapVeSyncType(d.deviceType, d.type)
-					const online = d.connectionStatus === 'online'
-					const meta: VeSyncDeviceMeta = {
-						cid: d.cid,
-						uuid: d.uuid,
-						configModule: d.configModule,
-						deviceType: d.deviceType,
-						deviceRegion: d.deviceRegion,
-					}
-
-					const discovered: DiscoveredDevice = {
-						externalId: d.cid,
-						name: d.deviceName,
-						type,
-						state: {},
-						online,
-						metadata: { ...meta },
-					}
-
-					if (online) {
-						try {
-							discovered.state = await this.fetchDeviceStateWithMeta(meta, type, session)
-						} catch {
-							// state fetch failed — keep empty state, device still shows as online
+			for (let i = 0; i < deviceList.length; i += 3) {
+				const batch = deviceList.slice(i, i + 3)
+				const settled = await Promise.allSettled(
+					batch.map(async (d) => {
+						const type = mapVeSyncType(d.deviceType, d.type)
+						const online = d.connectionStatus === 'online'
+						const meta: VeSyncDeviceMeta = {
+							cid: d.cid, uuid: d.uuid, configModule: d.configModule,
+							deviceType: d.deviceType, deviceRegion: d.deviceRegion,
 						}
-					}
 
-					return discovered
-				}),
-			)
+						const discovered: DiscoveredDevice = {
+							externalId: d.cid, name: d.deviceName, type,
+							state: {}, online, metadata: { ...meta },
+						}
 
-			for (const result of settled) {
-				if (result.status === 'fulfilled') results.push(result.value)
+						if (online) {
+							try {
+								discovered.state = await this.fetchDeviceStateWithMeta(meta, type, session)
+							} catch {
+								// state fetch failed — keep empty state
+							}
+						}
+
+						return discovered
+					}),
+				)
+
+				for (const result of settled) {
+					if (result.status === 'fulfilled') results.push(result.value)
+				}
 			}
-		}
 
-		return results
+			return results
+		})
 	}
 
 	private async fetchDeviceState(externalId: string): Promise<DeviceState> {
@@ -403,7 +398,7 @@ export class VeSyncAdapter implements DeviceAdapter {
 		if (!res.ok) throw new Error(`VeSync bypass error: ${res.status}`)
 		const data = (await res.json()) as VeSyncBypassResponse
 
-		if (data.code === TOKEN_EXPIRED_CODE) throw new TokenExpiredError()
+		if (TOKEN_ERROR_CODES.has(data.code)) throw new TokenExpiredError()
 		if (data.code !== 0) throw new Error(`VeSync bypass error: ${data.msg || data.code}`)
 
 		return parseStateByType(type, data.result as Record<string, unknown>)
@@ -435,13 +430,31 @@ export class VeSyncAdapter implements DeviceAdapter {
 				await this.sendBypass(session, meta, 'setSwitch', { enabled: state.on, id: 0 })
 			}
 			if (state.fanSpeed !== undefined) {
-				const level = Math.max(1, Math.min(5, Math.round(state.fanSpeed / 20)))
-				await this.sendBypass(session, meta, 'setLevel', { level, id: 0, type: 'wind' })
+				await this.setFanSpeed(session, meta, state.fanSpeed)
 			}
 			if (state.brightness !== undefined) {
 				await this.sendBypass(session, meta, 'setLightStatus', { brightness: state.brightness })
 			}
 		})
+	}
+
+	/**
+	 * fan speed control for air purifiers — handles mode switching
+	 * fanSpeed 0 = auto, 20 = sleep, 40/60/80 = manual level 1/2/3
+	 */
+	private async setFanSpeed(session: VeSyncSession, meta: VeSyncDeviceMeta, fanSpeed: number): Promise<void> {
+		if (fanSpeed === 0) {
+			// auto mode
+			await this.sendBypass(session, meta, 'setPurifierMode', { mode: 'auto' })
+		} else if (fanSpeed === 20) {
+			// sleep mode
+			await this.sendBypass(session, meta, 'setPurifierMode', { mode: 'sleep' })
+		} else {
+			// manual mode — switch to manual first, then set level
+			const level = Math.max(1, Math.min(4, Math.round(fanSpeed / 20) - 1))
+			await this.sendBypass(session, meta, 'setPurifierMode', { mode: 'manual' })
+			await this.sendBypass(session, meta, 'setLevel', { level, id: 0, type: 'wind' })
+		}
 	}
 
 	private async sendBypass(
@@ -460,7 +473,7 @@ export class VeSyncAdapter implements DeviceAdapter {
 
 		if (!res.ok) throw new Error(`VeSync control error: ${res.status}`)
 		const result = (await res.json()) as VeSyncBypassResponse
-		if (result.code === TOKEN_EXPIRED_CODE) throw new TokenExpiredError()
+		if (TOKEN_ERROR_CODES.has(result.code)) throw new TokenExpiredError()
 		if (result.code !== 0) throw new Error(`VeSync control failed: ${result.msg || result.code}`)
 	}
 

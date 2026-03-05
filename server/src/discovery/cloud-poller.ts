@@ -128,20 +128,41 @@ function upsertDevice(
 	const existing = db.select().from(devices).where(eq(devices.externalId, d.externalId)).get()
 
 	if (existing) {
+		const newStateStr = JSON.stringify(d.state)
+		const stateChanged = newStateStr !== (existing.state ?? '{}')
+		const onlineChanged = d.online !== existing.online
+
+		// always update lastSeen; only write state/online if changed
+		const updates: Record<string, unknown> = { lastSeen: now }
+		if (stateChanged) {
+			updates.state = newStateStr
+			updates.updatedAt = now
+		}
+		if (onlineChanged) {
+			updates.online = d.online
+			updates.updatedAt = now
+		}
+		if (d.name !== existing.name) {
+			updates.name = d.name
+			updates.updatedAt = now
+		}
+		if (d.type !== existing.type) {
+			updates.type = d.type
+			updates.updatedAt = now
+		}
+		if (d.metadata) {
+			updates.metadata = JSON.stringify(d.metadata)
+		}
+
 		db.update(devices)
-			.set({
-				name: d.name,
-				state: JSON.stringify(d.state),
-				metadata: d.metadata ? JSON.stringify(d.metadata) : existing.metadata,
-				online: d.online,
-				lastSeen: now,
-				updatedAt: now,
-			})
+			.set(updates)
 			.where(eq(devices.id, existing.id))
 			.run()
 
-		log.debug('poller device updated', { brand, deviceId: existing.id, deviceName: d.name, online: d.online })
-		eventBus.publish({ type: 'device:update', deviceId: existing.id, brand, state: d.state, online: d.online, timestamp: now, source: 'poller' })
+		if (stateChanged || onlineChanged) {
+			log.debug('poller device updated', { brand, deviceId: existing.id, deviceName: d.name, online: d.online })
+			eventBus.publish({ type: 'device:update', deviceId: existing.id, brand, state: d.state, online: d.online, timestamp: now, source: 'poller' })
+		}
 		return
 	}
 
@@ -201,18 +222,27 @@ async function runStatePoll(
 
 	persistSession(db, integrationId, updatedSession, null)
 
+	const discovered = discoveredResult.value
 	const now = Date.now()
-	const knownDevices = db.select().from(devices).where(eq(devices.integrationId, integrationId)).all()
-	const knownByExternalId = new Map(knownDevices.map((d) => [d.externalId, d]))
 
-	for (const d of discoveredResult.value) {
-		const existing = knownByExternalId.get(d.externalId)
-		if (!existing) continue // new devices handled by runDiscovery
+	for (const d of discovered) {
+		const existing = db.select().from(devices).where(eq(devices.externalId, d.externalId)).get()
+		if (!existing) continue
 
-		db.update(devices)
-			.set({ state: JSON.stringify(d.state), online: d.online, lastSeen: now, updatedAt: now })
-			.where(eq(devices.id, existing.id))
-			.run()
+		const newStateStr = JSON.stringify(d.state)
+		const stateChanged = newStateStr !== (existing.state ?? '{}')
+		const onlineChanged = d.online !== existing.online
+
+		if (!stateChanged && !onlineChanged) {
+			db.update(devices).set({ lastSeen: now }).where(eq(devices.id, existing.id)).run()
+			continue
+		}
+
+		const updates: Record<string, unknown> = { lastSeen: now, updatedAt: now }
+		if (stateChanged) updates.state = newStateStr
+		if (onlineChanged) updates.online = d.online
+
+		db.update(devices).set(updates).where(eq(devices.id, existing.id)).run()
 
 		eventBus.publish({
 			type: 'device:update',
