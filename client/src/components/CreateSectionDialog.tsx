@@ -23,7 +23,7 @@ export function CreateSectionDialog({ onSubmit }: Readonly<CreateSectionDialogPr
 
 	return (
 		<DialogTrigger>
-			<RaisedButton variant="ghost" className="font-commit">
+			<RaisedButton variant="ghost" className="font-michroma">
 				+ Add Section
 			</RaisedButton>
 			<RaisedModal>
@@ -50,7 +50,7 @@ export function CreateSectionDialog({ onSubmit }: Readonly<CreateSectionDialogPr
 
 					return (
 						<div className="space-y-4">
-							<Heading slot="title" className="text-base font-commit font-medium text-stone-900">
+							<Heading slot="title" className="text-sm font-michroma text-stone-800">
 								New Section
 							</Heading>
 							<RaisedInput
@@ -60,7 +60,7 @@ export function CreateSectionDialog({ onSubmit }: Readonly<CreateSectionDialogPr
 								onChange={setName}
 								autoFocus
 							/>
-							{error && <p className="text-xs font-commit text-red-600">{error}</p>}
+							{error && <p className="text-xs font-michroma text-red-600">{error}</p>}
 							<div className="flex justify-end gap-2">
 								<RaisedButton variant="ghost" onPress={close}>
 									Cancel

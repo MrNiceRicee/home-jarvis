@@ -193,7 +193,7 @@ function CardShell({
 						)}
 						<div className="min-w-0">
 							<p className="text-sm font-michroma text-stone-800 truncate leading-tight">{device.name}</p>
-							<p className="font-commit text-[10px] text-stone-400 truncate mt-0.5">
+							<p className="font-michroma text-[10px] uppercase tracking-wider text-stone-400 truncate mt-0.5">
 								{BRAND_LABEL[device.brand] ?? device.brand} · {typeLabel}
 							</p>
 						</div>

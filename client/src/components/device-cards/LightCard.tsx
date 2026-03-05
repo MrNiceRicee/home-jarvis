@@ -131,13 +131,10 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 	// readout aria-label
 	const readoutLabel = buildReadoutLabel(isOn, brightness, showCCT, colorTemp, showColor, pickerColor)
 
-	const powerLabel = isOn ? 'Turn Off' : 'Turn On'
-	const buttonLabel = toggling ? '…' : powerLabel
-
 	return (
 		<div className="space-y-3">
 			{/* ── ReadoutDisplay hero ─────────────────────────────────── */}
-			<ReadoutDisplay size="lg" glow={glowColor} aria-label={readoutLabel} className="w-full justify-between">
+			<ReadoutDisplay size="lg" glow={glowColor} glowIntensity={isOn ? brightness / 100 : 0} aria-label={readoutLabel} className="w-full justify-between">
 				{isOn ? (
 					<>
 						<span>{brightness}<span className="text-xs text-[#faf0dc]/50 ml-0.5">%</span></span>
@@ -157,7 +154,7 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 							<Button
 								key={scene.name}
 								onPress={() => handleScene(scene)}
-								className="text-xs font-commit px-2.5 py-1 rounded-full bg-white/80 text-stone-600 hover:bg-white border border-stone-200 hover:border-stone-300 transition-colors cursor-default pressed:bg-stone-100"
+								className="text-[10px] font-michroma uppercase tracking-wider px-2.5 py-1 rounded-full bg-white/80 text-stone-600 hover:bg-white border border-stone-200 hover:border-stone-300 transition-colors cursor-default pressed:bg-stone-100"
 							>
 								{scene.name}
 							</Button>
@@ -172,7 +169,7 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 					<Button
 						onPress={() => setMode('white')}
 						className={cn(
-							'flex-1 text-xs font-commit py-1 rounded-full transition-all cursor-default',
+							'flex-1 text-[10px] font-michroma uppercase tracking-wider py-1 rounded-full transition-all cursor-default',
 							mode === 'white' ? 'bg-white shadow-sm font-medium text-stone-800' : 'text-stone-500',
 						)}
 					>
@@ -181,7 +178,7 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 					<Button
 						onPress={() => setMode('color')}
 						className={cn(
-							'flex-1 text-xs font-commit py-1 rounded-full transition-all cursor-default',
+							'flex-1 text-[10px] font-michroma uppercase tracking-wider py-1 rounded-full transition-all cursor-default',
 							mode === 'color' ? 'bg-white shadow-sm font-medium text-stone-800' : 'text-stone-500',
 						)}
 					>
@@ -190,7 +187,7 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 				</div>
 			)}
 
-			{/* ── Brightness slider ──────────────────────────────────── */}
+			{/* ── Brightness fader ──────────────────────────────────── */}
 			{state.brightness !== undefined && device.online && (
 				<Slider
 					value={brightness}
@@ -200,63 +197,73 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 					onChangeEnd={(v) => { onAccentChange?.(null); void onStateChange?.(device.id, { brightness: v }) }}
 				>
 					<div className="flex items-center justify-between mb-1">
-						<Label className="font-michroma text-[10px] uppercase tracking-widest text-stone-400" aria-label="Brightness">BRI</Label>
+						<Label className="font-michroma text-[10px] uppercase tracking-widest text-stone-400">BRT</Label>
 						<SliderOutput className="font-ioskeley text-xs text-stone-500" />
 					</div>
-					<SliderTrack className="relative flex items-center h-6 w-full">
+					<SliderTrack className="relative flex items-center h-9 w-full">
 						{({ state: s }) => (
 							<>
-								<div className="absolute inset-x-0 h-1.5 top-1/2 -translate-y-1/2 rounded-full bg-stone-200" />
+								<div className="absolute inset-x-0 h-1 top-[38%] -translate-y-1/2 rounded-full bg-stone-200 shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)]" />
 								<div
-									className="absolute h-1.5 top-1/2 -translate-y-1/2 rounded-full bg-amber-300"
+									className="absolute h-1 top-[38%] -translate-y-1/2 rounded-full bg-amber-400"
 									style={{ width: `${s.getThumbPercent(0) * 100}%` }}
 								/>
 								<SliderThumb
-									className="w-5 h-5 rounded-full ring-1 ring-white/50 cursor-default focus:outline-none"
+									className="z-10 w-3 h-[22px] rounded-[3px] border border-stone-300 cursor-default focus:outline-none relative after:absolute after:content-[''] after:inset-x-[2px] after:top-1/2 after:-translate-y-1/2 after:h-px after:bg-stone-400/40"
 									style={{
-										top: '50%',
+										top: '38%',
 										transform: 'translate(-50%, -50%)',
-										background:
-											'radial-gradient(circle at 35% 35%, rgba(255,255,255,0.65) 0%, transparent 55%), #fbbf24',
-										boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+										backgroundColor: '#d4d0ca',
+										backgroundImage: 'linear-gradient(180deg, #e8e4de 0%, #d4d0ca 40%, #c0bcb6 60%, #d4d0ca 100%)',
+										boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
 									}}
 								/>
+								<div className="absolute inset-x-0 top-[60%] flex justify-between pointer-events-none">
+									{Array.from({ length: 11 }).map((_, i) => (
+										<div key={`n${i}`} className={cn('w-px bg-stone-400', i % 5 === 0 ? 'h-2.5' : 'h-1.5')} />
+									))}
+								</div>
 							</>
 						)}
 					</SliderTrack>
 				</Slider>
 			)}
 
-			{/* ── CCT controls (full view, white mode) ───────────────── */}
-			{isFull && showCCT && device.online && (
+			{/* ── CCT fader (compact + full, white mode) ──────────────── */}
+			{showCCT && device.online && (
 				<div>
-					<span className="font-michroma text-[10px] uppercase tracking-widest text-stone-400 mb-1.5 block" aria-label="Color Temperature">CCT</span>
-
-					{/* swatch rail */}
-					<div className="flex gap-2 mb-2 justify-center">
-						{CCT_SWATCHES.map((k) => (
-							<Button
-								key={k}
-								onPress={() => {
-									setColorTemp(k)
-									void onStateChange?.(device.id, { colorTemp: k, on: true })
-								}}
-								style={{
-									background: tempToColor(k),
-									boxShadow: '0 2px 6px rgba(0,0,0,0.25), inset 0 1px 2px rgba(255,255,255,0.4)',
-								}}
-								className={cn(
-									'w-6 h-6 rounded-full cursor-default transition-transform hover:scale-110',
-									Math.abs(colorTemp - k) < 200
-										? 'ring-2 ring-stone-600 ring-offset-1'
-										: 'ring-1 ring-white/40',
-								)}
-								aria-label={`${k}K`}
-							/>
-						))}
+					<div className="flex items-center justify-between mb-1">
+						<span className="font-michroma text-[10px] uppercase tracking-widest text-stone-400">CCT</span>
+						<span className="font-ioskeley text-xs" style={{ color: cctTextColor(colorTemp) }}>{colorTemp}K</span>
 					</div>
 
-					{/* color temp slider */}
+					{/* swatch rail — full view only */}
+					{isFull && (
+						<div className="flex gap-2 mb-2 justify-center">
+							{CCT_SWATCHES.map((k) => (
+								<Button
+									key={k}
+									onPress={() => {
+										setColorTemp(k)
+										void onStateChange?.(device.id, { colorTemp: k, on: true })
+									}}
+									style={{
+										background: tempToColor(k),
+										boxShadow: '0 2px 6px rgba(0,0,0,0.25), inset 0 1px 2px rgba(255,255,255,0.4)',
+									}}
+									className={cn(
+										'w-6 h-6 rounded-full cursor-default transition-transform hover:scale-110',
+										Math.abs(colorTemp - k) < 200
+											? 'ring-2 ring-stone-600 ring-offset-1'
+											: 'ring-1 ring-white/40',
+									)}
+									aria-label={`${k}K`}
+								/>
+							))}
+						</div>
+					)}
+
+					{/* color temp fader */}
 					<Slider
 						value={colorTemp}
 						minValue={2700}
@@ -264,30 +271,33 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 						onChange={(v) => { setColorTemp(v); pushAccent({ colorTemp: v }) }}
 						onChangeEnd={(v) => { onAccentChange?.(null); void onStateChange?.(device.id, { colorTemp: v }) }}
 					>
-						<div className="flex items-center justify-between mb-1">
-							<Label className="sr-only">Color Temperature</Label>
-							<SliderOutput className="font-ioskeley text-xs text-stone-500">
-								{({ state: s }) => `${s.values[0]}K`}
-							</SliderOutput>
-						</div>
-						<SliderTrack className="relative flex items-center h-6 w-full">
+						<Label className="sr-only">Color Temperature</Label>
+						<SliderTrack className="relative flex items-center h-9 w-full">
 							{() => (
 								<>
 									<div
-										className="absolute inset-x-0 h-3 top-1/2 -translate-y-1/2 rounded-full"
+										className="absolute inset-x-0 h-2 top-[38%] -translate-y-1/2 rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.15)]"
 										style={{
 											background: 'linear-gradient(in srgb to right, rgb(255 171 82), rgb(255 236 205), rgb(214 234 255))',
 										}}
 									/>
 									<SliderThumb
-										className="w-5 h-5 rounded-full ring-1 ring-white/50 cursor-default focus:outline-none"
+										className="z-10 w-3 h-[22px] rounded-[3px] border border-stone-300 cursor-default focus:outline-none relative after:absolute after:content-[''] after:inset-x-[2px] after:top-1/2 after:-translate-y-1/2 after:h-px after:bg-stone-400/40"
 										style={{
-											top: '50%',
+											top: '38%',
 											transform: 'translate(-50%, -50%)',
-											background: 'radial-gradient(circle at 35% 35%, rgba(255,255,255,0.65) 0%, transparent 55%), oklch(91% 0.02 90)',
-											boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+											backgroundColor: '#d4d0ca',
+										backgroundImage: 'linear-gradient(180deg, #e8e4de 0%, #d4d0ca 40%, #c0bcb6 60%, #d4d0ca 100%)',
+											boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
 										}}
 									/>
+									<div className="absolute inset-x-0 top-[60%] pointer-events-none">
+										{CCT_SWATCHES.map((k) => {
+											const pct = ((k - 2700) / (6500 - 2700)) * 100
+											const isEndpoint = k === 2700 || k === 6500
+											return <div key={k} className={cn('absolute w-px bg-stone-400', isEndpoint ? 'h-2.5' : 'h-1.5')} style={{ left: `${pct}%` }} />
+										})}
+									</div>
 								</>
 							)}
 						</SliderTrack>
@@ -367,19 +377,26 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 				</div>
 			)}
 
-			{/* ── Power toggle ────────────────────────────────────────── */}
+			{/* ── Power push-button ──────────────────────────────────── */}
 			{device.online && (
 				<Button
 					onPress={() => { void handlePowerToggle() }}
 					isDisabled={toggling}
 					className={cn(
-						'w-full text-xs font-commit px-4 py-1.5 rounded-full border transition-colors cursor-default disabled:opacity-40',
+						'w-full flex items-center justify-center gap-2 py-1.5 text-[10px] font-michroma uppercase tracking-wider',
+						'rounded-md border cursor-default disabled:opacity-40',
+						'transition-[box-shadow,transform] duration-100',
 						isOn
-							? 'bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-300 pressed:bg-amber-200'
-							: 'bg-stone-100 text-stone-700 hover:bg-stone-200 border-stone-300 pressed:bg-stone-300',
+							? 'bg-stone-200 text-stone-700 border-stone-300 shadow-[inset_0_2px_4px_rgba(0,0,0,0.15),inset_0_0_1px_rgba(0,0,0,0.1)]'
+							: 'bg-gradient-to-b from-stone-50 to-stone-100 text-stone-500 border-stone-300 shadow-[0_2px_4px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.7)]',
+						'pressed:translate-y-px pressed:shadow-[inset_0_1px_2px_rgba(0,0,0,0.12),inset_0_0_1px_rgba(0,0,0,0.08)]',
 					)}
 				>
-					{buttonLabel}
+					<span
+						className={cn('w-2 h-2 rounded-full transition-all', isOn ? 'bg-amber-400' : 'bg-stone-400')}
+						style={isOn ? { boxShadow: '0 0 4px rgba(251,191,36,0.7), 0 0 10px rgba(251,191,36,0.3)' } : undefined}
+					/>
+					{toggling ? '...' : 'POWER'}
 				</Button>
 			)}
 		</div>
@@ -397,7 +414,7 @@ function ReadoutSecondary({
 	pickerColor: Color
 }>) {
 	if (showCCT && state.colorTemp !== undefined) {
-		return <span className="text-base">{colorTemp}<span className="text-xs text-[#faf0dc]/50 ml-0.5">K</span></span>
+		return <span className="text-base" style={{ color: tempToColor(colorTemp) }}>{colorTemp}<span className="text-xs ml-0.5">K</span></span>
 	}
 	if (showColor && state.color) {
 		const rgb = pickerColor.toFormat('rgb')
@@ -405,6 +422,11 @@ function ReadoutSecondary({
 		return <span className="w-3 h-3 rounded-full inline-block" style={{ background: bg }} />
 	}
 	return null
+}
+
+// darken tempToColor for readable text on light backgrounds
+function cctTextColor(kelvin: number): string {
+	return `color-mix(in srgb, ${tempToColor(kelvin)} 60%, #1c1917)`
 }
 
 function readoutGlow(state: DeviceState, showColor: boolean): string | undefined {

@@ -93,8 +93,6 @@ export function AirPurifierCard({ device, variant = 'compact', onStateChange }: 
 	const litSegments = state.airQuality !== undefined ? aqiToSegments(state.airQuality) : 0
 	const activeStep = state.fanSpeed !== undefined ? fanSpeedToStepIndex(state.fanSpeed) : -1
 
-	const powerLabel = isOn ? 'Turn Off' : 'Turn On'
-	const buttonLabel = toggling ? '…' : powerLabel
 	const readoutLabel = buildReadoutLabel(state.pm25, aqi?.label, isOn)
 
 	return (
@@ -102,17 +100,17 @@ export function AirPurifierCard({ device, variant = 'compact', onStateChange }: 
 			{/* ── PM2.5 readout + AQI badge ──────────────────────────── */}
 			<div className="flex items-center justify-between gap-2">
 				{state.pm25 !== undefined ? (
-					<ReadoutDisplay size="lg" aria-label={readoutLabel}>
+					<ReadoutDisplay size="lg" glowIntensity={isOn ? 1 : 0} aria-label={readoutLabel}>
 						{state.pm25}
 						<span className="text-xs text-[#faf0dc]/50 ml-1.5">ug/m3</span>
 					</ReadoutDisplay>
 				) : (
-					<span className={cn('text-xs font-commit font-medium', isOn ? 'text-blue-600' : 'text-stone-400')}>
+					<span className={cn('text-[10px] font-michroma uppercase tracking-wider', isOn ? 'text-blue-600' : 'text-stone-400')}>
 						{isOn ? 'On' : 'Off'}
 					</span>
 				)}
 				{aqi && (
-					<span className={cn('text-xs font-commit font-medium px-2 py-0.5 rounded-full', aqi.color)}>
+					<span className={cn('text-[10px] font-michroma uppercase tracking-wider px-2 py-0.5 rounded-full', aqi.color)}>
 						{aqi.label}
 					</span>
 				)}
@@ -177,20 +175,26 @@ export function AirPurifierCard({ device, variant = 'compact', onStateChange }: 
 				</div>
 			)}
 
-			{/* ── Power toggle ────────────────────────────────────────── */}
+			{/* ── Power push-button ──────────────────────────────────── */}
 			{device.online && (
 				<Button
 					onPress={handlePowerToggle}
 					isDisabled={toggling}
 					className={cn(
-						'w-full py-1.5 rounded-full text-xs font-commit font-medium transition-colors cursor-default',
+						'w-full flex items-center justify-center gap-2 py-1.5 text-[10px] font-michroma uppercase tracking-wider',
+						'rounded-md border cursor-default disabled:opacity-40',
+						'transition-[box-shadow,transform] duration-100',
 						isOn
-							? 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 pressed:bg-blue-200'
-							: 'bg-stone-100 text-stone-600 hover:bg-stone-200 border border-stone-200 pressed:bg-stone-300',
-						'disabled:opacity-40',
+							? 'bg-stone-200 text-stone-700 border-stone-300 shadow-[inset_0_2px_4px_rgba(0,0,0,0.15),inset_0_0_1px_rgba(0,0,0,0.1)]'
+							: 'bg-gradient-to-b from-stone-50 to-stone-100 text-stone-500 border-stone-300 shadow-[0_2px_4px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.7)]',
+						'pressed:translate-y-px pressed:shadow-[inset_0_1px_2px_rgba(0,0,0,0.12),inset_0_0_1px_rgba(0,0,0,0.08)]',
 					)}
 				>
-					{buttonLabel}
+					<span
+						className={cn('w-2 h-2 rounded-full transition-all', isOn ? 'bg-blue-400' : 'bg-stone-400')}
+						style={isOn ? { boxShadow: '0 0 4px rgba(96,165,250,0.7), 0 0 10px rgba(96,165,250,0.3)' } : undefined}
+					/>
+					{toggling ? '...' : 'POWER'}
 				</Button>
 			)}
 		</div>

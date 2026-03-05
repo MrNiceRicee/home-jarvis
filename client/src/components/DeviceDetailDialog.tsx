@@ -78,10 +78,10 @@ export function DeviceDetailDialog({ device, onClose, onStateChange }: Readonly<
 					<div className="flex items-center gap-3 px-6 pt-6 pb-4 border-b border-stone-200/60">
 						<span className="text-2xl">{icon}</span>
 						<div className="min-w-0 flex-1">
-							<Heading slot="title" className="text-base font-commit font-medium text-stone-900 truncate">
+							<Heading slot="title" className="text-sm font-michroma text-stone-800 truncate">
 								{device.name}
 							</Heading>
-							<p className="text-xs font-commit text-stone-500 truncate">
+							<p className="font-michroma text-[10px] uppercase tracking-wider text-stone-400 truncate">
 								{BRAND_LABEL[device.brand] ?? device.brand}
 								{!device.online && ' · Offline'}
 							</p>
