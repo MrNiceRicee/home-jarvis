@@ -144,7 +144,7 @@ export function ScanLog({ brands, brandResults, scanning, done, error, brandDisp
 								)}
 							>
 								<span className="truncate">
-									{entry.text}
+									<ScrambleText value={entry.text} range={[0x2800, 0x28FF]} />
 								</span>
 								<span className="tabular-nums text-right">
 									{entry.status === 'found' && <ScrambleText value={`${entry.count} found`} range={[0x2800, 0x28FF]} />}
