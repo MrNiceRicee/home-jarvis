@@ -7,9 +7,11 @@ interface ScrambleTextProps {
 	value: string
 	className?: string
 	visible?: boolean
+	/** unicode range for scramble characters, e.g. [0x2800, 0x28FF] for braille */
+	range?: [number, number]
 }
 
-export function ScrambleText({ value, className, visible = true }: Readonly<ScrambleTextProps>) {
+export function ScrambleText({ value, className, visible = true, range }: Readonly<ScrambleTextProps>) {
 	const [reducedMotion, setReducedMotion] = useState(
 		() => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
 	)
@@ -31,6 +33,7 @@ export function ScrambleText({ value, className, visible = true }: Readonly<Scra
 		scramble: 3,
 		seed: 0,
 		playOnMount: shouldAnimate,
+		...(range && { range }),
 	})
 
 	if (!shouldAnimate) {
