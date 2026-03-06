@@ -11,6 +11,7 @@ import { api } from '../lib/api'
 import { cn } from '../lib/cn'
 import { BRAND_ICON, FALLBACK_ICON } from '../lib/device-constants'
 import { RaisedButton } from './ui/button'
+import { TerminalButton } from './ui/terminal-button'
 
 function BrandIcon({ brand }: Readonly<{ brand: string }>) {
 	const Icon = BRAND_ICON[brand] ?? FALLBACK_ICON
@@ -164,53 +165,40 @@ export function IntegrationCard({ meta, isConfigured, onSubmit, onRemove }: Read
 	)
 }
 
-// ─── Additional Device card (for devices from already-connected brands) ──────
+// ─── Additional Device row (terminal-style for mission control aesthetic) ─────
 
 interface AdditionalDeviceProps {
 	detected: DetectedDevice
 	brandDisplayName: string
 	onAdd: () => void
 	isAdding: boolean
+	error?: boolean
+	onRetry?: () => void
 }
 
-export function AdditionalDeviceCard({
+export function AdditionalDeviceRow({
 	detected,
-	brandDisplayName,
 	onAdd,
 	isAdding,
+	error,
+	onRetry,
 }: Readonly<AdditionalDeviceProps>) {
-	const VIA_LABEL: Record<DetectedDevice['via'], string> = {
-		upnp: 'local network',
-		mdns: 'mDNS',
-		udp: 'LAN',
-	}
-
 	return (
-		<div
-			className="rounded-xl border border-emerald-200/80 p-4 flex items-center justify-between gap-3"
-			style={{
-				background: 'linear-gradient(to bottom, rgba(236,253,245,0.9), rgba(209,250,229,0.5))',
-				boxShadow: '0 1px 3px rgba(5,150,105,0.06), 0 4px 12px rgba(5,150,105,0.04), inset 0 1px 0 rgba(255,255,255,0.7)',
-			}}
-		>
-			<div className="flex items-center gap-3 min-w-0">
-				<BrandIcon brand={detected.brand} />
-				<div className="min-w-0">
-					<p className="text-sm font-semibold text-stone-900">{detected.label}</p>
-					<p className="text-xs text-emerald-700 mt-0.5">
-						{brandDisplayName} · found via {VIA_LABEL[detected.via]}
-					</p>
-				</div>
-			</div>
-			<RaisedButton
-				variant="primary"
-				size="sm"
-				className="shrink-0"
-				onPress={onAdd}
-				isDisabled={isAdding}
-			>
-				{isAdding ? 'Adding...' : 'Add'}
-			</RaisedButton>
+		<div className="flex items-center justify-between py-2 border-b border-stone-200/40">
+			<span className="font-ioskeley text-xs text-stone-700 truncate">
+				<span className="text-stone-400 mr-1.5">*</span>
+				{detected.label}
+			</span>
+			<span className="shrink-0 ml-3">
+				{error ? (
+					<span className="flex items-center gap-2">
+						<span className="font-ioskeley text-2xs text-red-400">ERROR</span>
+						{onRetry && <TerminalButton label="RETRY" onPress={onRetry} />}
+					</span>
+				) : (
+					<TerminalButton label="ADD" onPress={onAdd} isDisabled={isAdding} />
+				)}
+			</span>
 		</div>
 	)
 }
