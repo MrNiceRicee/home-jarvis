@@ -72,6 +72,9 @@ function buildAriaLabel(props: ModulePanelProps): string {
 	}
 }
 
+// fixed screen height so all modules have identical CRT size
+const SCREEN_HEIGHT = 'h-[130px]'
+
 export function ModulePanel(props: ModulePanelProps) {
 	const isPowered = props.state === 'connected' || props.state === 'connecting'
 	const isError = props.state === 'error'
@@ -94,21 +97,21 @@ export function ModulePanel(props: ModulePanelProps) {
 					className="font-michroma text-2xs text-stone-500 tracking-[0.15em] uppercase truncate"
 					style={{ textShadow: '0 1px 0 rgba(255,255,255,0.4)' }}
 				>
-					{props.meta.displayName}
+					<ScrambleText value={props.meta.displayName.toUpperCase()} />
 				</span>
 			</div>
 
-			{/* CRT screen — inset into bezel */}
+			{/* CRT screen — inset into bezel, fixed height for uniform sizing */}
 			<div className="px-3">
 				<ReadoutDisplay
 					size="lg"
-					className="!flex flex-col w-full !items-stretch p-3 gap-2"
+					className={cn('!flex flex-col w-full !items-stretch p-3', SCREEN_HEIGHT)}
 					glowIntensity={isPowered ? 0.3 : 0}
 					scanlineIntensity={0.06}
 					aria-label={buildAriaLabel(props)}
 				>
 					{/* center: icon + status readout */}
-					<div className="flex flex-col items-center gap-1 py-2">
+					<div className="flex-1 flex flex-col items-center justify-center gap-1">
 						<Icon
 							size={28}
 							weight="thin"
@@ -148,7 +151,10 @@ export function ModulePanel(props: ModulePanelProps) {
 					</div>
 
 					{/* action buttons inside the screen */}
-					<div className="flex items-center gap-2 mt-auto pt-1">
+					<div className={cn(
+						'flex items-center pt-1',
+						props.state === 'connected' ? 'justify-between' : 'gap-2',
+					)}>
 						{props.state === 'connected' && (
 							<ConnectedActions
 								meta={props.meta}
