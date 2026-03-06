@@ -7,8 +7,11 @@ import { cn } from '../lib/cn'
 import { BRAND_ICON, FALLBACK_ICON } from '../lib/device-constants'
 import { IntegrationFormInner } from './IntegrationForm'
 import { RaisedButton } from './ui/button'
+import { ConsolePanelLabel } from './ui/console-panel'
 import { RaisedModal } from './ui/modal'
 import { ReadoutDisplay } from './ui/readout-display'
+import { ScrambleText } from './ui/scramble-text'
+import { TerminalButton } from './ui/terminal-button'
 
 // credentials stripped server-side
 type ConfiguredIntegration = IntegrationsResponse['configured'][number]
@@ -27,25 +30,41 @@ type ModulePanelProps = Readonly<
 		meta: IntegrationMeta
 		onSubmit: (brand: string, config: Record<string, string>) => Promise<void>
 	}
+	| {
+		state: 'error'
+		meta: IntegrationMeta
+		errorMessage: string
+		onRetry: () => void
+	}
+	| {
+		state: 'connecting'
+		meta: IntegrationMeta
+	}
 >
 
-function ModuleLed({ lit, error }: Readonly<{ lit: boolean; error?: boolean }>) {
-	if (!lit) {
-		return <div className="w-1.5 h-1.5 rounded-full bg-stone-300" />
-	}
-
-	const color = error
-		? { highlight: '#fca5a5', mid: '#ef4444', edge: '#dc2626', glowClose: 'rgba(239,68,68,0.5)', glowFar: 'rgba(239,68,68,0.25)' }
-		: { highlight: '#6ee7b7', mid: '#34d399', edge: '#059669', glowClose: 'rgba(52,211,153,0.6)', glowFar: 'rgba(52,211,153,0.3)' }
+function RecessedLed({ lit, error }: Readonly<{ lit: boolean; error?: boolean }>) {
+	const ledColor = error
+		? { bg: 'radial-gradient(circle at 35% 30%, #fca5a5, #ef4444 50%, #dc2626 100%)', glow: '0 0 4px rgba(239,68,68,0.5), 0 0 10px rgba(239,68,68,0.25)' }
+		: lit
+			? { bg: 'radial-gradient(circle at 35% 30%, #6ee7b7, #34d399 50%, #059669 100%)', glow: '0 0 4px rgba(52,211,153,0.6), 0 0 10px rgba(52,211,153,0.3)' }
+			: { bg: '#44403c', glow: 'none' }
 
 	return (
 		<div
-			className="w-1.5 h-1.5 rounded-full"
+			className="w-4 h-4 rounded-full flex items-center justify-center"
 			style={{
-				background: `radial-gradient(circle at 35% 30%, ${color.highlight}, ${color.mid} 50%, ${color.edge} 100%)`,
-				boxShadow: `0 0 4px ${color.glowClose}, 0 0 10px ${color.glowFar}`,
+				background: '#23221c',
+				boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.3)',
 			}}
-		/>
+		>
+			<div
+				className="w-1.5 h-1.5 rounded-full"
+				style={{
+					background: ledColor.bg,
+					boxShadow: ledColor.glow,
+				}}
+			/>
+		</div>
 	)
 }
 
@@ -61,63 +80,116 @@ const UNPOWERED_SURFACE: React.CSSProperties = {
 	boxShadow: '0 1px 2px rgba(120, 90, 50, 0.03), inset 0 1px 0 rgba(255, 253, 245, 0.5)',
 }
 
-export function ModulePanel(props: ModulePanelProps) {
-	const isConnected = props.state === 'connected'
-	const brand = props.meta.brand
+function CrtScreen({ brand, isPowered, isError, children, ariaLabel }: Readonly<{
+	brand: string
+	isPowered: boolean
+	isError?: boolean
+	children: React.ReactNode
+	ariaLabel: string
+}>) {
 	const Icon = BRAND_ICON[brand] ?? FALLBACK_ICON
+	return (
+		<ReadoutDisplay
+			size="lg"
+			className="w-full !flex flex-col items-center gap-1.5 py-3 px-3"
+			glowIntensity={isPowered ? 0.3 : 0}
+			scanlineIntensity={0.06}
+			aria-label={ariaLabel}
+		>
+			<Icon
+				size={28}
+				weight="thin"
+				className={cn(
+					'text-display-text transition-opacity duration-300',
+					!isPowered && 'opacity-40',
+					isError && 'opacity-40',
+				)}
+			/>
+			{children}
+		</ReadoutDisplay>
+	)
+}
+
+export function ModulePanel(props: ModulePanelProps) {
+	const isPowered = props.state === 'connected' || props.state === 'connecting'
+	const isError = props.state === 'error'
+	const brand = props.meta.brand
+
+	function buildAriaLabel(): string {
+		switch (props.state) {
+			case 'connected':
+				return `${props.meta.displayName}: ${props.deviceCount} device${props.deviceCount !== 1 ? 's' : ''} connected`
+			case 'error':
+				return `${props.meta.displayName}: connection error`
+			case 'connecting':
+				return `${props.meta.displayName}: connecting`
+			case 'available':
+				return `${props.meta.displayName}: available`
+		}
+	}
 
 	return (
 		<div
 			className={cn(
-				'relative flex flex-col items-center justify-between rounded-xl aspect-[3/4] p-4',
-				'transition-all duration-300',
-				'focus-within:ring-2 focus-within:ring-stone-400 focus-within:ring-offset-1',
+				'relative flex flex-col rounded-xl p-4',
+				'transition-[border-color,background,opacity] duration-300',
 			)}
-			style={isConnected ? POWERED_SURFACE : UNPOWERED_SURFACE}
+			style={isPowered ? POWERED_SURFACE : UNPOWERED_SURFACE}
 		>
-			{/* status LED */}
-			<div className="absolute top-3 right-3">
-				<ModuleLed lit={isConnected} />
+			{/* recessed LED */}
+			<div className="mb-3">
+				<RecessedLed lit={isPowered} error={isError} />
 			</div>
 
-			{/* brand icon */}
-			<div className="flex-1 flex items-center justify-center">
-				<Icon
-					size={32}
-					weight="thin"
-					className={cn(
-						'text-stone-500 transition-opacity duration-300',
-						!isConnected && 'opacity-50',
+			{/* CRT screen */}
+			<div className="mb-3">
+				<CrtScreen brand={brand} isPowered={isPowered} isError={isError} ariaLabel={buildAriaLabel()}>
+					{props.state === 'connected' && (
+						<>
+							<span className="font-ioskeley text-sm tabular-nums text-display-text">
+								<ScrambleText value={String(props.deviceCount)} />
+							</span>
+							<span className="font-ioskeley text-2xs text-display-text/60 uppercase tracking-wider">
+								<ScrambleText value={props.deviceCount === 0 ? 'NO DEVICES' : 'CONNECTED'} />
+							</span>
+						</>
 					)}
-				/>
+					{props.state === 'available' && (
+						<span className="font-ioskeley text-sm tabular-nums text-display-text/40">--</span>
+					)}
+					{props.state === 'error' && (
+						<span className="font-ioskeley text-2xs text-red-400 uppercase tracking-wider">
+							<ScrambleText value="ERROR" />
+						</span>
+					)}
+					{props.state === 'connecting' && (
+						<span className="font-ioskeley text-2xs text-display-text/60 uppercase tracking-wider animate-pulse">
+							<ScrambleText value="CONNECTING..." />
+						</span>
+					)}
+				</CrtScreen>
 			</div>
 
-			{/* readout — device count or placeholder */}
-			<ReadoutDisplay size="sm" className="mb-3 w-full text-center !justify-center">
-				<span className="tabular-nums">
-					{isConnected ? props.deviceCount : '--'}
-				</span>
-			</ReadoutDisplay>
+			{/* engraved faceplate label */}
+			<ConsolePanelLabel>{props.meta.displayName}</ConsolePanelLabel>
 
-			{/* brand label */}
-			<p className="font-michroma text-[9px] text-stone-400 tracking-[0.15em] uppercase mb-3 text-center">
-				{props.meta.displayName}
-			</p>
-
-			{/* action area */}
-			{isConnected ? (
-				<ConnectedActions
-					meta={props.meta}
-					deviceCount={props.deviceCount}
-					onConfigure={props.onConfigure}
-					onRemove={props.onRemove}
-				/>
-			) : (
-				<AvailableActions
-					meta={props.meta}
-					onSubmit={props.onSubmit}
-				/>
-			)}
+			{/* terminal button actions */}
+			<div className="flex gap-2">
+				{props.state === 'connected' && (
+					<ConnectedActions
+						meta={props.meta}
+						deviceCount={props.deviceCount}
+						onConfigure={props.onConfigure}
+						onRemove={props.onRemove}
+					/>
+				)}
+				{props.state === 'available' && (
+					<AvailableActions meta={props.meta} onSubmit={props.onSubmit} />
+				)}
+				{props.state === 'error' && (
+					<TerminalButton label="RETRY" onPress={props.onRetry} />
+				)}
+			</div>
 		</div>
 	)
 }
@@ -129,14 +201,12 @@ function ConnectedActions({ meta, deviceCount, onConfigure, onRemove }: Readonly
 	onRemove: () => void
 }>) {
 	return (
-		<div className="flex gap-1.5 w-full">
-			<RaisedButton variant="ghost" size="sm" className="flex-1 text-2xs" onPress={onConfigure}>
-				Configure
-			</RaisedButton>
+		<>
+			{!meta.discoveryOnly && (
+				<TerminalButton label="CONFIGURE" onPress={onConfigure} />
+			)}
 			<DialogTrigger>
-				<RaisedButton variant="ghost" size="sm" className="text-red-500 hover:text-red-700 hover:bg-red-50 text-2xs">
-					Remove
-				</RaisedButton>
+				<TerminalButton label="REMOVE" variant="destructive" onPress={() => {}} />
 				<RaisedModal className="max-w-sm">
 					{({ close }) => (
 						<>
@@ -165,7 +235,7 @@ function ConnectedActions({ meta, deviceCount, onConfigure, onRemove }: Readonly
 					)}
 				</RaisedModal>
 			</DialogTrigger>
-		</div>
+		</>
 	)
 }
 
@@ -174,23 +244,12 @@ function AvailableActions({ meta, onSubmit }: Readonly<{
 	onSubmit: (brand: string, config: Record<string, string>) => Promise<void>
 }>) {
 	if (meta.discoveryOnly) {
-		return (
-			<RaisedButton
-				variant="primary"
-				size="sm"
-				className="w-full text-2xs"
-				onPress={() => void onSubmit(meta.brand, {})}
-			>
-				Connect
-			</RaisedButton>
-		)
+		return <TerminalButton label="CONNECT" onPress={() => void onSubmit(meta.brand, {})} />
 	}
 
 	return (
 		<DialogTrigger>
-			<RaisedButton variant="primary" size="sm" className="w-full text-2xs">
-				Connect
-			</RaisedButton>
+			<TerminalButton label="CONNECT" onPress={() => {}} />
 			<RaisedModal>
 				{({ close }) => (
 					<IntegrationFormInner
