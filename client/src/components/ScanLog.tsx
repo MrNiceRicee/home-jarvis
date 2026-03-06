@@ -129,7 +129,7 @@ export function ScanLog({ brands, brandResults, scanning, done, error, brandDisp
 							const allErrored = brandResults.length > 0 && brandResults.every((r) => r.error)
 							return (
 								<div key={entry.brand} className={cn('grid grid-cols-[1fr_auto] gap-4 py-0.5', allErrored ? 'text-red-400' : 'text-emerald-400')}>
-									<span><ScrambleText value={entry.text} /></span>
+									<span><ScrambleText value={entry.text} range={[0x2800, 0x28FF]} /></span>
 									{onRescan && (
 										<TerminalButton label="RESCAN" onPress={onRescan} />
 									)}
@@ -147,13 +147,13 @@ export function ScanLog({ brands, brandResults, scanning, done, error, brandDisp
 								)}
 							>
 								<span className="truncate">
-									<ScrambleText value={entry.text} />
+									{entry.text}
 									{entry.brand === lastScanningBrand && (
 										<span className="scan-cursor ml-0.5">{'\u2588'}</span>
 									)}
 								</span>
 								<span className="tabular-nums text-right">
-									{entry.status === 'found' && <ScrambleText value={`${entry.count} found`} />}
+									{entry.status === 'found' && <ScrambleText value={`${entry.count} found`} range={[0x2800, 0x28FF]} />}
 									{entry.status === 'error' && <ScrambleText value="ERROR" />}
 									{entry.status === 'scanning' && <BrailleWave isActive />}
 								</span>
