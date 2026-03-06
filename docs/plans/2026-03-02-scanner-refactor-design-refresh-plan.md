@@ -1,7 +1,7 @@
 ---
 title: "Scanner Refactor + Design Refresh"
 type: feat
-status: ready
+status: completed
 date: 2026-03-02
 ---
 

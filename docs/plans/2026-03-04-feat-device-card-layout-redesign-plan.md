@@ -1,7 +1,7 @@
 ---
 title: "feat: Device Card Layout Redesign — Per-Type Display & Controls"
 type: feat
-status: active
+status: completed
 date: 2026-03-04
 origin: docs/brainstorms/2026-03-03-device-card-redesign-brainstorm.md
 ---
