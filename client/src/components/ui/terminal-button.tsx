@@ -4,21 +4,23 @@ import { tv, type VariantProps } from 'tailwind-variants'
 const terminalButton = tv({
 	base: [
 		'inline-flex items-center font-ioskeley uppercase text-2xs tracking-wider cursor-pointer',
-		'px-1 py-0.5 rounded-sm transition-colors',
-		'focus:outline-none focus-visible:ring-1 focus-visible:ring-display-text/30 focus-visible:ring-offset-0',
+		'px-1 py-0.5 transition-colors',
+		'focus:outline-none',
 		'disabled:opacity-30 disabled:cursor-default disabled:pointer-events-none',
 	],
 	variants: {
 		variant: {
 			default: [
 				'text-display-text/70',
-				'hover:text-display-text hover:bg-display-text/10',
-				'pressed:text-display-text pressed:bg-display-text/20',
+				'hover:text-display-text hover:bg-display-text/20',
+				'focus-visible:text-display-text focus-visible:bg-display-text/20',
+				'pressed:text-display-text pressed:bg-display-text/30',
 			],
 			destructive: [
 				'text-red-400/70',
-				'hover:text-red-400 hover:bg-red-400/10',
-				'pressed:text-red-400 pressed:bg-red-400/20',
+				'hover:text-red-400 hover:bg-red-400/20',
+				'focus-visible:text-red-400 focus-visible:bg-red-400/20',
+				'pressed:text-red-400 pressed:bg-red-400/30',
 			],
 		},
 	},
