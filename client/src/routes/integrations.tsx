@@ -5,7 +5,7 @@ import { DialogTrigger } from 'react-aria-components'
 
 import type { DetectedDevice, IntegrationsResponse } from '../types'
 
-import { AdditionalDeviceCard } from '../components/IntegrationForm'
+import { AdditionalDeviceRow } from '../components/IntegrationForm'
 import { IntegrationFormInner } from '../components/IntegrationForm'
 import { ModulePanel } from '../components/ModulePanel'
 import { ScanLog } from '../components/ScanLog'
@@ -185,7 +185,7 @@ function Integrations() {
 					</div>
 					<div className="space-y-2">
 						{additionalDevices.map((detected, i) => (
-							<AdditionalDeviceCard
+							<AdditionalDeviceRow
 								key={`additional-${detected.brand}-${detected.details.ip ?? detected.details.bridgeIp ?? i}`}
 								detected={detected}
 								brandDisplayName={brandDisplayName(detected.brand)}
