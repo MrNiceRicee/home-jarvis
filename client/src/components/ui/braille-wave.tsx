@@ -39,7 +39,7 @@ export function BrailleWave({ isActive, className }: BrailleWaveProps) {
 	useEffect(() => {
 		if (!isActive || reducedMotion) return
 
-		let offset = Math.floor(Math.random() * WAVE_LEN)
+		let offset = Math.floor(Math.random() * WAVE_LEN) // eslint-disable-line sonarjs/pseudo-random -- cosmetic animation offset
 		const id = setInterval(() => {
 			offset = (offset + 1) % WAVE_LEN
 			setWave(buildWave(offset))
