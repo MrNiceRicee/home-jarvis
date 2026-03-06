@@ -8,6 +8,7 @@ import { BRAND_ICON, FALLBACK_ICON } from '../lib/device-constants'
 import { IntegrationFormInner } from './IntegrationForm'
 import { RaisedButton } from './ui/button'
 import { RaisedModal } from './ui/modal'
+import { NumberTicker } from './ui/number-ticker'
 import { ReadoutDisplay } from './ui/readout-display'
 import { ScrambleText } from './ui/scramble-text'
 import { TerminalButton } from './ui/terminal-button'
@@ -97,7 +98,7 @@ export function ModulePanel(props: ModulePanelProps) {
 					className="font-michroma text-2xs text-stone-500 tracking-[0.15em] uppercase truncate"
 					style={{ textShadow: '0 1px 0 rgba(255,255,255,0.4)' }}
 				>
-					<ScrambleText value={props.meta.displayName.toUpperCase()} />
+					{props.meta.displayName}
 				</span>
 			</div>
 
@@ -124,8 +125,8 @@ export function ModulePanel(props: ModulePanelProps) {
 
 						{props.state === 'connected' && (
 							<>
-								<span className="font-ioskeley text-lg tabular-nums text-display-text leading-none">
-									<ScrambleText value={String(props.deviceCount)} />
+								<span className="font-ioskeley text-lg text-display-text leading-none">
+									<NumberTicker value={props.deviceCount} />
 								</span>
 								<span className="font-ioskeley text-2xs text-display-text/50 uppercase tracking-wider">
 									<ScrambleText value={props.deviceCount === 0 ? 'NO DEVICES' : 'CONNECTED'} />
