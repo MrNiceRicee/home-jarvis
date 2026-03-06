@@ -319,10 +319,10 @@ export function IntegrationFormInner({ meta, prefill, onSubmit, onCancel }: Read
 	if (meta.oauthFlow) {
 		return (
 			<div>
-				<Heading slot="title" className="font-michroma text-2xs text-stone-600 tracking-[0.15em] uppercase mb-1" style={{ textShadow: '0 -1px 0 rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.4)' }}>
+				<Heading slot="title" className="font-michroma text-2xs text-stone-800 tracking-[0.15em] uppercase mb-1" style={{ textShadow: '0 -1px 0 rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.4)' }}>
 					{meta.displayName}
 				</Heading>
-				<p className="font-ioskeley text-xs text-stone-500 mb-5">
+				<p className="font-ioskeley text-xs text-stone-600 mb-5">
 					Uses OAuth 2.0 — you'll be redirected to LG to authorize.
 				</p>
 				<div className="flex gap-2 justify-end">
@@ -342,7 +342,7 @@ export function IntegrationFormInner({ meta, prefill, onSubmit, onCancel }: Read
 
 	return (
 		<Form onSubmit={handleSubmit}>
-			<Heading slot="title" className="font-michroma text-2xs text-stone-600 tracking-[0.15em] uppercase mb-4" style={{ textShadow: '0 -1px 0 rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.4)' }}>
+			<Heading slot="title" className="font-michroma text-2xs text-stone-800 tracking-[0.15em] uppercase mb-4" style={{ textShadow: '0 -1px 0 rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.4)' }}>
 				Connect {meta.displayName}
 			</Heading>
 
@@ -368,9 +368,9 @@ export function IntegrationFormInner({ meta, prefill, onSubmit, onCancel }: Read
 					>
 						{linkingHue ? 'Waiting for button press...' : 'Press Bridge Button & Link'}
 					</RaisedButton>
-					{hueLinkError && <p className="font-ioskeley text-2xs text-red-500 mt-1">{hueLinkError}</p>}
+					{hueLinkError && <p className="font-ioskeley text-2xs text-red-700 mt-1">{hueLinkError}</p>}
 					{values.apiKey && (
-						<p className="font-ioskeley text-2xs text-emerald-500 mt-1">bridge linked</p>
+						<p className="font-ioskeley text-2xs text-emerald-700 mt-1">bridge linked</p>
 					)}
 				</div>
 			)}
