@@ -26,7 +26,7 @@ export function ConsolePanelLabel({ children }: Readonly<{ children: React.React
 			>
 				{children}
 			</span>
-			<div className="flex-1 h-px bg-stone-200/60" />
+			<div className="flex-1 h-px bg-stone-300/80" />
 		</div>
 	)
 }

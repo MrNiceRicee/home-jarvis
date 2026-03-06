@@ -97,6 +97,15 @@ export function ScanLog({ brands, brandResults, scanning, done, error, brandDisp
 
 	return (
 		<div>
+			<div
+				className="rounded-xl"
+				style={{
+					background: 'linear-gradient(to bottom, #d6d3cc, #c4c0b8)',
+					border: '1px solid rgba(168, 151, 125, 0.25)',
+					boxShadow: '0 2px 6px rgba(80, 60, 30, 0.08), 0 1px 2px rgba(80, 60, 30, 0.06), inset 0 1px 0 rgba(255,255,255,0.5)',
+					padding: '10px',
+				}}
+			>
 			<ReadoutDisplay
 				size="lg"
 				className="!inline-flex w-full !items-start"
@@ -164,6 +173,7 @@ export function ScanLog({ brands, brandResults, scanning, done, error, brandDisp
 					)}
 				</div>
 			</ReadoutDisplay>
+			</div>
 			{done && brandResults.reduce((s, r) => s + r.count, 0) === 0 && (
 				<p className="font-ioskeley text-2xs text-stone-400 mt-2 tracking-wide">
 					No new devices detected. Make sure your hubs are powered on and connected to the network.
