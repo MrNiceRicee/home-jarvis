@@ -92,24 +92,14 @@ export function MatterOrbital({ data }: Readonly<MatterOrbitalProps>) {
 				<MetadataLabel x={130} y={310} label="UPTIME" value={uptimeDisplay} />
 
 				{/* layer 1: glow halo */}
-				<circle cx={250} cy={250} r={55} fill="url(#orb-glow)" />
+				<circle cx={250} cy={250} r={100} fill="url(#orb-glow)" />
 
-				{/* layer 1: text-art orb */}
-				<TextArtOrb orbColor={orbColor} shouldAnimate={shouldAnimate} />
-
-				{/* center device count */}
-				{paired && (
-					<text
-						x={250}
-						y={254}
-						textAnchor="middle"
-						dominantBaseline="middle"
-						className="fill-console-bg"
-						style={{ fontSize: '16px', fontFamily: 'IoskeleyMono, monospace', fontWeight: 600 }}
-					>
-						{deviceCount}
-					</text>
-				)}
+				{/* layer 1: text-art orb (device count rendered as negative space) */}
+				<TextArtOrb
+					orbColor={orbColor}
+					shouldAnimate={shouldAnimate}
+					deviceCount={deviceCount}
+				/>
 			</svg>
 
 			{/* screen reader summary */}

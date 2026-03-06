@@ -59,18 +59,12 @@ html {
 	to { transform: rotate(360deg); }
 }
 
-.text-art-orb {
-	animation: core-pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-	transform-origin: 250px 250px;
-}
-
 .metadata-ring-group {
 	animation: ring-rotate 60s linear infinite;
 	transform-origin: 250px 250px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.text-art-orb,
 	.metadata-ring-group {
 		animation: none;
 	}
