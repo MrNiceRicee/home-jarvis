@@ -20,7 +20,10 @@ export function ConsolePanel({ children, className }: Readonly<{ children: React
 export function ConsolePanelLabel({ children }: Readonly<{ children: React.ReactNode }>) {
 	return (
 		<div className="flex items-center gap-2 mb-4">
-			<span className="font-michroma text-2xs font-semibold text-stone-400 tracking-[0.15em] uppercase">
+			<span
+				className="font-michroma text-2xs font-semibold text-stone-600 tracking-[0.15em] uppercase"
+				style={{ textShadow: '0 -1px 0 rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.4)' }}
+			>
 				{children}
 			</span>
 			<div className="flex-1 h-px bg-stone-200/60" />

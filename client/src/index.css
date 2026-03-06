@@ -80,4 +80,24 @@ html {
 	.metadata-ring-group {
 		animation: none;
 	}
+	.scan-cursor {
+		animation: none;
+		opacity: 1;
+	}
+}
+
+/* braille font fallback for BrailleWave */
+@font-face {
+	font-family: 'BrailleFallback';
+	src: local('DejaVu Sans'), local('Segoe UI Symbol'), local('Apple Braille');
+	unicode-range: U+2800-28FF;
+}
+
+/* blinking terminal cursor */
+@keyframes cursor-blink {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0; }
+}
+.scan-cursor {
+	animation: cursor-blink 1s step-end infinite;
 }
