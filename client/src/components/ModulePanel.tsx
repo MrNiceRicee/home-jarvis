@@ -108,10 +108,7 @@ export function ModulePanel(props: ModulePanelProps) {
 			</div>
 
 			{/* CRT screen — inset into bezel, fixed height for uniform sizing */}
-			<div
-				className="px-3 module-enter"
-				style={{ animationDelay: `${staggerDelay}ms` }}
-			>
+			<div className="px-3">
 				<ReadoutDisplay
 					size="lg"
 					className={cn('!flex flex-col w-full !items-stretch p-3', SCREEN_HEIGHT)}
@@ -119,65 +116,71 @@ export function ModulePanel(props: ModulePanelProps) {
 					scanlineIntensity={0.06}
 					aria-label={buildAriaLabel(props)}
 				>
-					{/* center: icon + status readout */}
-					<div className="flex-1 flex flex-col items-center justify-center gap-1">
-						<Icon
-							size={28}
-							weight="thin"
-							className={cn(
-								'text-display-text transition-opacity duration-300',
-								(!isPowered && !isError) && 'opacity-30',
-								isError && 'opacity-30',
-							)}
-						/>
-
-						{props.state === 'connected' && (
-							<>
-								<span className="font-ioskeley text-lg text-display-text leading-none">
-									<NumberTicker value={props.deviceCount} />
-								</span>
-								<span className="font-ioskeley text-2xs text-display-text/50 uppercase tracking-wider">
-									<ScrambleText value={props.deviceCount === 0 ? 'NO DEVICES' : 'CONNECTED'} />
-								</span>
-							</>
-						)}
-
-						{props.state === 'available' && (
-							<span className="font-ioskeley text-lg tabular-nums text-display-text/20 leading-none">--</span>
-						)}
-
-						{props.state === 'error' && (
-							<span className="font-ioskeley text-2xs text-red-400 uppercase tracking-wider">
-								<ScrambleText value="ERROR" />
-							</span>
-						)}
-
-						{props.state === 'connecting' && (
-							<span className="font-ioskeley text-2xs text-display-text/50 uppercase tracking-wider animate-pulse">
-								<ScrambleText value="CONNECTING..." />
-							</span>
-						)}
-					</div>
-
-					{/* action buttons inside the screen */}
-					<div className={cn(
-						'flex items-center pt-1',
-						props.state === 'connected' ? 'justify-between' : 'gap-2',
-					)}>
-						{props.state === 'connected' && (
-							<ConnectedActions
-								meta={props.meta}
-								deviceCount={props.deviceCount}
-								onConfigure={props.onConfigure}
-								onRemove={props.onRemove}
+					{/* all screen content — fades in with stagger delay */}
+					<div
+						className="flex flex-col flex-1 screen-enter"
+						style={{ animationDelay: `${staggerDelay}ms` }}
+					>
+						{/* center: icon + status readout */}
+						<div className="flex-1 flex flex-col items-center justify-center gap-1">
+							<Icon
+								size={28}
+								weight="thin"
+								className={cn(
+									'text-display-text transition-opacity duration-300',
+									(!isPowered && !isError) && 'opacity-30',
+									isError && 'opacity-30',
+								)}
 							/>
-						)}
-						{props.state === 'available' && (
-							<AvailableActions meta={props.meta} onSubmit={props.onSubmit} />
-						)}
-						{props.state === 'error' && (
-							<TerminalButton label="RETRY" onPress={props.onRetry} />
-						)}
+
+							{props.state === 'connected' && (
+								<>
+									<span className="font-ioskeley text-lg text-display-text leading-none">
+										<NumberTicker value={props.deviceCount} />
+									</span>
+									<span className="font-ioskeley text-2xs text-display-text/50 uppercase tracking-wider">
+										<ScrambleText value={props.deviceCount === 0 ? 'NO DEVICES' : 'CONNECTED'} />
+									</span>
+								</>
+							)}
+
+							{props.state === 'available' && (
+								<span className="font-ioskeley text-lg tabular-nums text-display-text/20 leading-none">--</span>
+							)}
+
+							{props.state === 'error' && (
+								<span className="font-ioskeley text-2xs text-red-400 uppercase tracking-wider">
+									<ScrambleText value="ERROR" />
+								</span>
+							)}
+
+							{props.state === 'connecting' && (
+								<span className="font-ioskeley text-2xs text-display-text/50 uppercase tracking-wider animate-pulse">
+									<ScrambleText value="CONNECTING..." />
+								</span>
+							)}
+						</div>
+
+						{/* action buttons */}
+						<div className={cn(
+							'flex items-center pt-1',
+							props.state === 'connected' ? 'justify-between' : 'gap-2',
+						)}>
+							{props.state === 'connected' && (
+								<ConnectedActions
+									meta={props.meta}
+									deviceCount={props.deviceCount}
+									onConfigure={props.onConfigure}
+									onRemove={props.onRemove}
+								/>
+							)}
+							{props.state === 'available' && (
+								<AvailableActions meta={props.meta} onSubmit={props.onSubmit} />
+							)}
+							{props.state === 'error' && (
+								<TerminalButton label="RETRY" onPress={props.onRetry} />
+							)}
+						</div>
 					</div>
 				</ReadoutDisplay>
 			</div>

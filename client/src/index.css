@@ -84,7 +84,7 @@ html {
 		animation: none;
 		opacity: 1;
 	}
-	.module-enter {
+	.screen-enter {
 		animation: none;
 		opacity: 1;
 	}
@@ -106,17 +106,21 @@ html {
 	animation: cursor-blink 1s step-end infinite;
 }
 
-/* module panel staggered entrance */
-@keyframes module-power-on {
-	from {
-		opacity: 0;
-		transform: translateY(6px);
+/* CRT power-on: horizontal line expands vertically to reveal content */
+@keyframes crt-power-on {
+	0% {
+		clip-path: inset(50% 0 50% 0);
+		opacity: 0.6;
 	}
-	to {
+	40% {
+		clip-path: inset(48% 0 48% 0);
+		opacity: 0.8;
+	}
+	100% {
+		clip-path: inset(0 0 0 0);
 		opacity: 1;
-		transform: translateY(0);
 	}
 }
-.module-enter {
-	animation: module-power-on 0.4s ease-out both;
+.screen-enter {
+	animation: crt-power-on 0.5s ease-out both;
 }
