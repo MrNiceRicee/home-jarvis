@@ -7,7 +7,6 @@ import { cn } from '../lib/cn'
 import { BRAND_ICON, FALLBACK_ICON } from '../lib/device-constants'
 import { IntegrationFormInner } from './IntegrationForm'
 import { RaisedButton } from './ui/button'
-import { ConsolePanelLabel } from './ui/console-panel'
 import { RaisedModal } from './ui/modal'
 import { ReadoutDisplay } from './ui/readout-display'
 import { ScrambleText } from './ui/scramble-text'
@@ -51,10 +50,10 @@ function RecessedLed({ lit, error }: Readonly<{ lit: boolean; error?: boolean }>
 
 	return (
 		<div
-			className="w-4 h-4 rounded-full flex items-center justify-center"
+			className="w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0"
 			style={{
-				background: '#23221c',
-				boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.3)',
+				background: '#1a1914',
+				boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.08)',
 			}}
 		>
 			<div
@@ -68,128 +67,112 @@ function RecessedLed({ lit, error }: Readonly<{ lit: boolean; error?: boolean }>
 	)
 }
 
-const POWERED_SURFACE: React.CSSProperties = {
-	background: 'linear-gradient(to bottom, #fffdf8, #f8f5ee)',
-	border: '1px solid rgba(168, 151, 125, 0.18)',
-	boxShadow: '0 1px 2px rgba(120, 90, 50, 0.05), 0 4px 12px rgba(120, 90, 50, 0.04), inset 0 1px 0 rgba(255, 253, 245, 0.8)',
-}
-
-const UNPOWERED_SURFACE: React.CSSProperties = {
-	background: 'linear-gradient(to bottom, #f8f5ee, #f2efea)',
-	border: '1px solid rgba(168, 151, 125, 0.1)',
-	boxShadow: '0 1px 2px rgba(120, 90, 50, 0.03), inset 0 1px 0 rgba(255, 253, 245, 0.5)',
-}
-
-function CrtScreen({ brand, isPowered, isError, children, ariaLabel }: Readonly<{
-	brand: string
-	isPowered: boolean
-	isError?: boolean
-	children: React.ReactNode
-	ariaLabel: string
-}>) {
-	const Icon = BRAND_ICON[brand] ?? FALLBACK_ICON
-	return (
-		<ReadoutDisplay
-			size="lg"
-			className="w-full !flex flex-col items-center gap-1.5 py-3 px-3"
-			glowIntensity={isPowered ? 0.3 : 0}
-			scanlineIntensity={0.06}
-			aria-label={ariaLabel}
-		>
-			<Icon
-				size={28}
-				weight="thin"
-				className={cn(
-					'text-display-text transition-opacity duration-300',
-					!isPowered && 'opacity-40',
-					isError && 'opacity-40',
-				)}
-			/>
-			{children}
-		</ReadoutDisplay>
-	)
+function buildAriaLabel(props: ModulePanelProps): string {
+	switch (props.state) {
+		case 'connected':
+			return `${props.meta.displayName}: ${props.deviceCount} device${props.deviceCount !== 1 ? 's' : ''} connected`
+		case 'error':
+			return `${props.meta.displayName}: connection error`
+		case 'connecting':
+			return `${props.meta.displayName}: connecting`
+		case 'available':
+			return `${props.meta.displayName}: available`
+	}
 }
 
 export function ModulePanel(props: ModulePanelProps) {
 	const isPowered = props.state === 'connected' || props.state === 'connecting'
 	const isError = props.state === 'error'
 	const brand = props.meta.brand
-
-	function buildAriaLabel(): string {
-		switch (props.state) {
-			case 'connected':
-				return `${props.meta.displayName}: ${props.deviceCount} device${props.deviceCount !== 1 ? 's' : ''} connected`
-			case 'error':
-				return `${props.meta.displayName}: connection error`
-			case 'connecting':
-				return `${props.meta.displayName}: connecting`
-			case 'available':
-				return `${props.meta.displayName}: available`
-		}
-	}
+	const Icon = BRAND_ICON[brand] ?? FALLBACK_ICON
 
 	return (
 		<div
-			className={cn(
-				'relative flex flex-col rounded-xl p-4',
-				'transition-[border-color,background,opacity] duration-300',
-			)}
-			style={isPowered ? POWERED_SURFACE : UNPOWERED_SURFACE}
+			className="rounded-xl flex flex-col transition-[border-color,background,opacity] duration-300"
+			style={{
+				background: 'linear-gradient(to bottom, #d6d3cc, #c4c0b8)',
+				border: '1px solid rgba(168, 151, 125, 0.25)',
+				boxShadow: '0 2px 6px rgba(80, 60, 30, 0.08), 0 1px 2px rgba(80, 60, 30, 0.06), inset 0 1px 0 rgba(255,255,255,0.5)',
+				padding: '8px 8px 10px',
+			}}
 		>
-			{/* recessed LED */}
-			<div className="mb-3">
-				<RecessedLed lit={isPowered} error={isError} />
-			</div>
+			{/* CRT screen — inset into bezel */}
+			<ReadoutDisplay
+				size="lg"
+				className="!flex flex-col w-full !items-stretch p-3 gap-2"
+				glowIntensity={isPowered ? 0.3 : 0}
+				scanlineIntensity={0.06}
+				aria-label={buildAriaLabel(props)}
+			>
+				{/* top row: LED + brand name */}
+				<div className="flex items-center gap-2">
+					<RecessedLed lit={isPowered} error={isError} />
+					<span
+						className="font-michroma text-2xs text-display-text/40 tracking-[0.15em] uppercase truncate"
+						style={{ textShadow: '0 0 6px rgba(250,240,220,0.1)' }}
+					>
+						{props.meta.displayName}
+					</span>
+				</div>
 
-			{/* CRT screen */}
-			<div className="mb-3">
-				<CrtScreen brand={brand} isPowered={isPowered} isError={isError} ariaLabel={buildAriaLabel()}>
+				{/* center: icon + status readout */}
+				<div className="flex flex-col items-center gap-1 py-2">
+					<Icon
+						size={28}
+						weight="thin"
+						className={cn(
+							'text-display-text transition-opacity duration-300',
+							(!isPowered && !isError) && 'opacity-30',
+							isError && 'opacity-30',
+						)}
+					/>
+
 					{props.state === 'connected' && (
 						<>
-							<span className="font-ioskeley text-sm tabular-nums text-display-text">
+							<span className="font-ioskeley text-lg tabular-nums text-display-text leading-none">
 								<ScrambleText value={String(props.deviceCount)} />
 							</span>
-							<span className="font-ioskeley text-2xs text-display-text/60 uppercase tracking-wider">
+							<span className="font-ioskeley text-2xs text-display-text/50 uppercase tracking-wider">
 								<ScrambleText value={props.deviceCount === 0 ? 'NO DEVICES' : 'CONNECTED'} />
 							</span>
 						</>
 					)}
+
 					{props.state === 'available' && (
-						<span className="font-ioskeley text-sm tabular-nums text-display-text/40">--</span>
+						<span className="font-ioskeley text-lg tabular-nums text-display-text/20 leading-none">--</span>
 					)}
+
 					{props.state === 'error' && (
 						<span className="font-ioskeley text-2xs text-red-400 uppercase tracking-wider">
 							<ScrambleText value="ERROR" />
 						</span>
 					)}
+
 					{props.state === 'connecting' && (
-						<span className="font-ioskeley text-2xs text-display-text/60 uppercase tracking-wider animate-pulse">
+						<span className="font-ioskeley text-2xs text-display-text/50 uppercase tracking-wider animate-pulse">
 							<ScrambleText value="CONNECTING..." />
 						</span>
 					)}
-				</CrtScreen>
-			</div>
+				</div>
 
-			{/* engraved faceplate label */}
-			<ConsolePanelLabel>{props.meta.displayName}</ConsolePanelLabel>
-
-			{/* terminal button actions */}
-			<div className="flex gap-2">
-				{props.state === 'connected' && (
-					<ConnectedActions
-						meta={props.meta}
-						deviceCount={props.deviceCount}
-						onConfigure={props.onConfigure}
-						onRemove={props.onRemove}
-					/>
-				)}
-				{props.state === 'available' && (
-					<AvailableActions meta={props.meta} onSubmit={props.onSubmit} />
-				)}
-				{props.state === 'error' && (
-					<TerminalButton label="RETRY" onPress={props.onRetry} />
-				)}
-			</div>
+				{/* bottom: action buttons inside the screen */}
+				<div className="flex items-center gap-2 mt-auto pt-1">
+					{props.state === 'connected' && (
+						<ConnectedActions
+							meta={props.meta}
+							deviceCount={props.deviceCount}
+							onConfigure={props.onConfigure}
+							onRemove={props.onRemove}
+						/>
+					)}
+					{props.state === 'available' && (
+						<AvailableActions meta={props.meta} onSubmit={props.onSubmit} />
+					)}
+					{props.state === 'error' && (
+						<TerminalButton label="RETRY" onPress={props.onRetry} />
+					)}
+				</div>
+			</ReadoutDisplay>
 		</div>
 	)
 }
