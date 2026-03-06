@@ -48,6 +48,56 @@ html {
 	--shadow-inset: inset 0 1px 3px rgba(120, 90, 50, 0.06);
 }
 
+/* hud technical-drawing frame */
+.hud-frame {
+	position: absolute;
+	inset: 12px;
+	border: 1px solid rgba(168, 151, 125, 0.3);
+	pointer-events: none;
+	z-index: 1;
+}
+
+/* registration marks — top corners via pseudo-elements */
+.hud-frame::before,
+.hud-frame::after {
+	content: '';
+	position: absolute;
+	width: 16px;
+	height: 16px;
+	border-color: rgba(168, 151, 125, 0.5);
+	border-style: solid;
+}
+.hud-frame::before {
+	top: -1px;
+	left: -1px;
+	border-width: 2px 0 0 2px;
+}
+.hud-frame::after {
+	top: -1px;
+	right: -1px;
+	border-width: 2px 2px 0 0;
+}
+
+/* registration marks — bottom corners via child spans */
+.hud-corner-bl,
+.hud-corner-br {
+	position: absolute;
+	width: 16px;
+	height: 16px;
+	border-color: rgba(168, 151, 125, 0.5);
+	border-style: solid;
+}
+.hud-corner-bl {
+	bottom: -1px;
+	left: -1px;
+	border-width: 0 0 2px 2px;
+}
+.hud-corner-br {
+	bottom: -1px;
+	right: -1px;
+	border-width: 0 2px 2px 0;
+}
+
 /* matter orbital animations — CSS keyframes for compositor-thread performance */
 @keyframes core-pulse {
 	0%, 100% { transform: scale(1); }
@@ -61,7 +111,7 @@ html {
 
 .metadata-ring-group {
 	animation: ring-rotate 60s linear infinite;
-	transform-origin: 250px 250px;
+	/* transform-origin set via inline style for dynamic sizing */
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -109,29 +109,23 @@ function MatterPage() {
 	return (
 		<div
 			className={cn(
-				'transition-colors duration-500 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 -mt-8 pt-8 pb-8 min-h-[calc(100vh-3.5rem)]',
-				showDark ? 'bg-console-bg' : 'bg-transparent',
+				'transition-colors duration-500',
+				showDark
+					? 'fixed inset-0 top-[3.5rem] bg-console-bg overflow-hidden z-20'
+					: '-mx-4 sm:-mx-6 lg:-mx-8 -mt-8 bg-transparent px-4 sm:px-6 lg:px-8 pt-8 pb-8 min-h-[calc(100vh-3.5rem)]',
 			)}
 		>
-			{/* header */}
-			<div className="mb-8">
-				<h1
-					className={cn(
-						'font-michroma text-sm font-semibold tracking-[0.15em] uppercase transition-colors duration-500',
-						showDark ? 'text-console-text' : 'text-stone-800',
-					)}
-				>
-					Matter Bridge
-				</h1>
-				<p
-					className={cn(
-						'text-sm mt-0.5 transition-colors duration-500',
-						showDark ? 'text-console-text-muted' : 'text-stone-400',
-					)}
-				>
-					Expose devices to Apple Home, Google Home, and Alexa
-				</p>
-			</div>
+			{/* header — hidden in HUD mode */}
+			{!showDark && (
+				<div className="mb-8">
+					<h1 className="font-michroma text-sm font-semibold tracking-[0.15em] uppercase text-stone-800">
+						Matter Bridge
+					</h1>
+					<p className="text-sm mt-0.5 text-stone-400">
+						Expose devices to Apple Home, Google Home, and Alexa
+					</p>
+				</div>
+			)}
 
 			{/* main content — animated view transitions */}
 			<AnimatePresence mode="wait">
@@ -201,51 +195,72 @@ function MatterPage() {
 						animate={{ opacity: 1, scale: 1 }}
 						exit={{ opacity: 0, scale: 0.95 }}
 						transition={{ duration: 0.4, ease: 'easeOut' }}
+						className="relative flex items-center justify-center h-full"
 					>
-						{/* orbital visualization */}
+						{/* HUD border frame */}
+						<div className="hud-frame">
+							<span className="hud-corner-bl" />
+							<span className="hud-corner-br" />
+						</div>
+
+						{/* corner readouts */}
+						<HudReadout position="top-left">
+							<div className="flex items-center gap-2">
+								<StatusLed status={status} />
+								<span className="font-michroma text-2xs text-console-text-muted tracking-[0.15em] uppercase">
+									{status === 'running' ? 'RUNNING' : status.toUpperCase()}
+								</span>
+							</div>
+						</HudReadout>
+
+						<HudReadout position="top-right" rotated>
+							<span className="font-michroma text-2xs text-console-text tracking-[0.15em] uppercase">
+								{isPaired ? 'PAIRED' : status.toUpperCase()}
+							</span>
+							<span className="font-michroma text-2xs text-console-text-muted tracking-[0.15em] uppercase">
+								{isPaired ? 'ACTIVE' : '—'}
+							</span>
+						</HudReadout>
+
+						<HudReadout position="bottom-left" rotated mirrored>
+							<span className="font-ioskeley text-lg text-console-text tabular-nums">
+								{deviceCount}
+							</span>
+							<span className="font-michroma text-[9px] text-console-text-muted tracking-[0.2em] uppercase">
+								DEVICES
+							</span>
+						</HudReadout>
+
+						<HudReadout position="bottom-right">
+							<span
+								className={cn(
+									'font-ioskeley text-lg tabular-nums',
+									isPaired ? 'text-emerald-400' : 'text-console-text',
+								)}
+							>
+								{isPaired ? 'OK' : '\u2014'}
+							</span>
+							<span className="font-michroma text-[9px] text-console-text-muted tracking-[0.2em] uppercase">
+								LINK
+							</span>
+						</HudReadout>
+
+						{/* orbital fills center */}
 						<MatterOrbital data={orbitalData} />
 
-						{/* empty state CTA */}
+						{/* empty state */}
 						{deviceCount === 0 && (
-							<p className="font-ioskeley text-xs text-console-text-muted text-center mt-4 tracking-wide">
-								Enable devices from the Dashboard to see them here
+							<p className="absolute bottom-16 left-1/2 -translate-x-1/2 font-ioskeley text-xs text-console-text-muted tracking-wide whitespace-nowrap">
+								Enable devices from the Dashboard
 							</p>
 						)}
 
-						{/* console panels below orbital */}
-						<div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-8">
-							<DarkConsolePanel label="BRIDGE STATUS">
-								<div className="flex items-center gap-4 mb-4">
-									<StatusLed status={status} />
-									<div>
-										<p className="font-michroma text-sm font-semibold text-console-text uppercase tracking-wide">
-											{statusHeadline(status, true)}
-										</p>
-										<p className="font-ioskeley text-2xs text-console-text-muted mt-0.5 tracking-wider">
-											{statusSubline(status, true, deviceCount)}
-										</p>
-									</div>
-								</div>
-								<div className="grid grid-cols-3 gap-3">
-									<DarkGauge label="DEVICES" value={deviceCount} />
-									<DarkGauge label="PORT" value={port || '—'} />
-									<DarkGauge
-									label="LINK"
-									value={isPaired ? 'OK' : '\u2014'}
-									valueClass={isPaired ? 'text-emerald-400' : undefined}
-								/>
-								</div>
-							</DarkConsolePanel>
-
-							{/* error panel */}
-							{status === 'error' && (
-								<DarkConsolePanel label="ERROR">
-									<p className="font-ioskeley text-xs text-red-400 tracking-wide">
-										Bridge encountered an error. Check server logs for details.
-									</p>
-								</DarkConsolePanel>
-							)}
-						</div>
+						{/* error indicator */}
+						{status === 'error' && (
+							<p className="absolute bottom-16 left-1/2 -translate-x-1/2 font-ioskeley text-xs text-red-400 tracking-wide">
+								Fault detected — check server logs
+							</p>
+						)}
 					</motion.div>
 				)}
 			</AnimatePresence>
@@ -260,6 +275,35 @@ function MatterPage() {
 					</p>
 				</div>
 			)}
+		</div>
+	)
+}
+
+// ── HUD readouts ────────────────────────────────────────────────────────────
+
+type HudPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+
+const positionClasses: Record<HudPosition, string> = {
+	'top-left': 'top-6 left-6 items-start',
+	'top-right': 'top-6 right-6 items-end text-right',
+	'bottom-left': 'bottom-6 left-6 items-start',
+	'bottom-right': 'bottom-6 right-6 items-end text-right',
+}
+
+function HudReadout({ position, children, rotated, mirrored }: Readonly<{
+	position: HudPosition
+	children: React.ReactNode
+	rotated?: boolean
+	mirrored?: boolean
+}>) {
+	return (
+		<div className={cn(
+			'absolute flex gap-1 z-10',
+			rotated ? '[writing-mode:vertical-rl] flex-row' : 'flex-col',
+			mirrored && 'rotate-180',
+			positionClasses[position],
+		)}>
+			{children}
 		</div>
 	)
 }
@@ -334,44 +378,3 @@ function QrPanel({ qrDataUrl }: Readonly<{ qrDataUrl?: string }>) {
 	)
 }
 
-// dark console variants for paired mode
-function DarkConsolePanel({ label, children }: Readonly<{ label: string; children: React.ReactNode }>) {
-	return (
-		<div
-			className="rounded-xl overflow-hidden p-5"
-			style={{
-				background: 'linear-gradient(to bottom, #2e2d27, #23221c)',
-				border: '1px solid rgba(168, 151, 125, 0.12)',
-				boxShadow: 'inset 0 1px 0 rgba(255, 253, 245, 0.05)',
-			}}
-		>
-			<div className="flex items-center gap-2 mb-4">
-				<span className="font-michroma text-2xs font-semibold text-console-text-dim tracking-[0.15em] uppercase">
-					{label}
-				</span>
-				<div className="flex-1 h-px bg-[rgba(168,151,125,0.12)]" />
-			</div>
-			{children}
-		</div>
-	)
-}
-
-function DarkGauge({ label, value, valueClass }: Readonly<{ label: string; value: string | number; valueClass?: string }>) {
-	return (
-		<div
-			className="rounded-lg px-3 py-2.5 text-center"
-			style={{
-				background: 'linear-gradient(to bottom, #23221c, #1a1914)',
-				border: '1px solid rgba(168, 151, 125, 0.1)',
-				boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.3)',
-			}}
-		>
-			<p className={cn('font-ioskeley text-lg font-semibold tabular-nums', valueClass ?? 'text-console-text')}>
-				{value}
-			</p>
-			<p className="font-michroma text-[9px] text-console-text-dim tracking-[0.2em] mt-0.5 uppercase">
-				{label}
-			</p>
-		</div>
-	)
-}

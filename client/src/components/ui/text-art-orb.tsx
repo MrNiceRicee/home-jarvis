@@ -1,13 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 
 import { useReducedMotion } from '../../hooks/useReducedMotion'
 
 // ── braille pixel engine ─────────────────────────────────────────────────────
-
-const COLS = 23
-const ROWS = 19
-const FB_WIDTH = COLS * 2   // 46 pixels
-const FB_HEIGHT = ROWS * 4  // 76 pixels
 
 // bit weight for each dot position in a 2x4 braille cell
 const PIXEL_BIT = [
@@ -53,8 +48,8 @@ const DIGIT_H = 7
 
 // ── sphere renderer ──────────────────────────────────────────────────────────
 
-const SPIKE_COUNT = 6
-const SPIKE_MAX_LENGTH = 0.3
+const SPIKE_COUNT = 8
+const SPIKE_MAX_LENGTH = 0.55
 
 function sphereDensity(dist2: number, dist: number, wavePhase: number): number {
 	const nz = Math.sqrt(1.0 - dist2)
@@ -74,10 +69,10 @@ function spikeAt(
 	for (let i = 0; i < SPIKE_COUNT; i++) {
 		const spikeAngle =
 			(i / SPIKE_COUNT) * Math.PI * 2 +
-			Math.sin(spikePhase * 0.7 + i * 1.7) * 0.4
+			Math.sin(spikePhase * 0.7 + i * 1.7) * 0.6
 		const spikeLength =
-			SPIKE_MAX_LENGTH * (0.4 + 0.6 * Math.max(0, Math.sin(spikePhase * 0.3 + i * 2.1)))
-		const spikeWidth = 0.18 + Math.sin(spikePhase * 0.5 + i) * 0.06
+			SPIKE_MAX_LENGTH * (0.3 + 0.7 * Math.max(0, Math.sin(spikePhase * 0.3 + i * 2.1)))
+		const spikeWidth = 0.22 + Math.sin(spikePhase * 0.5 + i) * 0.08
 
 		if (distBeyond > spikeLength) continue
 
@@ -88,7 +83,7 @@ function spikeAt(
 
 		const radialFalloff = 1.0 - distBeyond / spikeLength
 		const angularFalloff = 1.0 - Math.abs(angleDiff) / spikeWidth
-		return 0.65 * radialFalloff * radialFalloff * angularFalloff
+		return 0.8 * radialFalloff * radialFalloff * angularFalloff
 	}
 	return 0
 }
@@ -205,17 +200,11 @@ function encodeToBraille(
 	return lines
 }
 
-// pre-compute static frame (no animation, count=0)
-const STATIC_FB = new Uint8Array(FB_WIDTH * FB_HEIGHT)
-renderFrame(STATIC_FB, FB_WIDTH, FB_HEIGHT, 0, 1.0, 0, -1)
-const STATIC_LINES = encodeToBraille(STATIC_FB, COLS, ROWS)
-
 // ── component ────────────────────────────────────────────────────────────────
 
 const FONT_SIZE = 12
 const LINE_HEIGHT = 14.4
 const CHAR_WIDTH = FONT_SIZE * 0.6
-const TEXT_WIDTH = COLS * CHAR_WIDTH // force uniform row width via textLength
 
 // animation speeds (per 200ms tick)
 const WAVE_SPEED = 0.15
@@ -227,6 +216,8 @@ type TextArtOrbProps = Readonly<{
 	orbColor: string
 	shouldAnimate: boolean
 	deviceCount: number
+	cols?: number
+	rows?: number
 	cx?: number
 	cy?: number
 }>
@@ -235,13 +226,35 @@ export function TextArtOrb({
 	orbColor,
 	shouldAnimate,
 	deviceCount,
+	cols = 23,
+	rows = 19,
 	cx = 250,
 	cy = 250,
 }: TextArtOrbProps) {
 	const rowRefs = useRef<(SVGTextElement | null)[]>([])
 	const time = useRef(0)
-	const framebuffer = useRef(new Uint8Array(FB_WIDTH * FB_HEIGHT))
 	const reducedMotion = useReducedMotion()
+
+	const fbWidth = cols * 2
+	const fbHeight = rows * 4
+	const textWidth = cols * CHAR_WIDTH
+
+	const framebuffer = useRef(new Uint8Array(fbWidth * fbHeight))
+
+	// resize framebuffer when dimensions change
+	useEffect(() => {
+		const size = fbWidth * fbHeight
+		if (framebuffer.current.length !== size) {
+			framebuffer.current = new Uint8Array(size)
+		}
+	}, [fbWidth, fbHeight])
+
+	// compute static lines for initial render
+	const staticLines = useMemo(() => {
+		const fb = new Uint8Array(fbWidth * fbHeight)
+		renderFrame(fb, fbWidth, fbHeight, 0, 1.0, 0, -1)
+		return encodeToBraille(fb, cols, rows)
+	}, [cols, rows, fbWidth, fbHeight])
 
 	// combined animation loop: shimmer + breathing + spikes via content
 	useEffect(() => {
@@ -254,12 +267,12 @@ export function TextArtOrb({
 			const spikePhase = time.current * SPIKE_SPEED
 
 			renderFrame(
-				framebuffer.current, FB_WIDTH, FB_HEIGHT,
+				framebuffer.current, fbWidth, fbHeight,
 				wavePhase, breathScale, spikePhase, deviceCount,
 			)
-			const lines = encodeToBraille(framebuffer.current, COLS, ROWS)
+			const lines = encodeToBraille(framebuffer.current, cols, rows)
 
-			for (let r = 0; r < ROWS; r++) {
+			for (let r = 0; r < rows; r++) {
 				const el = rowRefs.current[r]
 				if (el && el.textContent !== lines[r]) {
 					el.textContent = lines[r]
@@ -268,33 +281,33 @@ export function TextArtOrb({
 		}, 200)
 
 		return () => clearInterval(id)
-	}, [shouldAnimate, reducedMotion, deviceCount])
+	}, [shouldAnimate, reducedMotion, deviceCount, cols, rows, fbWidth, fbHeight])
 
 	// render static frame when not animating
 	useEffect(() => {
 		if (shouldAnimate && !reducedMotion) return
 		time.current = 0
-		renderFrame(framebuffer.current, FB_WIDTH, FB_HEIGHT, 0, 1.0, 0, deviceCount)
-		const lines = encodeToBraille(framebuffer.current, COLS, ROWS)
-		for (let r = 0; r < ROWS; r++) {
+		renderFrame(framebuffer.current, fbWidth, fbHeight, 0, 1.0, 0, deviceCount)
+		const lines = encodeToBraille(framebuffer.current, cols, rows)
+		for (let r = 0; r < rows; r++) {
 			const el = rowRefs.current[r]
 			if (el && el.textContent !== lines[r]) {
 				el.textContent = lines[r]
 			}
 		}
-	}, [shouldAnimate, reducedMotion, deviceCount])
+	}, [shouldAnimate, reducedMotion, deviceCount, cols, rows, fbWidth, fbHeight])
 
-	const startY = cy - ((ROWS - 1) * LINE_HEIGHT) / 2
+	const startY = cy - ((rows - 1) * LINE_HEIGHT) / 2
 
 	return (
 		<g aria-hidden="true" filter="url(#phosphor-bloom)">
-			{STATIC_LINES.map((line, i) => (
+			{staticLines.map((line, i) => (
 				<text
-					key={i}
+					key={`${cols}-${rows}-${i}`}
 					ref={(el) => { rowRefs.current[i] = el }}
-					x={cx - TEXT_WIDTH / 2}
+					x={cx - textWidth / 2}
 					y={startY + i * LINE_HEIGHT}
-					textLength={TEXT_WIDTH}
+					textLength={textWidth}
 					lengthAdjust="spacing"
 					fill={orbColor}
 					style={{
