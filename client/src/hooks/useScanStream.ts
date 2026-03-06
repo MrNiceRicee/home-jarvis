@@ -9,7 +9,12 @@ export function useScanStream() {
 	const state = useScanStore()
 
 	const cancel = useCallback(() => {
-		esRef.current?.close()
+		const es = esRef.current
+		if (es) {
+			es.onmessage = null
+			es.onerror = null
+			es.close()
+		}
 		esRef.current = null
 		useScanStore.getState().setScanState((prev) => ({
 			...prev,
@@ -75,7 +80,12 @@ export function useScanStream() {
 	// cleanup on unmount — prevent zombie connections
 	useEffect(() => {
 		return () => {
-			esRef.current?.close()
+			const es = esRef.current
+			if (es) {
+				es.onmessage = null
+				es.onerror = null
+				es.close()
+			}
 			esRef.current = null
 		}
 	}, [])
