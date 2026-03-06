@@ -39,7 +39,7 @@ export function BrailleWave({ isActive, className }: BrailleWaveProps) {
 	useEffect(() => {
 		if (!isActive || reducedMotion) return
 
-		let offset = 0
+		let offset = Math.floor(Math.random() * WAVE_LEN)
 		const id = setInterval(() => {
 			offset = (offset + 1) % WAVE_LEN
 			setWave(buildWave(offset))
