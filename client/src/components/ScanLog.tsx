@@ -128,8 +128,11 @@ export function ScanLog({ brands, brandResults, scanning, done, error, brandDisp
 						if (entry.status === 'done') {
 							const allErrored = brandResults.length > 0 && brandResults.every((r) => r.error)
 							return (
-								<div key={entry.brand} className={cn('py-0.5', allErrored ? 'text-red-400' : 'text-emerald-400')}>
-									<ScrambleText value={entry.text} />
+								<div key={entry.brand} className={cn('grid grid-cols-[1fr_auto] gap-4 py-0.5', allErrored ? 'text-red-400' : 'text-emerald-400')}>
+									<span><ScrambleText value={entry.text} /></span>
+									{onRescan && (
+										<TerminalButton label="RESCAN" onPress={onRescan} />
+									)}
 								</div>
 							)
 						}
@@ -162,12 +165,12 @@ export function ScanLog({ brands, brandResults, scanning, done, error, brandDisp
 							<ScrambleText value={error} />
 						</div>
 					)}
-					{onRescan && (
+					{onRescan && scanning && (
 						<div className="mt-2 mb-1">
 							<TerminalButton
 								label="RESCAN"
 								onPress={onRescan}
-								isDisabled={scanning}
+								isDisabled
 							/>
 						</div>
 					)}
