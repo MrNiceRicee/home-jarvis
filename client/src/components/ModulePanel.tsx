@@ -25,7 +25,6 @@ type ModulePanelProps = Readonly<
 		integration: ConfiguredIntegration
 		deviceCount: number
 		meta: IntegrationMeta
-		onConfigure: () => void
 		onRemove: () => void
 	}
 	| {
@@ -162,15 +161,11 @@ export function ModulePanel(props: ModulePanelProps) {
 						</div>
 
 						{/* action buttons */}
-						<div className={cn(
-							'flex items-center pt-1',
-							props.state === 'connected' ? 'justify-between' : 'gap-2',
-						)}>
+						<div className="flex items-center gap-2 pt-1">
 							{props.state === 'connected' && (
 								<ConnectedActions
 									meta={props.meta}
 									deviceCount={props.deviceCount}
-									onConfigure={props.onConfigure}
 									onRemove={props.onRemove}
 								/>
 							)}
@@ -191,26 +186,21 @@ export function ModulePanel(props: ModulePanelProps) {
 	)
 }
 
-function ConnectedActions({ meta, deviceCount, onConfigure, onRemove }: Readonly<{
+function ConnectedActions({ meta, deviceCount, onRemove }: Readonly<{
 	meta: IntegrationMeta
 	deviceCount: number
-	onConfigure: () => void
 	onRemove: () => void
 }>) {
 	return (
-		<>
-			{!meta.discoveryOnly && (
-				<TerminalButton label="CONFIGURE" onPress={onConfigure} />
-			)}
-			<DialogTrigger>
+		<DialogTrigger>
 				<TerminalButton label="REMOVE" variant="destructive" onPress={() => {}} />
 				<RaisedModal className="max-w-sm">
 					{({ close }) => (
 						<>
-							<Heading slot="title" className="font-michroma text-2xs text-stone-600 tracking-[0.15em] uppercase mb-2" style={{ textShadow: '0 -1px 0 rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.4)' }}>
+							<Heading slot="title" className="font-michroma text-2xs text-stone-800 tracking-[0.15em] uppercase mb-2" style={{ textShadow: '0 -1px 0 rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.4)' }}>
 								Remove {meta.displayName}?
 							</Heading>
-							<p className="font-ioskeley text-xs text-stone-500 mb-5">
+							<p className="font-ioskeley text-xs text-stone-600 mb-5">
 								{deviceCount} device{deviceCount !== 1 ? 's' : ''} will be removed. Matter accessories will be unexposed.
 							</p>
 							<div className="flex gap-2 justify-end">
@@ -232,7 +222,6 @@ function ConnectedActions({ meta, deviceCount, onConfigure, onRemove }: Readonly
 					)}
 				</RaisedModal>
 			</DialogTrigger>
-		</>
 	)
 }
 

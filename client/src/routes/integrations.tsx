@@ -1,17 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
-import { DialogTrigger } from 'react-aria-components'
 
 import type { DetectedDevice, IntegrationsResponse } from '../types'
 
 import { AdditionalDeviceRow } from '../components/IntegrationForm'
-import { IntegrationFormInner } from '../components/IntegrationForm'
 import { ModulePanel } from '../components/ModulePanel'
 import { ScanLog } from '../components/ScanLog'
-import { RaisedButton } from '../components/ui/button'
 import { ConsolePanelLabel } from '../components/ui/console-panel'
-import { RaisedModal } from '../components/ui/modal'
 import { useScanStream } from '../hooks/useScanStream'
 import { api } from '../lib/api'
 import { useDeviceStore } from '../stores/device-store'
@@ -80,10 +76,6 @@ function Integrations() {
 			return data
 		},
 	})
-
-	// configure modal state
-	const [configuringBrand, setConfiguringBrand] = useState<string | null>(null)
-	const configuringMeta = data?.available?.find((m) => m.brand === configuringBrand)
 
 	// error/connecting state for discovery-only connect
 	const [failedBrand, setFailedBrand] = useState<{ brand: string; message: string } | null>(null)
@@ -227,7 +219,6 @@ function Integrations() {
 								integration={integration}
 								deviceCount={deviceCountByBrand.get(meta.brand) ?? 0}
 								meta={meta}
-								onConfigure={() => setConfiguringBrand(meta.brand)}
 								onRemove={() => void handleRemove(meta.brand)}
 							/>
 						)
@@ -269,28 +260,6 @@ function Integrations() {
 				</div>
 			</section>
 
-			{/* configure modal (triggered by "Configure" button on connected modules) */}
-			{configuringMeta && (
-				<DialogTrigger isOpen={!!configuringBrand} onOpenChange={(open) => { if (!open) setConfiguringBrand(null) }}>
-					<RaisedButton className="hidden">Configure</RaisedButton>
-					<RaisedModal>
-						{({ close }) => (
-							<IntegrationFormInner
-								meta={configuringMeta}
-								onSubmit={async (config) => {
-									await handleSubmit(configuringMeta.brand, config)
-									close()
-									setConfiguringBrand(null)
-								}}
-								onCancel={() => {
-									close()
-									setConfiguringBrand(null)
-								}}
-							/>
-						)}
-					</RaisedModal>
-				</DialogTrigger>
-			)}
 		</div>
 	)
 }

@@ -13,7 +13,7 @@ interface RaisedInputProps extends Omit<TextFieldProps, 'className'> {
 export function RaisedInput({ label, type = 'text', placeholder, hint, className = '', ...props }: Readonly<RaisedInputProps>) {
 	return (
 		<TextField className={cn('flex flex-col gap-1.5', className)} {...props}>
-			<Label className="font-michroma text-2xs text-stone-500 tracking-[0.1em] uppercase">{label}</Label>
+			<Label className="font-michroma text-2xs text-stone-700 tracking-[0.1em] uppercase">{label}</Label>
 			<AriaInput
 				type={type}
 				placeholder={placeholder}
@@ -27,7 +27,7 @@ export function RaisedInput({ label, type = 'text', placeholder, hint, className
 					'transition',
 				)}
 			/>
-			{hint && <span className="font-ioskeley text-2xs text-stone-400">{hint}</span>}
+			{hint && <span className="font-ioskeley text-2xs text-stone-600">{hint}</span>}
 			<FieldError className="font-ioskeley text-2xs text-red-500" />
 		</TextField>
 	)
