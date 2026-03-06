@@ -36,6 +36,14 @@ const COLOR_PRESET_OPTIONS = COLOR_PRESETS.map((p) => ({
 	ledColor: `rgb(${p.value.r},${p.value.g},${p.value.b})`,
 }))
 
+// shared fader thumb gradient — brushed aluminum knob
+const FADER_THUMB_STYLE = {
+	top: '38%',
+	transform: 'translate(-50%, -50%)',
+	backgroundColor: '#d4d0ca',
+	backgroundImage: 'linear-gradient(180deg, #e8e4de 0%, #d4d0ca 40%, #c0bcb6 60%, #d4d0ca 100%)',
+} as const
+
 // brightness detent stops — ruler-graduated heights (endpoints > midpoint > majors > minors)
 const BRT_DETENTS: { value: number; height: string }[] = [
 	{ value: 0, height: 'h-3.5' },
@@ -152,11 +160,11 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 			<ReadoutDisplay size="lg" glowIntensity={1} aria-label={readoutLabel} className="w-full justify-between">
 				{isOn ? (
 					<>
-						<span>{brightness}<span className="text-xs text-[#faf0dc]/50 ml-0.5">%</span></span>
+						<span>{brightness}<span className="text-xs text-display-text/50 ml-0.5">%</span></span>
 						<ReadoutSecondary state={state} showCCT={showCCT} showColor={showColor} colorTemp={colorTemp} pickerColor={pickerColor} />
 					</>
 				) : (
-					<span className="text-[#faf0dc]/30">OFF</span>
+					<span className="text-display-text/30">OFF</span>
 				)}
 			</ReadoutDisplay>
 
@@ -195,30 +203,68 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 			)}
 
 			{/* ── CCT / Color panels ─────────────────────────────────── */}
-			{showCCT && device.online && (
-				<CctFader
-					colorTemp={colorTemp}
-					onChange={(v) => { setColorTemp(v); pushAccent({ colorTemp: v }) }}
-					onChangeEnd={(v) => { onAccentChange?.(null); void onStateChange?.(device.id, { colorTemp: v }) }}
-					onDetent={(k) => { setColorTemp(k); onAccentChange?.(null); void onStateChange?.(device.id, { colorTemp: k, on: true }) }}
-				/>
-			)}
-			{isFull && showColor && device.online && (
-				<ColorPanel
-					pickerColor={pickerColor}
-					onPickerChange={(c) => {
-						setPickerColor(c)
-						const rgb = c.toFormat('rgb')
-						pushAccent({ color: {
-							r: Math.round(rgb.getChannelValue('red')),
-							g: Math.round(rgb.getChannelValue('green')),
-							b: Math.round(rgb.getChannelValue('blue')),
-						} })
-					}}
-					onPickerCommit={(c) => { onAccentChange?.(null); commitPickerColor(c) }}
-					onPreset={handleColorPreset}
-					onCommit={(c) => { setPickerColor(c); commitPickerColor(c) }}
-				/>
+			{isFull && isFullColor && device.online ? (
+				<div className="grid grid-cols-1 grid-rows-1">
+					<div
+						className={cn('col-start-1 row-start-1', !showCCT && 'invisible pointer-events-none')}
+						inert={!showCCT || undefined}
+					>
+						<CctFader
+							colorTemp={colorTemp}
+							onChange={(v) => { setColorTemp(v); pushAccent({ colorTemp: v }) }}
+							onChangeEnd={(v) => { onAccentChange?.(null); void onStateChange?.(device.id, { colorTemp: v }) }}
+							onDetent={(k) => { setColorTemp(k); onAccentChange?.(null); void onStateChange?.(device.id, { colorTemp: k, on: true }) }}
+						/>
+					</div>
+					<div
+						className={cn('col-start-1 row-start-1', !showColor && 'invisible pointer-events-none')}
+						inert={!showColor || undefined}
+					>
+						<ColorPanel
+							pickerColor={pickerColor}
+							onPickerChange={(c) => {
+								setPickerColor(c)
+								const rgb = c.toFormat('rgb')
+								pushAccent({ color: {
+									r: Math.round(rgb.getChannelValue('red')),
+									g: Math.round(rgb.getChannelValue('green')),
+									b: Math.round(rgb.getChannelValue('blue')),
+								} })
+							}}
+							onPickerCommit={(c) => { onAccentChange?.(null); commitPickerColor(c) }}
+							onPreset={handleColorPreset}
+							onCommit={(c) => { setPickerColor(c); commitPickerColor(c) }}
+						/>
+					</div>
+				</div>
+			) : (
+				<>
+					{showCCT && device.online && (
+						<CctFader
+							colorTemp={colorTemp}
+							onChange={(v) => { setColorTemp(v); pushAccent({ colorTemp: v }) }}
+							onChangeEnd={(v) => { onAccentChange?.(null); void onStateChange?.(device.id, { colorTemp: v }) }}
+							onDetent={(k) => { setColorTemp(k); onAccentChange?.(null); void onStateChange?.(device.id, { colorTemp: k, on: true }) }}
+						/>
+					)}
+					{isFull && showColor && device.online && (
+						<ColorPanel
+							pickerColor={pickerColor}
+							onPickerChange={(c) => {
+								setPickerColor(c)
+								const rgb = c.toFormat('rgb')
+								pushAccent({ color: {
+									r: Math.round(rgb.getChannelValue('red')),
+									g: Math.round(rgb.getChannelValue('green')),
+									b: Math.round(rgb.getChannelValue('blue')),
+								} })
+							}}
+							onPickerCommit={(c) => { onAccentChange?.(null); commitPickerColor(c) }}
+							onPreset={handleColorPreset}
+							onCommit={(c) => { setPickerColor(c); commitPickerColor(c) }}
+						/>
+					)}
+				</>
 			)}
 		</div>
 	)
@@ -256,12 +302,7 @@ function BrtFader({ brightness, onChange, onChangeEnd, onDetent }: Readonly<BrtF
 						/>
 						<SliderThumb
 							className="z-10 w-3 h-5.5 rounded-[3px] border border-stone-300 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-1 shadow-[0_1px_3px_rgba(0,0,0,0.25)] relative after:absolute after:content-[''] after:inset-x-0.5 after:top-1/2 after:-translate-y-1/2 after:h-px after:bg-stone-400/40"
-							style={{
-								top: '38%',
-								transform: 'translate(-50%, -50%)',
-								backgroundColor: '#d4d0ca',
-								backgroundImage: 'linear-gradient(180deg, #e8e4de 0%, #d4d0ca 40%, #c0bcb6 60%, #d4d0ca 100%)',
-							}}
+							style={FADER_THUMB_STYLE}
 						/>
 						<div className="absolute inset-x-0 top-[60%] flex justify-between">
 							{BRT_DETENTS.map((d) => (
@@ -318,12 +359,7 @@ function CctFader({ colorTemp, onChange, onChangeEnd, onDetent }: Readonly<CctFa
 							/>
 							<SliderThumb
 								className="z-10 w-3 h-5.5 rounded-[3px] border border-stone-300 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-1 shadow-[0_1px_3px_rgba(0,0,0,0.25)] relative after:absolute after:content-[''] after:inset-x-0.5 after:top-1/2 after:-translate-y-1/2 after:h-px after:bg-stone-400/40"
-								style={{
-									top: '38%',
-									transform: 'translate(-50%, -50%)',
-									backgroundColor: '#d4d0ca',
-									backgroundImage: 'linear-gradient(180deg, #e8e4de 0%, #d4d0ca 40%, #c0bcb6 60%, #d4d0ca 100%)',
-								}}
+								style={FADER_THUMB_STYLE}
 							/>
 							<div className="absolute inset-x-0 top-[60%]">
 								{CCT_SWATCHES.map((k) => {
@@ -424,7 +460,7 @@ function ColorPanel({ pickerColor, onPickerChange, onPickerCommit, onPreset, onC
 			>
 				<ColorField>
 					<Input
-						className="w-20 bg-[#2a2924] rounded border border-[#1a1914] px-2 py-1 font-ioskeley text-xs text-[#faf0dc] caret-[#faf0dc] selection:bg-stone-600 outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-1"
+						className="w-20 bg-display-bg rounded border border-display-border px-2 py-1 font-ioskeley text-xs text-display-text caret-display-text selection:bg-stone-600 outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-1"
 						style={{
 							boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.5), inset 0 0 2px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.2)',
 						}}

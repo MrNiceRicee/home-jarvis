@@ -17,15 +17,15 @@ export function RaisedInput({ label, type = 'text', placeholder, hint, className
 			<AriaInput
 				type={type}
 				placeholder={placeholder}
-				className={[
+				className={cn(
 					'w-full px-3 py-2 text-sm rounded-lg',
-					'bg-linear-to-b from-stone-50/80 to-[#fffdf8]',
+					'bg-linear-to-b from-stone-50/80 to-surface-warm',
 					'border border-stone-200/70',
 					'shadow-[var(--shadow-inset)]',
 					'placeholder:text-stone-300',
-					'focus:outline-none focus:ring-2 focus:ring-stone-700 focus:border-transparent',
+					'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:border-transparent',
 					'transition',
-				].join(' ')}
+				)}
 			/>
 			{hint && <span className="text-xs text-stone-400">{hint}</span>}
 			<FieldError className="text-xs text-red-600" />

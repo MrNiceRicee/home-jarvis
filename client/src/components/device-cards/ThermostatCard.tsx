@@ -54,10 +54,10 @@ export function ThermostatCard({ device, onStateChange }: Readonly<ThermostatCar
 				<ReadoutDisplay size="lg" aria-label={readoutLabel} className="w-full justify-between">
 					<span>
 						{state.temperature.toFixed(1)}
-						<span className="text-sm text-[#faf0dc]/50 ml-1">°C</span>
+						<span className="text-sm text-display-text/50 ml-1">°C</span>
 					</span>
 					{state.humidity !== undefined && (
-						<span className="text-sm text-[#faf0dc]/50">
+						<span className="text-sm text-display-text/50">
 							{state.humidity}<span className="text-xs ml-0.5">% RH</span>
 						</span>
 					)}

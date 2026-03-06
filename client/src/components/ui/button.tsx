@@ -7,12 +7,12 @@ const button = tv({
 	variants: {
 		variant: {
 			raised: [
-				'bg-linear-to-b from-[#fffdf8] to-stone-50',
+				'bg-linear-to-b from-surface-warm to-stone-50',
 				'border border-stone-200/70',
 				'text-stone-700',
 				'[box-shadow:var(--shadow-raised),var(--shadow-inner-glow)]',
 				'hover:shadow-[var(--shadow-raised-hover)]',
-				'hover:from-[#fffdf8] hover:to-stone-100/80',
+				'hover:from-surface-warm hover:to-stone-100/80',
 				'pressed:shadow-[var(--shadow-raised-active)]',
 				'pressed:translate-y-px',
 				'pressed:from-stone-50 pressed:to-stone-100',

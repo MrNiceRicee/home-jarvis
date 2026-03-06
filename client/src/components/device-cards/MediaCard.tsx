@@ -1,3 +1,4 @@
+import { PauseIcon, PlayIcon } from '@phosphor-icons/react'
 import { useEffect, useState } from 'react'
 import { Button, Label, Slider, SliderOutput, SliderThumb, SliderTrack } from 'react-aria-components'
 
@@ -60,7 +61,7 @@ export function MediaCard({ device, onStateChange }: Readonly<MediaCardProps>) {
 						isDisabled={!isOn}
 						className="w-9 h-9 rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 pressed:bg-stone-300 disabled:opacity-40 cursor-pointer flex items-center justify-center text-sm"
 					>
-						{state.playing ? '⏸' : '▶'}
+						{state.playing ? <PauseIcon size={16} weight="thin" /> : <PlayIcon size={16} weight="thin" />}
 					</Button>
 				)}
 			</div>

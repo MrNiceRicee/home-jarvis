@@ -9,6 +9,7 @@ import { CreateSectionDialog } from '../components/CreateSectionDialog'
 import { DeviceDetailDialog } from '../components/DeviceDetailDialog'
 import { LightMultiSelectBar } from '../components/LightMultiSelectBar'
 import { SectionGroup } from '../components/SectionGroup'
+import { Card } from '../components/ui/card'
 import { useStreamStatus } from '../hooks/useDeviceStream'
 import { api } from '../lib/api'
 import { cn } from '../lib/cn'
@@ -57,11 +58,11 @@ function Dashboard() {
 		},
 	})
 
-	async function handleStateChange(id: string, state: Partial<DeviceState>) {
-		stateMutation.mutate({ id, state })
-	}
+	const handleStateChange = useCallback(async (id: string, state: Partial<DeviceState>) => {
+		await stateMutation.mutateAsync({ id, state })
+	}, [stateMutation])
 
-	async function handleMatterToggle(deviceId: string, enabled: boolean) {
+	const handleMatterToggle = useCallback(async (deviceId: string, enabled: boolean) => {
 		const { error } = await api.api.devices({ id: deviceId }).matter.patch({ enabled })
 		if (error) {
 			toast.error('Failed to toggle Matter bridge')
@@ -70,7 +71,7 @@ function Dashboard() {
 		queryClient.setQueryData(['devices'], (prev: Device[] = []) =>
 			prev.map((d) => (d.id === deviceId ? { ...d, matterEnabled: enabled } : d)),
 		)
-	}
+	}, [queryClient])
 
 	async function handleAddSection(name: string) {
 		const { error } = await api.api.sections.post({ name })
@@ -78,25 +79,25 @@ function Dashboard() {
 		await queryClient.invalidateQueries({ queryKey: ['sections'] })
 	}
 
-	async function handleRenameSection(sectionId: string, name: string) {
+	const handleRenameSection = useCallback(async (sectionId: string, name: string) => {
 		const { error } = await api.api.sections({ id: sectionId }).patch({ name })
 		if (error) {
 			toast.error('Failed to rename section')
 			throw error
 		}
 		await queryClient.invalidateQueries({ queryKey: ['sections'] })
-	}
+	}, [queryClient])
 
-	async function handleDeleteSection(sectionId: string) {
+	const handleDeleteSection = useCallback(async (sectionId: string) => {
 		const { error } = await api.api.sections({ id: sectionId }).delete()
 		if (error) {
 			toast.error('Cannot delete section — move devices out first')
 			return
 		}
 		await queryClient.invalidateQueries({ queryKey: ['sections'] })
-	}
+	}, [queryClient])
 
-	function handleReorder(updates: Array<{ id: string; sectionId: string; position: number }>) {
+	const handleReorder = useCallback((updates: Array<{ id: string; sectionId: string; position: number }>) => {
 		// optimistic: update positions in query cache
 		queryClient.setQueryData(['devices'], (prev: Device[] = []) => {
 			const posMap = new Map(updates.map((u) => [u.id, u]))
@@ -108,7 +109,7 @@ function Dashboard() {
 		void api.api.devices.positions.patch(updates).then(({ error }) => {
 			if (error) toast.error('Failed to save device order')
 		})
-	}
+	}, [queryClient])
 
 	const handleToggleSelect = useCallback((deviceId: string) => {
 		setSelectedIds((prev) => {
@@ -234,23 +235,7 @@ function Dashboard() {
 
 function SkeletonCard() {
 	return (
-		<div
-			className={cn(
-				'relative rounded-lg overflow-hidden',
-				'bg-[#fffdf8]',
-				'border border-[rgba(168,151,125,0.12)]',
-				'animate-pulse',
-				'p-4 space-y-3',
-			)}
-			style={{
-				boxShadow: '0 1px 2px rgba(120,90,50,0.05), 0 4px 12px rgba(120,90,50,0.04), 0 8px 24px rgba(120,90,50,0.02), inset 0 0.5px 0 rgba(255,255,255,0.5)',
-			}}
-		>
-			{/* corner mounting dots */}
-			<div className="absolute top-1.5 left-1.5 w-1 h-1 rounded-full bg-stone-300/30" />
-			<div className="absolute top-1.5 right-1.5 w-1 h-1 rounded-full bg-stone-300/30" />
-			<div className="absolute bottom-1.5 left-1.5 w-1 h-1 rounded-full bg-stone-300/30" />
-			<div className="absolute bottom-1.5 right-1.5 w-1 h-1 rounded-full bg-stone-300/30" />
+		<Card className="animate-pulse p-4 space-y-3">
 			<div className="flex items-center gap-3">
 				<div className="flex-1">
 					<div className="w-24 h-3.5 rounded bg-stone-200/60 mb-1.5" />
@@ -260,7 +245,7 @@ function SkeletonCard() {
 			</div>
 			<div className="w-full h-10 rounded-md bg-stone-200/30" />
 			<div className="w-full h-6 rounded bg-stone-200/20" />
-		</div>
+		</Card>
 	)
 }
 

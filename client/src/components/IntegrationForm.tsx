@@ -9,22 +9,17 @@ import type { IntegrationMeta, CredentialField, DetectedDevice } from '../types'
 
 import { api } from '../lib/api'
 import { cn } from '../lib/cn'
+import { BRAND_ICON, FALLBACK_ICON } from '../lib/device-constants'
 import { RaisedButton } from './ui/button'
+
+function BrandIcon({ brand }: Readonly<{ brand: string }>) {
+	const Icon = BRAND_ICON[brand] ?? FALLBACK_ICON
+	return <Icon size={24} weight="thin" className="text-stone-500 shrink-0" />
+}
 import { Card } from './ui/card'
 import { RaisedInput } from './ui/input'
 import { RaisedModal } from './ui/modal'
 
-const BRAND_ICON: Record<string, string> = {
-	hue: '💡',
-	govee: '🌈',
-	vesync: '💨',
-	lg: '📺',
-	ge: '🏠',
-	aqara: '🔗',
-	smartthings: '⚡',
-	resideo: '🌡️',
-	elgato: '🔆',
-}
 
 // brands that support local network scanning
 const SCANNABLE_BRANDS = new Set(['hue', 'aqara', 'elgato'])
@@ -69,7 +64,7 @@ export function IntegrationCard({ meta, isConfigured, onSubmit, onRemove }: Read
 		<Card className={isConfigured ? '!border-emerald-200' : ''}>
 			<div className="p-4 flex items-center justify-between gap-3">
 				<div className="flex items-center gap-3 min-w-0">
-					<span className="text-2xl">{BRAND_ICON[meta.brand] ?? '📦'}</span>
+					<BrandIcon brand={meta.brand} />
 					<div className="min-w-0">
 						<p className="text-sm font-semibold text-stone-900">{meta.displayName}</p>
 						<p className="text-xs text-stone-400 mt-0.5">
@@ -199,7 +194,7 @@ export function AdditionalDeviceCard({
 			}}
 		>
 			<div className="flex items-center gap-3 min-w-0">
-				<span className="text-2xl">{BRAND_ICON[detected.brand] ?? '📦'}</span>
+				<BrandIcon brand={detected.brand} />
 				<div className="min-w-0">
 					<p className="text-sm font-semibold text-stone-900">{detected.label}</p>
 					<p className="text-xs text-emerald-700 mt-0.5">
@@ -244,7 +239,7 @@ export function QuickConnectCard({ detected, meta, onSubmit }: Readonly<QuickCon
 			}}
 		>
 			<div className="flex items-center gap-3 min-w-0">
-				<span className="text-2xl">{BRAND_ICON[detected.brand] ?? '📦'}</span>
+				<BrandIcon brand={detected.brand} />
 				<div className="min-w-0">
 					<p className="text-sm font-semibold text-stone-900">{detected.label}</p>
 					<p className="text-xs text-amber-700 mt-0.5">{VIA_LABEL[detected.via]}</p>
