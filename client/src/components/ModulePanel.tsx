@@ -119,7 +119,7 @@ export function ModulePanel(props: ModulePanelProps) {
 					{/* all screen content — fades in with stagger delay */}
 					<div
 						className="flex flex-col flex-1 screen-enter"
-						style={{ animationDelay: `${staggerDelay}ms` }}
+						style={{ '--stagger': `${staggerDelay}ms` } as React.CSSProperties}
 					>
 						{/* center: icon + status readout */}
 						<div className="flex-1 flex flex-col items-center justify-center gap-1">
