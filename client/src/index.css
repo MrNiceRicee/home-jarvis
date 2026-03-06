@@ -84,6 +84,10 @@ html {
 		animation: none;
 		opacity: 1;
 	}
+	.module-enter {
+		animation: none;
+		opacity: 1;
+	}
 }
 
 /* braille font fallback for BrailleWave */
@@ -100,4 +104,19 @@ html {
 }
 .scan-cursor {
 	animation: cursor-blink 1s step-end infinite;
+}
+
+/* module panel staggered entrance */
+@keyframes module-power-on {
+	from {
+		opacity: 0;
+		transform: translateY(6px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+.module-enter {
+	animation: module-power-on 0.4s ease-out both;
 }

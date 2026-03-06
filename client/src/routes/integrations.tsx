@@ -216,12 +216,13 @@ function Integrations() {
 			<section>
 				<ConsolePanelLabel>Integrations</ConsolePanelLabel>
 				<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-					{connectedModules.map((meta) => {
-						const integration = data?.configured?.find((i) => i.brand === meta.brand)
+					{connectedModules.map((meta, i) => {
+						const integration = data?.configured?.find((c) => c.brand === meta.brand)
 						if (!integration) return null
 						return (
 							<ModulePanel
 								key={meta.brand}
+								index={i}
 								state="connected"
 								integration={integration}
 								deviceCount={deviceCountByBrand.get(meta.brand) ?? 0}
@@ -231,11 +232,13 @@ function Integrations() {
 							/>
 						)
 					})}
-					{availableModules.map((meta) => {
+					{availableModules.map((meta, i) => {
+						const idx = connectedModules.length + i
 						if (failedBrand?.brand === meta.brand) {
 							return (
 								<ModulePanel
 									key={meta.brand}
+									index={idx}
 									state="error"
 									meta={meta}
 									errorMessage={failedBrand.message}
@@ -247,6 +250,7 @@ function Integrations() {
 							return (
 								<ModulePanel
 									key={meta.brand}
+									index={idx}
 									state="connecting"
 									meta={meta}
 								/>
@@ -255,6 +259,7 @@ function Integrations() {
 						return (
 							<ModulePanel
 								key={meta.brand}
+								index={idx}
 								state="available"
 								meta={meta}
 								onSubmit={handleSubmit}

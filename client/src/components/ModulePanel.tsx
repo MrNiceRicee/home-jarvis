@@ -16,7 +16,10 @@ import { TerminalButton } from './ui/terminal-button'
 // credentials stripped server-side
 type ConfiguredIntegration = IntegrationsResponse['configured'][number]
 
+type ModulePanelBase = { index?: number }
+
 type ModulePanelProps = Readonly<
+	ModulePanelBase & (
 	| {
 		state: 'connected'
 		integration: ConfiguredIntegration
@@ -40,7 +43,7 @@ type ModulePanelProps = Readonly<
 		state: 'connecting'
 		meta: IntegrationMeta
 	}
->
+)>
 
 function BezelLed({ lit, error }: Readonly<{ lit: boolean; error?: boolean }>) {
 	const ledColor = error
@@ -82,6 +85,8 @@ export function ModulePanel(props: ModulePanelProps) {
 	const brand = props.meta.brand
 	const Icon = BRAND_ICON[brand] ?? FALLBACK_ICON
 
+	const staggerDelay = (props.index ?? 0) * 80
+
 	return (
 		<div
 			className="rounded-xl flex flex-col transition-[border-color,background,opacity] duration-300"
@@ -103,7 +108,10 @@ export function ModulePanel(props: ModulePanelProps) {
 			</div>
 
 			{/* CRT screen — inset into bezel, fixed height for uniform sizing */}
-			<div className="px-3">
+			<div
+				className="px-3 module-enter"
+				style={{ animationDelay: `${staggerDelay}ms` }}
+			>
 				<ReadoutDisplay
 					size="lg"
 					className={cn('!flex flex-col w-full !items-stretch p-3', SCREEN_HEIGHT)}
