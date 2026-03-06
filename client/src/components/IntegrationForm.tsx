@@ -319,10 +319,10 @@ export function IntegrationFormInner({ meta, prefill, onSubmit, onCancel }: Read
 	if (meta.oauthFlow) {
 		return (
 			<div>
-				<Heading slot="title" className="text-base font-semibold text-stone-900 mb-1">
+				<Heading slot="title" className="font-michroma text-2xs text-stone-600 tracking-[0.15em] uppercase mb-1" style={{ textShadow: '0 -1px 0 rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.4)' }}>
 					{meta.displayName}
 				</Heading>
-				<p className="text-sm text-stone-500 mb-5">
+				<p className="font-ioskeley text-xs text-stone-500 mb-5">
 					Uses OAuth 2.0 — you'll be redirected to LG to authorize.
 				</p>
 				<div className="flex gap-2 justify-end">
@@ -333,7 +333,7 @@ export function IntegrationFormInner({ meta, prefill, onSubmit, onCancel }: Read
 						variant="primary"
 						onPress={() => (window.location.href = '/api/integrations/lg/oauth/start')}
 					>
-						Authorize with LG →
+						Authorize with LG
 					</RaisedButton>
 				</div>
 			</div>
@@ -342,7 +342,7 @@ export function IntegrationFormInner({ meta, prefill, onSubmit, onCancel }: Read
 
 	return (
 		<Form onSubmit={handleSubmit}>
-			<Heading slot="title" className="text-base font-semibold text-stone-900 mb-4">
+			<Heading slot="title" className="font-michroma text-2xs text-stone-600 tracking-[0.15em] uppercase mb-4" style={{ textShadow: '0 -1px 0 rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.4)' }}>
 				Connect {meta.displayName}
 			</Heading>
 
@@ -364,19 +364,19 @@ export function IntegrationFormInner({ meta, prefill, onSubmit, onCancel }: Read
 						variant="raised"
 						onPress={handleLinkHueBridge}
 						isDisabled={linkingHue || !values.bridgeIp}
-						className="w-full bg-linear-to-b from-orange-50 to-orange-100/80 text-orange-700 border-orange-200"
+						className="w-full"
 					>
-						{linkingHue ? 'Waiting for button press...' : '🔗 Press Bridge Button & Link'}
+						{linkingHue ? 'Waiting for button press...' : 'Press Bridge Button & Link'}
 					</RaisedButton>
-					{hueLinkError && <p className="text-xs text-red-600 mt-1">{hueLinkError}</p>}
+					{hueLinkError && <p className="font-ioskeley text-2xs text-red-500 mt-1">{hueLinkError}</p>}
 					{values.apiKey && (
-						<p className="text-xs text-emerald-600 mt-1">✓ Bridge linked successfully</p>
+						<p className="font-ioskeley text-2xs text-emerald-500 mt-1">bridge linked</p>
 					)}
 				</div>
 			)}
 
 			{error && (
-				<div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+				<div className="mb-4 p-3 rounded-lg font-ioskeley text-xs text-red-400" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
 					{error}
 				</div>
 			)}

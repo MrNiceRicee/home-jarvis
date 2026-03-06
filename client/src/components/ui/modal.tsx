@@ -16,14 +16,16 @@ export function RaisedModal({ children, className }: Readonly<RaisedModalProps>)
 			<AriaModal
 				className={cn(
 					'w-full max-w-md mx-4',
-					'bg-linear-to-b from-surface-warm to-stone-50/80',
-					'rounded-2xl',
-					'border border-[rgba(168,151,125,0.15)]',
-					'shadow-[0_8px_40px_rgba(120,90,50,0.08),0_2px_8px_rgba(120,90,50,0.06),inset_0_1px_0_rgba(255,253,245,0.8)]',
+					'rounded-xl',
 					'entering:animate-in entering:zoom-in-95',
 					'exiting:animate-out exiting:zoom-out-95',
 					className,
 				)}
+				style={{
+					background: 'linear-gradient(to bottom, #d6d3cc, #c4c0b8)',
+					border: '1px solid rgba(168, 151, 125, 0.25)',
+					boxShadow: '0 8px 40px rgba(80, 60, 30, 0.12), 0 2px 8px rgba(80, 60, 30, 0.08), inset 0 1px 0 rgba(255,255,255,0.5)',
+				}}
 			>
 				<Dialog className="p-6 outline-none">
 					{children}

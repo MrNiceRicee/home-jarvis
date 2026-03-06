@@ -12,23 +12,23 @@ interface RaisedInputProps extends Omit<TextFieldProps, 'className'> {
 
 export function RaisedInput({ label, type = 'text', placeholder, hint, className = '', ...props }: Readonly<RaisedInputProps>) {
 	return (
-		<TextField className={cn('flex flex-col gap-1', className)} {...props}>
-			<Label className="text-xs font-medium text-stone-600">{label}</Label>
+		<TextField className={cn('flex flex-col gap-1.5', className)} {...props}>
+			<Label className="font-michroma text-2xs text-stone-500 tracking-[0.1em] uppercase">{label}</Label>
 			<AriaInput
 				type={type}
 				placeholder={placeholder}
 				className={cn(
-					'w-full px-3 py-2 text-sm rounded-lg',
-					'bg-linear-to-b from-stone-50/80 to-surface-warm',
-					'border border-stone-200/70',
+					'w-full px-3 py-2 font-ioskeley text-xs rounded-lg',
+					'bg-console-bg text-console-text',
+					'border border-console-surface',
 					'shadow-[var(--shadow-inset)]',
-					'placeholder:text-stone-300',
-					'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:border-transparent',
+					'placeholder:text-console-text-dim',
+					'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-console-text-muted focus-visible:border-transparent',
 					'transition',
 				)}
 			/>
-			{hint && <span className="text-xs text-stone-400">{hint}</span>}
-			<FieldError className="text-xs text-red-600" />
+			{hint && <span className="font-ioskeley text-2xs text-stone-400">{hint}</span>}
+			<FieldError className="font-ioskeley text-2xs text-red-500" />
 		</TextField>
 	)
 }
