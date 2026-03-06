@@ -139,7 +139,7 @@ export function ModulePanel(props: ModulePanelProps) {
 										<NumberTicker value={props.deviceCount} />
 									</span>
 									<span className="font-ioskeley text-2xs text-display-text/50 uppercase tracking-wider">
-										<ScrambleText value={props.deviceCount === 0 ? 'NO DEVICES' : 'CONNECTED'} />
+										<ScrambleText value={props.deviceCount === 0 ? 'NO DEVICES' : 'CONNECTED'} range={[0x2800, 0x28FF]} />
 									</span>
 								</>
 							)}
@@ -150,13 +150,13 @@ export function ModulePanel(props: ModulePanelProps) {
 
 							{props.state === 'error' && (
 								<span className="font-ioskeley text-2xs text-red-400 uppercase tracking-wider">
-									<ScrambleText value="ERROR" />
+									<ScrambleText value="ERROR" range={[0x2800, 0x28FF]} />
 								</span>
 							)}
 
 							{props.state === 'connecting' && (
 								<span className="font-ioskeley text-2xs text-display-text/50 uppercase tracking-wider animate-pulse">
-									<ScrambleText value="CONNECTING..." />
+									<ScrambleText value="CONNECTING..." range={[0x2800, 0x28FF]} />
 								</span>
 							)}
 						</div>

@@ -43,15 +43,15 @@ function buildLogEntries(
 		const name = brandDisplayName(brand)
 		if (result) {
 			if (result.error) {
-				entries.push({ brand, text: `scanning ${name}`, status: 'error' })
+				entries.push({ brand, text: name, status: 'error' })
 			} else {
-				entries.push({ brand, text: `scanning ${name}`, status: 'found', count: result.count })
+				entries.push({ brand, text: name, status: 'found', count: result.count })
 			}
 		} else if (scanning) {
-			entries.push({ brand, text: `scanning ${name}...`, status: 'scanning' })
+			entries.push({ brand, text: `${name}...`, status: 'scanning' })
 		} else if (error) {
 			// SSE dropped — incomplete brands show as error
-			entries.push({ brand, text: `scanning ${name}`, status: 'error' })
+			entries.push({ brand, text: name, status: 'error' })
 		}
 	}
 
