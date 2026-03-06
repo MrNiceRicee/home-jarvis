@@ -8,6 +8,10 @@ interface ReadoutDisplayProps {
 	glow?: string
 	/** 0–1 intensity for text glow (0 = off, 1 = full brightness) */
 	glowIntensity?: number
+	/** scanline overlay opacity (default 0.04) */
+	scanlineIntensity?: number
+	/** scanline stripe color (default 'rgba(255,255,255,0.5)') */
+	scanlineTint?: string
 	/** accessible label for screen readers */
 	'aria-label'?: string
 	className?: string
@@ -31,7 +35,7 @@ function buildBoxShadow(glow?: string): string {
 	return base.join(', ')
 }
 
-export function ReadoutDisplay({ children, size = 'sm', glow, glowIntensity = 0, className, ...rest }: Readonly<ReadoutDisplayProps>) {
+export function ReadoutDisplay({ children, size = 'sm', glow, glowIntensity = 0, scanlineIntensity = 0.04, scanlineTint = 'rgba(255,255,255,0.5)', className, ...rest }: Readonly<ReadoutDisplayProps>) {
 	// constant backlit glow — always visible like an illuminated LCD, intensity scales brightness
 	const baseGlow = 0.15
 	const effectiveIntensity = Math.max(baseGlow, glowIntensity)
@@ -65,9 +69,10 @@ export function ReadoutDisplay({ children, size = 'sm', glow, glowIntensity = 0,
 			<div className="absolute inset-0 bg-gradient-to-b from-white/[0.07] via-white/[0.02] to-transparent pointer-events-none" />
 			{/* glass pane — scanline texture for LCD feel */}
 			<div
-				className="absolute inset-0 pointer-events-none opacity-[0.04]"
+				className="absolute inset-0 pointer-events-none"
 				style={{
-					backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255,255,255,0.5) 1px, rgba(255,255,255,0.5) 2px)',
+					opacity: scanlineIntensity,
+					backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 1px, ${scanlineTint} 1px, ${scanlineTint} 2px)`,
 				}}
 			/>
 			{/* glass pane — bottom edge darkening (glass thickness shadow) */}
