@@ -41,29 +41,21 @@ type ModulePanelProps = Readonly<
 	}
 >
 
-function RecessedLed({ lit, error }: Readonly<{ lit: boolean; error?: boolean }>) {
+function BezelLed({ lit, error }: Readonly<{ lit: boolean; error?: boolean }>) {
 	const ledColor = error
-		? { bg: 'radial-gradient(circle at 35% 30%, #fca5a5, #ef4444 50%, #dc2626 100%)', glow: '0 0 4px rgba(239,68,68,0.5), 0 0 10px rgba(239,68,68,0.25)' }
+		? { bg: 'radial-gradient(circle at 35% 30%, #fca5a5, #ef4444 50%, #dc2626 100%)', glow: '0 0 4px rgba(239,68,68,0.5), 0 0 8px rgba(239,68,68,0.2)' }
 		: lit
-			? { bg: 'radial-gradient(circle at 35% 30%, #6ee7b7, #34d399 50%, #059669 100%)', glow: '0 0 4px rgba(52,211,153,0.6), 0 0 10px rgba(52,211,153,0.3)' }
-			: { bg: '#44403c', glow: 'none' }
+			? { bg: 'radial-gradient(circle at 35% 30%, #6ee7b7, #34d399 50%, #059669 100%)', glow: '0 0 4px rgba(52,211,153,0.5), 0 0 8px rgba(52,211,153,0.2)' }
+			: { bg: 'radial-gradient(circle at 35% 30%, #a8a29e, #78716c 50%, #57534e 100%)', glow: 'none' }
 
 	return (
 		<div
-			className="w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0"
+			className="w-2 h-2 rounded-full shrink-0"
 			style={{
-				background: '#1a1914',
-				boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.08)',
+				background: ledColor.bg,
+				boxShadow: ledColor.glow,
 			}}
-		>
-			<div
-				className="w-1.5 h-1.5 rounded-full"
-				style={{
-					background: ledColor.bg,
-					boxShadow: ledColor.glow,
-				}}
-			/>
-		</div>
+		/>
 	)
 }
 
@@ -93,86 +85,90 @@ export function ModulePanel(props: ModulePanelProps) {
 				background: 'linear-gradient(to bottom, #d6d3cc, #c4c0b8)',
 				border: '1px solid rgba(168, 151, 125, 0.25)',
 				boxShadow: '0 2px 6px rgba(80, 60, 30, 0.08), 0 1px 2px rgba(80, 60, 30, 0.06), inset 0 1px 0 rgba(255,255,255,0.5)',
-				padding: '8px 8px 10px',
 			}}
 		>
+			{/* bezel top — LED + brand label on the housing */}
+			<div className="flex items-center gap-2 px-3 pt-3 pb-2">
+				<BezelLed lit={isPowered} error={isError} />
+				<span
+					className="font-michroma text-2xs text-stone-500 tracking-[0.15em] uppercase truncate"
+					style={{ textShadow: '0 1px 0 rgba(255,255,255,0.4)' }}
+				>
+					{props.meta.displayName}
+				</span>
+			</div>
+
 			{/* CRT screen — inset into bezel */}
-			<ReadoutDisplay
-				size="lg"
-				className="!flex flex-col w-full !items-stretch p-3 gap-2"
-				glowIntensity={isPowered ? 0.3 : 0}
-				scanlineIntensity={0.06}
-				aria-label={buildAriaLabel(props)}
-			>
-				{/* top row: LED + brand name */}
-				<div className="flex items-center gap-2">
-					<RecessedLed lit={isPowered} error={isError} />
-					<span
-						className="font-michroma text-2xs text-display-text/40 tracking-[0.15em] uppercase truncate"
-						style={{ textShadow: '0 0 6px rgba(250,240,220,0.1)' }}
-					>
-						{props.meta.displayName}
-					</span>
-				</div>
-
-				{/* center: icon + status readout */}
-				<div className="flex flex-col items-center gap-1 py-2">
-					<Icon
-						size={28}
-						weight="thin"
-						className={cn(
-							'text-display-text transition-opacity duration-300',
-							(!isPowered && !isError) && 'opacity-30',
-							isError && 'opacity-30',
-						)}
-					/>
-
-					{props.state === 'connected' && (
-						<>
-							<span className="font-ioskeley text-lg tabular-nums text-display-text leading-none">
-								<ScrambleText value={String(props.deviceCount)} />
-							</span>
-							<span className="font-ioskeley text-2xs text-display-text/50 uppercase tracking-wider">
-								<ScrambleText value={props.deviceCount === 0 ? 'NO DEVICES' : 'CONNECTED'} />
-							</span>
-						</>
-					)}
-
-					{props.state === 'available' && (
-						<span className="font-ioskeley text-lg tabular-nums text-display-text/20 leading-none">--</span>
-					)}
-
-					{props.state === 'error' && (
-						<span className="font-ioskeley text-2xs text-red-400 uppercase tracking-wider">
-							<ScrambleText value="ERROR" />
-						</span>
-					)}
-
-					{props.state === 'connecting' && (
-						<span className="font-ioskeley text-2xs text-display-text/50 uppercase tracking-wider animate-pulse">
-							<ScrambleText value="CONNECTING..." />
-						</span>
-					)}
-				</div>
-
-				{/* bottom: action buttons inside the screen */}
-				<div className="flex items-center gap-2 mt-auto pt-1">
-					{props.state === 'connected' && (
-						<ConnectedActions
-							meta={props.meta}
-							deviceCount={props.deviceCount}
-							onConfigure={props.onConfigure}
-							onRemove={props.onRemove}
+			<div className="px-3">
+				<ReadoutDisplay
+					size="lg"
+					className="!flex flex-col w-full !items-stretch p-3 gap-2"
+					glowIntensity={isPowered ? 0.3 : 0}
+					scanlineIntensity={0.06}
+					aria-label={buildAriaLabel(props)}
+				>
+					{/* center: icon + status readout */}
+					<div className="flex flex-col items-center gap-1 py-2">
+						<Icon
+							size={28}
+							weight="thin"
+							className={cn(
+								'text-display-text transition-opacity duration-300',
+								(!isPowered && !isError) && 'opacity-30',
+								isError && 'opacity-30',
+							)}
 						/>
-					)}
-					{props.state === 'available' && (
-						<AvailableActions meta={props.meta} onSubmit={props.onSubmit} />
-					)}
-					{props.state === 'error' && (
-						<TerminalButton label="RETRY" onPress={props.onRetry} />
-					)}
-				</div>
-			</ReadoutDisplay>
+
+						{props.state === 'connected' && (
+							<>
+								<span className="font-ioskeley text-lg tabular-nums text-display-text leading-none">
+									<ScrambleText value={String(props.deviceCount)} />
+								</span>
+								<span className="font-ioskeley text-2xs text-display-text/50 uppercase tracking-wider">
+									<ScrambleText value={props.deviceCount === 0 ? 'NO DEVICES' : 'CONNECTED'} />
+								</span>
+							</>
+						)}
+
+						{props.state === 'available' && (
+							<span className="font-ioskeley text-lg tabular-nums text-display-text/20 leading-none">--</span>
+						)}
+
+						{props.state === 'error' && (
+							<span className="font-ioskeley text-2xs text-red-400 uppercase tracking-wider">
+								<ScrambleText value="ERROR" />
+							</span>
+						)}
+
+						{props.state === 'connecting' && (
+							<span className="font-ioskeley text-2xs text-display-text/50 uppercase tracking-wider animate-pulse">
+								<ScrambleText value="CONNECTING..." />
+							</span>
+						)}
+					</div>
+
+					{/* action buttons inside the screen */}
+					<div className="flex items-center gap-2 mt-auto pt-1">
+						{props.state === 'connected' && (
+							<ConnectedActions
+								meta={props.meta}
+								deviceCount={props.deviceCount}
+								onConfigure={props.onConfigure}
+								onRemove={props.onRemove}
+							/>
+						)}
+						{props.state === 'available' && (
+							<AvailableActions meta={props.meta} onSubmit={props.onSubmit} />
+						)}
+						{props.state === 'error' && (
+							<TerminalButton label="RETRY" onPress={props.onRetry} />
+						)}
+					</div>
+				</ReadoutDisplay>
+			</div>
+
+			{/* bezel bottom spacing */}
+			<div className="h-3" />
 		</div>
 	)
 }
