@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 
+import { ConsolePanel, ConsolePanelLabel } from '../components/ui/console-panel'
+import { GaugeReadout } from '../components/ui/gauge-readout'
+import { StatusLed } from '../components/ui/status-led'
 import { api } from '../lib/api'
 import { cn } from '../lib/cn'
 
@@ -162,85 +165,6 @@ function StatusPanel({ status, paired, deviceCount, port }: Readonly<{
 				/>
 			</div>
 		</ConsolePanel>
-	)
-}
-
-function ConsolePanel({ children, className }: Readonly<{ children: React.ReactNode; className?: string }>) {
-	return (
-		<div
-			className={cn(
-				'rounded-xl overflow-hidden',
-				'bg-linear-to-b from-surface-warm to-stone-50/80',
-				'border border-[rgba(168,151,125,0.15)]',
-				'shadow-[var(--shadow-raised),var(--shadow-inner-glow)]',
-				'p-5',
-				className,
-			)}
-		>
-			{children}
-		</div>
-	)
-}
-
-function ConsolePanelLabel({ children }: Readonly<{ children: React.ReactNode }>) {
-	return (
-		<div className="flex items-center gap-2 mb-4">
-			<span className="font-michroma text-2xs font-semibold text-stone-400 tracking-[0.15em] uppercase">
-				{children}
-			</span>
-			<div className="flex-1 h-px bg-stone-200/60" />
-		</div>
-	)
-}
-
-function StatusLed({ status }: Readonly<{ status: string }>) {
-	const color =
-		status === 'running' ? 'bg-emerald-400 shadow-emerald-400/50'
-		: status === 'starting' ? 'bg-amber-400 shadow-amber-400/50 animate-pulse'
-		: status === 'error' ? 'bg-red-400 shadow-red-400/50'
-		: 'bg-stone-300 shadow-stone-300/30'
-
-	return (
-		<div className="relative flex items-center justify-center w-10 h-10">
-			{/* bezel ring */}
-			<div
-				className={cn(
-					'absolute inset-0 rounded-full',
-					'bg-linear-to-b from-stone-200 to-stone-300',
-					'shadow-[inset_0_1px_2px_rgba(0,0,0,0.08),0_1px_0_rgba(255,255,255,0.6)]',
-				)}
-			/>
-			{/* inset well */}
-			<div
-				className={cn(
-					'absolute inset-[3px] rounded-full',
-					'bg-linear-to-b from-stone-700 to-stone-800',
-					'shadow-[inset_0_1px_3px_rgba(0,0,0,0.3)]',
-				)}
-			/>
-			{/* LED dot */}
-			<div className={cn('relative w-3.5 h-3.5 rounded-full', color, 'shadow-[0_0_6px_currentColor]')} />
-		</div>
-	)
-}
-
-function GaugeReadout({ label, value, valueClass }: Readonly<{ label: string; value: string | number; valueClass?: string }>) {
-	return (
-		<div
-			className={cn(
-				'rounded-lg px-3 py-2.5 text-center',
-				'bg-linear-to-b from-stone-50 to-stone-100/60',
-				'border border-stone-200/50',
-				'shadow-[var(--shadow-inset)]',
-			)}
-		>
-			<p className={cn('font-ioskeley text-lg font-semibold tabular-nums', valueClass ?? 'text-stone-800')}>
-				{value}
-			</p>
-			<p className="font-michroma text-[9px] text-stone-400 tracking-[0.2em] mt-0.5 uppercase">
-				{label}
-			</p>
-		</div>
 	)
 }
 

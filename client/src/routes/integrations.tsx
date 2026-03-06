@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect } from 'react'
 
-import type { DetectedDevice, Device, IntegrationsResponse } from '../types'
+import type { DetectedDevice, IntegrationsResponse } from '../types'
 
 import {
 	AdditionalDeviceCard,
@@ -12,6 +12,7 @@ import {
 import { useScanStream } from '../hooks/useScanStream'
 import { api } from '../lib/api'
 import { cn } from '../lib/cn'
+import { useDeviceStore } from '../stores/device-store'
 
 export const Route = createFileRoute('/integrations')({ component: Integrations })
 
@@ -85,13 +86,7 @@ function Integrations() {
 		},
 	})
 
-	// reactively subscribe to SSE device cache so filtering re-renders when snapshot arrives
-	const { data: existingDevices = [] } = useQuery<Device[]>({
-		queryKey: ['devices'],
-		queryFn: () => [], // SSE populates this — never fetched
-		staleTime: Infinity,
-		gcTime: Infinity,
-	})
+	const existingDevices = useDeviceStore((s) => s.devices)
 
 	if (isLoading) {
 		return (
