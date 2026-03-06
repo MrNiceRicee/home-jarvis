@@ -207,10 +207,10 @@ function ConnectedActions({ meta, deviceCount, onConfigure, onRemove }: Readonly
 				<RaisedModal className="max-w-sm">
 					{({ close }) => (
 						<>
-							<Heading slot="title" className="text-base font-semibold text-stone-900 mb-2">
+							<Heading slot="title" className="font-michroma text-2xs text-stone-600 tracking-[0.15em] uppercase mb-2" style={{ textShadow: '0 -1px 0 rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.4)' }}>
 								Remove {meta.displayName}?
 							</Heading>
-							<p className="text-sm text-stone-500 mb-5">
+							<p className="font-ioskeley text-xs text-stone-500 mb-5">
 								{deviceCount} device{deviceCount !== 1 ? 's' : ''} will be removed. Matter accessories will be unexposed.
 							</p>
 							<div className="flex gap-2 justify-end">
