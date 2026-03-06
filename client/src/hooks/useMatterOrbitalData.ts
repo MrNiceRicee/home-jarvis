@@ -9,27 +9,21 @@ interface MatterData {
 	port: number
 }
 
-interface OrbGradient {
-	highlight: string
-	mid: string
-	edge: string
-}
-
 interface OrbitalData {
 	status: BridgeStatus
 	paired: boolean
 	deviceCount: number
 	port: number
-	orbGradient: OrbGradient
-	shouldPulse: boolean
+	orbColor: string
+	shouldAnimate: boolean
 	statusLabel: string
 }
 
-const GRADIENTS: Record<BridgeStatus, OrbGradient> = {
-	running: { highlight: '#6ee7b7', mid: '#34d399', edge: '#059669' },
-	starting: { highlight: '#fde68a', mid: '#fbbf24', edge: '#d97706' },
-	error: { highlight: '#fca5a5', mid: '#ef4444', edge: '#dc2626' },
-	stopped: { highlight: '#d6d3cd', mid: '#a8a29e', edge: '#78716c' },
+const ORB_COLORS: Record<BridgeStatus, string> = {
+	running: '#34d399',
+	starting: '#fbbf24',
+	error: '#ef4444',
+	stopped: '#a8a29e',
 }
 
 function normalizeBridgeStatus(status: string): BridgeStatus {
@@ -60,8 +54,8 @@ export function useMatterOrbitalData(matterData: MatterData | undefined): Orbita
 			paired,
 			deviceCount,
 			port,
-			orbGradient: GRADIENTS[status],
-			shouldPulse: status === 'running',
+			orbColor: ORB_COLORS[status],
+			shouldAnimate: status === 'running',
 			statusLabel,
 		}
 	}, [matterData?.status, matterData?.paired, matterData?.deviceCount, matterData?.port])

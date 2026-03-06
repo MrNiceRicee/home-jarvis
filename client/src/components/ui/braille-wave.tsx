@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 
+import { useReducedMotion } from '../../hooks/useReducedMotion'
 import { cn } from '../../lib/cn'
 
 // 4 braille height levels: empty → bottom row → bottom 3 rows → full
@@ -23,18 +24,7 @@ type BrailleWaveProps = Readonly<{
 
 export function BrailleWave({ isActive, className }: BrailleWaveProps) {
 	const [wave, setWave] = useState(() => buildWave(0))
-
-	// reduced motion check
-	const [reducedMotion, setReducedMotion] = useState(
-		() => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-	)
-
-	useEffect(() => {
-		const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-		const handler = (e: MediaQueryListEvent) => setReducedMotion(e.matches)
-		mq.addEventListener('change', handler)
-		return () => mq.removeEventListener('change', handler)
-	}, [])
+	const reducedMotion = useReducedMotion()
 
 	useEffect(() => {
 		if (!isActive || reducedMotion) return

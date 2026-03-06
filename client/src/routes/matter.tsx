@@ -66,28 +66,30 @@ function MatterPage() {
 	const isRunning = bridge?.status === 'running'
 
 	// transition state machine: unpaired → commissioned (2s hold) → paired
+	const viewRef = useRef<ViewState>(isPaired ? 'paired' : 'unpaired')
 	const [view, setView] = useState<ViewState>(isPaired ? 'paired' : 'unpaired')
 	const commissionTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
 	useEffect(() => {
-		// clear any pending commission timer on state change
-		clearTimeout(commissionTimerRef.current)
+		const cancelToken = { canceled: false }
 
-		if (isPaired && view === 'unpaired') {
-			// entering paired state — show commissioned confirmation
+		if (isPaired && viewRef.current === 'unpaired') {
+			viewRef.current = 'commissioned'
 			setView('commissioned')
 			useReadoutStore.getState().pushNotification('bridge: paired')
-			commissionTimerRef.current = setTimeout(() => {
-				setView('paired')
-			}, 2_000)
-		} else if (!isPaired && (view === 'paired' || view === 'commissioned')) {
-			// lost pairing — go back to unpaired
+			// timer starts from onAnimationComplete — not here
+		} else if (!isPaired && viewRef.current !== 'unpaired') {
+			clearTimeout(commissionTimerRef.current)
+			viewRef.current = 'unpaired'
 			setView('unpaired')
 			useReadoutStore.getState().pushNotification('bridge: disconnected')
 		}
 
-		return () => clearTimeout(commissionTimerRef.current)
-	}, [isPaired, view])
+		return () => {
+			cancelToken.canceled = true
+			clearTimeout(commissionTimerRef.current)
+		}
+	}, [isPaired])
 
 	if (isLoading) {
 		return (
@@ -167,6 +169,13 @@ function MatterPage() {
 						animate={{ opacity: 1, scale: 1 }}
 						exit={{ opacity: 0, scale: 0.95 }}
 						transition={{ duration: 0.3 }}
+						onAnimationComplete={() => {
+							commissionTimerRef.current = setTimeout(() => {
+								if (viewRef.current !== 'commissioned') return
+								viewRef.current = 'paired'
+								setView('paired')
+							}, 2_000)
+						}}
 						className="flex flex-col items-center justify-center py-12"
 					>
 						<div
@@ -220,7 +229,11 @@ function MatterPage() {
 								<div className="grid grid-cols-3 gap-3">
 									<DarkGauge label="DEVICES" value={deviceCount} />
 									<DarkGauge label="PORT" value={port || '—'} />
-									<DarkGauge label="LINK" value="OK" valueClass="text-emerald-400" />
+									<DarkGauge
+									label="LINK"
+									value={isPaired ? 'OK' : '\u2014'}
+									valueClass={isPaired ? 'text-emerald-400' : undefined}
+								/>
 								</div>
 							</DarkConsolePanel>
 
