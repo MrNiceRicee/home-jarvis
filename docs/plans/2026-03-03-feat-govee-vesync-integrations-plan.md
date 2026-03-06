@@ -1,7 +1,7 @@
 ---
 title: "feat: Add Govee and VeSync cloud integrations"
 type: feat
-status: active
+status: completed
 date: 2026-03-03
 ---
 

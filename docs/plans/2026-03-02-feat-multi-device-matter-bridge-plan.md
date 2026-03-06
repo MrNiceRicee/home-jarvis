@@ -1,7 +1,7 @@
 ---
 title: "feat: Multi-Device Model + Matter Bridge"
 type: feat
-status: active
+status: superseded
 date: 2026-03-02
 deepened: 2026-03-02
 origin: docs/brainstorms/2026-03-02-multi-device-integration-model-brainstorm.md

@@ -1,7 +1,7 @@
 ---
 title: "feat: Device Card Redesign — Sony ES Retro 3D Panels"
 type: feat
-status: active
+status: superseded
 date: 2026-03-03
 deepened: 2026-03-03
 reviewed: 2026-03-03

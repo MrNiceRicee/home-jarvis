@@ -1,7 +1,7 @@
 ---
 title: "feat: Build Home Jarvis IoT Integration Portal"
 type: feat
-status: active
+status: completed
 date: 2026-02-28
 origin: docs/brainstorms/2026-02-28-home-jarvis-brainstorm.md
 ---
