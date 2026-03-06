@@ -90,9 +90,6 @@ export function ScanLog({ brands, brandResults, scanning, done, error, brandDisp
 		return () => clearTimeout(scrollTimerRef.current)
 	}, [entries.length])
 
-	// find the last brand that is currently scanning (for cursor placement)
-	const lastScanningBrand = [...entries].reverse().find((e) => e.status === 'scanning')?.brand
-
 	const isEmpty = entries.length === 0 && !scanning && !error
 
 	return (
@@ -148,9 +145,6 @@ export function ScanLog({ brands, brandResults, scanning, done, error, brandDisp
 							>
 								<span className="truncate">
 									{entry.text}
-									{entry.brand === lastScanningBrand && (
-										<span className="scan-cursor ml-0.5">{'\u2588'}</span>
-									)}
 								</span>
 								<span className="tabular-nums text-right">
 									{entry.status === 'found' && <ScrambleText value={`${entry.count} found`} range={[0x2800, 0x28FF]} />}
@@ -165,13 +159,12 @@ export function ScanLog({ brands, brandResults, scanning, done, error, brandDisp
 							<ScrambleText value={error} />
 						</div>
 					)}
-					{onRescan && scanning && (
-						<div className="mt-2 mb-1">
-							<TerminalButton
-								label="RESCAN"
-								onPress={onRescan}
-								isDisabled
-							/>
+					{scanning && (
+						<div className="grid grid-cols-[1fr_auto] gap-4 py-0.5 text-display-text/60">
+							<span>scanning devices<span className="scan-cursor ml-0.5">{'\u2588'}</span></span>
+							{onRescan && (
+								<TerminalButton label="RESCAN" onPress={onRescan} isDisabled />
+							)}
 						</div>
 					)}
 				</div>
