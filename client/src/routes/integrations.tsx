@@ -10,6 +10,7 @@ import { IntegrationFormInner } from '../components/IntegrationForm'
 import { ModulePanel } from '../components/ModulePanel'
 import { ScanLog } from '../components/ScanLog'
 import { RaisedButton } from '../components/ui/button'
+import { ConsolePanelLabel } from '../components/ui/console-panel'
 import { RaisedModal } from '../components/ui/modal'
 import { useScanStream } from '../hooks/useScanStream'
 import { api } from '../lib/api'
@@ -17,12 +18,20 @@ import { useDeviceStore } from '../stores/device-store'
 
 export const Route = createFileRoute('/integrations')({ component: Integrations })
 
+function extractErrorMessage(value: unknown, fallback: string): string {
+	if (typeof value === 'object' && value !== null && 'message' in value) {
+		return (value as { message: string }).message
+	}
+	if (typeof value === 'object' && value !== null && 'error' in value) {
+		return (value as { error: string }).error
+	}
+	return fallback
+}
+
 async function fetchIntegrations(): Promise<IntegrationsResponse> {
 	const { data, error } = await api.api.integrations.get()
 	if (error)
-		throw new Error(
-			(error.value as { message?: string })?.message ?? 'Failed to fetch integrations',
-		)
+		throw new Error(extractErrorMessage(error.value, 'Failed to fetch integrations'))
 	return data ?? { configured: [], available: [] }
 }
 
@@ -45,7 +54,7 @@ function Integrations() {
 	const addMutation = useMutation({
 		mutationFn: async ({ brand, config }: { brand: string; config: Record<string, string> }) => {
 			const { error } = await api.api.integrations.post({ brand, config })
-			if (error) throw new Error((error.value as { error?: string })?.error ?? 'Failed to connect')
+			if (error) throw new Error(extractErrorMessage(error.value, 'Failed to connect'))
 		},
 		onSuccess: () => {
 			void queryClient.invalidateQueries({ queryKey: ['integrations'] })
@@ -67,14 +76,18 @@ function Integrations() {
 		mutationFn: async ({ brand, ip }: { brand: string; ip: string }) => {
 			const { data, error } = await api.api.devices['add-from-scan'].post({ brand, ip })
 			if (error)
-				throw new Error((error.value as { error?: string })?.error ?? 'Failed to add device')
+				throw new Error(extractErrorMessage(error.value, 'Failed to add device'))
 			return data
 		},
 	})
 
-	// configure modal state — which brand is being configured
+	// configure modal state
 	const [configuringBrand, setConfiguringBrand] = useState<string | null>(null)
 	const configuringMeta = data?.available?.find((m) => m.brand === configuringBrand)
+
+	// error/connecting state for discovery-only connect
+	const [failedBrand, setFailedBrand] = useState<{ brand: string; message: string } | null>(null)
+	const [connectingBrand, setConnectingBrand] = useState<string | null>(null)
 
 	const existingDevices = useDeviceStore((s) => s.devices)
 
@@ -111,7 +124,6 @@ function Integrations() {
 		return d.brand === 'hue' && d.details.bridgeIp != null
 	}
 
-	// devices from already-connected brands, excluding already-added ones and bridge hubs
 	const additionalDevices = scan.devices.filter(
 		(d) => configuredBrands.has(d.brand) && !isAlreadyAdded(d) && !isBridgeHub(d),
 	)
@@ -119,23 +131,39 @@ function Integrations() {
 	const brandDisplayName = (brand: string) =>
 		data?.available?.find((m) => m.brand === brand)?.displayName ?? brand
 
-	// device counts per brand
 	const deviceCountByBrand = new Map<string, number>()
 	for (const d of existingDevices) {
 		const count = deviceCountByBrand.get(d.brand) ?? 0
 		deviceCountByBrand.set(d.brand, count + 1)
 	}
 
-	// split into connected (first) and available modules
 	const connectedModules = (data?.available ?? []).filter((m) => configuredBrands.has(m.brand))
 	const availableModules = (data?.available ?? []).filter((m) => !configuredBrands.has(m.brand))
 
 	async function handleSubmit(brand: string, config: Record<string, string>) {
-		await addMutation.mutateAsync({ brand, config })
+		setConnectingBrand(brand)
+		try {
+			await addMutation.mutateAsync({ brand, config })
+			setConnectingBrand(null)
+			setFailedBrand(null)
+		} catch (e) {
+			setConnectingBrand(null)
+			setFailedBrand({ brand, message: (e as Error).message })
+		}
 	}
 
 	async function handleRemove(brand: string) {
 		await removeMutation.mutateAsync(brand)
+	}
+
+	function handleRescan() {
+		setFailedBrand(null)
+		scan.startScan()
+	}
+
+	function handleRetry(brand: string) {
+		setFailedBrand(null)
+		void handleSubmit(brand, {})
 	}
 
 	const scanning = scan.status === 'scanning'
@@ -151,19 +179,7 @@ function Integrations() {
 
 			{/* scan section */}
 			<section className="mb-8">
-				<div className="flex items-center justify-between mb-3">
-					<span className="font-michroma text-[9px] text-stone-400 tracking-[0.15em] uppercase">
-						Network Scan
-					</span>
-					<RaisedButton
-						variant="raised"
-						size="sm"
-						onPress={scan.startScan}
-						isDisabled={scanning}
-					>
-						{scanning ? 'Scanning...' : 'Scan Again'}
-					</RaisedButton>
-				</div>
+				<ConsolePanelLabel>Network Scan</ConsolePanelLabel>
 				<ScanLog
 					brands={scan.brands}
 					brandResults={scan.brandResults}
@@ -171,19 +187,15 @@ function Integrations() {
 					done={scan.status === 'done'}
 					error={scan.error}
 					brandDisplayName={brandDisplayName}
+					onRescan={handleRescan}
 				/>
 			</section>
 
 			{/* additional devices from connected brands */}
 			{additionalDevices.length > 0 && (
 				<section className="mb-8">
-					<div className="flex items-center gap-2 mb-3">
-						<span className="font-michroma text-[9px] text-stone-400 tracking-[0.15em] uppercase">
-							Additional Devices
-						</span>
-						<div className="flex-1 h-px bg-stone-200/60" />
-					</div>
-					<div className="space-y-2">
+					<ConsolePanelLabel>Additional Devices</ConsolePanelLabel>
+					<div>
 						{additionalDevices.map((detected, i) => (
 							<AdditionalDeviceRow
 								key={`additional-${detected.brand}-${detected.details.ip ?? detected.details.bridgeIp ?? i}`}
@@ -202,14 +214,8 @@ function Integrations() {
 
 			{/* module rack */}
 			<section>
-				<div className="flex items-center gap-2 mb-4">
-					<span className="font-michroma text-[9px] text-stone-400 tracking-[0.15em] uppercase">
-						Integrations
-					</span>
-					<div className="flex-1 h-px bg-stone-200/60" />
-				</div>
+				<ConsolePanelLabel>Integrations</ConsolePanelLabel>
 				<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-					{/* connected modules first */}
 					{connectedModules.map((meta) => {
 						const integration = data?.configured?.find((i) => i.brand === meta.brand)
 						if (!integration) return null
@@ -225,22 +231,42 @@ function Integrations() {
 							/>
 						)
 					})}
-					{/* available modules */}
-					{availableModules.map((meta) => (
-						<ModulePanel
-							key={meta.brand}
-							state="available"
-							meta={meta}
-							onSubmit={handleSubmit}
-						/>
-					))}
+					{availableModules.map((meta) => {
+						if (failedBrand?.brand === meta.brand) {
+							return (
+								<ModulePanel
+									key={meta.brand}
+									state="error"
+									meta={meta}
+									errorMessage={failedBrand.message}
+									onRetry={() => handleRetry(meta.brand)}
+								/>
+							)
+						}
+						if (connectingBrand === meta.brand) {
+							return (
+								<ModulePanel
+									key={meta.brand}
+									state="connecting"
+									meta={meta}
+								/>
+							)
+						}
+						return (
+							<ModulePanel
+								key={meta.brand}
+								state="available"
+								meta={meta}
+								onSubmit={handleSubmit}
+							/>
+						)
+					})}
 				</div>
 			</section>
 
 			{/* configure modal (triggered by "Configure" button on connected modules) */}
 			{configuringMeta && (
 				<DialogTrigger isOpen={!!configuringBrand} onOpenChange={(open) => { if (!open) setConfiguringBrand(null) }}>
-					{/* no visual trigger — opened programmatically */}
 					<RaisedButton className="hidden">Configure</RaisedButton>
 					<RaisedModal>
 						{({ close }) => (
