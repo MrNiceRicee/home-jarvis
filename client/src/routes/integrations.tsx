@@ -1,32 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { DialogTrigger } from 'react-aria-components'
 
 import type { DetectedDevice, IntegrationsResponse } from '../types'
 
-import {
-	AdditionalDeviceCard,
-	IntegrationCard,
-	QuickConnectCard,
-} from '../components/IntegrationForm'
+import { AdditionalDeviceCard } from '../components/IntegrationForm'
+import { IntegrationFormInner } from '../components/IntegrationForm'
+import { ModulePanel } from '../components/ModulePanel'
+import { ScanLog } from '../components/ScanLog'
+import { RaisedButton } from '../components/ui/button'
+import { RaisedModal } from '../components/ui/modal'
 import { useScanStream } from '../hooks/useScanStream'
 import { api } from '../lib/api'
-import { cn } from '../lib/cn'
 import { useDeviceStore } from '../stores/device-store'
 
 export const Route = createFileRoute('/integrations')({ component: Integrations })
-
-function scanPillClass(error: string | undefined, done: boolean) {
-	if (error) return 'bg-red-50 text-red-600'
-	if (done) return 'bg-emerald-50 text-emerald-700'
-	return 'bg-amber-50 text-amber-600 animate-pulse'
-}
-
-function resultPillClass(r: { error?: string; count: number }) {
-	if (r.error) return 'bg-red-50 text-red-600'
-	if (r.count > 0) return 'bg-emerald-50 text-emerald-700'
-	return 'bg-stone-100 text-stone-500'
-}
 
 async function fetchIntegrations(): Promise<IntegrationsResponse> {
 	const { data, error } = await api.api.integrations.get()
@@ -47,10 +36,10 @@ function Integrations() {
 
 	const scan = useScanStream()
 
-	// auto-scan on first visit (skip if we already have results from a previous scan)
+	// auto-scan on first visit
 	useEffect(() => {
 		if (scan.status === 'idle') scan.startScan()
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- only on mount, skip if cache has data
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- only on mount
 	}, [])
 
 	const addMutation = useMutation({
@@ -81,17 +70,20 @@ function Integrations() {
 				throw new Error((error.value as { error?: string })?.error ?? 'Failed to add device')
 			return data
 		},
-		onSuccess: () => {
-			// device:new SSE events handle cache updates automatically
-		},
 	})
+
+	// configure modal state — which brand is being configured
+	const [configuringBrand, setConfiguringBrand] = useState<string | null>(null)
+	const configuringMeta = data?.available?.find((m) => m.brand === configuringBrand)
 
 	const existingDevices = useDeviceStore((s) => s.devices)
 
 	if (isLoading) {
 		return (
 			<div className="flex items-center justify-center py-24">
-				<div className="text-sm text-stone-400">Loading…</div>
+				<span className="font-ioskeley text-xs text-stone-400 animate-pulse tracking-widest">
+					LOADING...
+				</span>
 			</div>
 		)
 	}
@@ -101,39 +93,42 @@ function Integrations() {
 			<div className="flex flex-col items-center justify-center py-24 text-center">
 				<p className="text-sm font-medium text-red-600 mb-1">Failed to load integrations</p>
 				<p className="text-xs text-stone-400">{error?.message ?? 'Unknown error'}</p>
-				<p className="text-xs text-stone-400 mt-1">Is the server running on port 3001?</p>
 			</div>
 		)
 	}
 
 	const configuredBrands = new Set(data?.configured?.map((i) => i.brand) ?? [])
 	const existingIps = new Set(
-		existingDevices.map((d) => d.externalId.replace(/:\d+$/, '')), // strip port suffix e.g. "192.168.1.28:0" → "192.168.1.28"
+		existingDevices.map((d) => d.externalId.replace(/:\d+$/, '')),
 	)
 
-	// check if a detected device matches one already in the system
 	function isAlreadyAdded(d: DetectedDevice) {
 		const ip = d.details.ip ?? d.details.bridgeIp
 		return ip ? existingIps.has(ip) : false
 	}
 
-	// hue scan returns the bridge hub, not individual devices — filter it out when already connected
 	function isBridgeHub(d: DetectedDevice) {
 		return d.brand === 'hue' && d.details.bridgeIp != null
 	}
 
-	// devices from brands not yet connected — show as Quick Connect
-	const newBrandDevices = scan.devices.filter((d) => !configuredBrands.has(d.brand))
 	// devices from already-connected brands, excluding already-added ones and bridge hubs
 	const additionalDevices = scan.devices.filter(
 		(d) => configuredBrands.has(d.brand) && !isAlreadyAdded(d) && !isBridgeHub(d),
 	)
-	const scanning = scan.status === 'scanning'
-	const completedBrandSet = new Set(scan.brandResults.map((r) => r.brand))
 
-	// map brand key → display name from available integrations
 	const brandDisplayName = (brand: string) =>
 		data?.available?.find((m) => m.brand === brand)?.displayName ?? brand
+
+	// device counts per brand
+	const deviceCountByBrand = new Map<string, number>()
+	for (const d of existingDevices) {
+		const count = deviceCountByBrand.get(d.brand) ?? 0
+		deviceCountByBrand.set(d.brand, count + 1)
+	}
+
+	// split into connected (first) and available modules
+	const connectedModules = (data?.available ?? []).filter((m) => configuredBrands.has(m.brand))
+	const availableModules = (data?.available ?? []).filter((m) => !configuredBrands.has(m.brand))
 
 	async function handleSubmit(brand: string, config: Record<string, string>) {
 		await addMutation.mutateAsync({ brand, config })
@@ -143,106 +138,50 @@ function Integrations() {
 		await removeMutation.mutateAsync(brand)
 	}
 
+	const scanning = scan.status === 'scanning'
+
 	return (
 		<div>
-			<div className="mb-6">
-				<h1 className="text-xl font-semibold text-stone-900">Integrations</h1>
-				<p className="text-sm text-stone-400 mt-0.5">Connect your smart home device accounts</p>
+			{/* header */}
+			<div className="mb-8">
+				<h1 className="font-michroma text-sm font-semibold text-stone-800 tracking-[0.15em] uppercase">
+					Integrations
+				</h1>
 			</div>
 
-			{/* ── Detected on network ─────────────────────────────────────────────── */}
-			<div className="mb-6">
-				<div className="flex items-center justify-between mb-2">
-					<h2 className="text-xs font-semibold text-stone-500 uppercase tracking-wide">
-						Detected on Your Network
-					</h2>
-					<button
-						type="button"
-						onClick={scan.startScan}
-						disabled={scanning}
-						className="text-xs text-stone-400 hover:text-stone-600 disabled:opacity-40 transition-colors"
+			{/* scan section */}
+			<section className="mb-8">
+				<div className="flex items-center justify-between mb-3">
+					<span className="font-michroma text-[9px] text-stone-400 tracking-[0.15em] uppercase">
+						Network Scan
+					</span>
+					<RaisedButton
+						variant="raised"
+						size="sm"
+						onPress={scan.startScan}
+						isDisabled={scanning}
 					>
-						{scanning ? 'Scanning...' : 'Scan again'}
-					</button>
+						{scanning ? 'Scanning...' : 'Scan Again'}
+					</RaisedButton>
 				</div>
+				<ScanLog
+					brands={scan.brands}
+					brandResults={scan.brandResults}
+					scanning={scanning}
+					done={scan.status === 'done'}
+					error={scan.error}
+					brandDisplayName={brandDisplayName}
+				/>
+			</section>
 
-				{/* per-brand scan progress */}
-				{scanning && scan.brands.length > 0 && (
-					<div className="flex flex-wrap gap-2 mb-3">
-						{scan.brands.map((brand) => {
-							const result = scan.brandResults.find((r) => r.brand === brand)
-							const done = completedBrandSet.has(brand)
-							return (
-								<span
-									key={brand}
-									className={cn(
-										'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium',
-										scanPillClass(result?.error, done),
-									)}
-								>
-									{brandDisplayName(brand)}
-									{!done && ' ...'}
-									{done && !result?.error && ` · ${result?.count ?? 0}`}
-									{result?.error && ' · error'}
-								</span>
-							)
-						})}
-					</div>
-				)}
-
-				{/* done summary */}
-				{scan.status === 'done' && scan.brandResults.length > 0 && (
-					<div className="flex flex-wrap gap-2 mb-3">
-						{scan.brandResults.map((r) => (
-							<span
-								key={r.brand}
-								className={cn(
-									'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium',
-									resultPillClass(r),
-								)}
-							>
-								{brandDisplayName(r.brand)} · {r.error ? 'error' : `${r.count} found`}
-							</span>
-						))}
-					</div>
-				)}
-
-				{!scanning &&
-					newBrandDevices.length === 0 &&
-					additionalDevices.length === 0 &&
-					scan.status !== 'idle' && (
-						<p className="text-xs text-stone-400">
-							No new devices detected. Make sure your hubs are powered on.
-						</p>
-					)}
-
-				<div className="space-y-2">
-					{newBrandDevices.map((detected, i) => {
-						const meta = data?.available?.find((m) => m.brand === detected.brand)
-						if (!meta) return null
-						return (
-							<QuickConnectCard
-								key={`${detected.brand}-${detected.details.ip ?? detected.details.bridgeIp ?? i}`}
-								detected={detected}
-								meta={meta}
-								onSubmit={handleSubmit}
-							/>
-						)
-					})}
-				</div>
-			</div>
-
-			{/* ── Additional devices for connected brands ─────────────────────── */}
+			{/* additional devices from connected brands */}
 			{additionalDevices.length > 0 && (
-				<div className="mb-6">
-					<div className="flex items-center justify-between mb-2">
-						<h2 className="text-xs font-semibold text-stone-500 uppercase tracking-wide">
-							Additional Devices Found
-						</h2>
-						<span className="text-xs text-stone-400">
-							{additionalDevices.length} device{additionalDevices.length !== 1 ? 's' : ''} from
-							connected brands
+				<section className="mb-8">
+					<div className="flex items-center gap-2 mb-3">
+						<span className="font-michroma text-[9px] text-stone-400 tracking-[0.15em] uppercase">
+							Additional Devices
 						</span>
+						<div className="flex-1 h-px bg-stone-200/60" />
 					</div>
 					<div className="space-y-2">
 						{additionalDevices.map((detected, i) => (
@@ -258,21 +197,69 @@ function Integrations() {
 							/>
 						))}
 					</div>
-				</div>
+				</section>
 			)}
 
-			{/* ── All integrations ─────────────────────────────────────────────────── */}
-			<div className="space-y-3">
-				{(data?.available ?? []).map((meta) => (
-					<IntegrationCard
-						key={meta.brand}
-						meta={meta}
-						isConfigured={configuredBrands.has(meta.brand)}
-						onSubmit={handleSubmit}
-						onRemove={handleRemove}
-					/>
-				))}
-			</div>
+			{/* module rack */}
+			<section>
+				<div className="flex items-center gap-2 mb-4">
+					<span className="font-michroma text-[9px] text-stone-400 tracking-[0.15em] uppercase">
+						Integrations
+					</span>
+					<div className="flex-1 h-px bg-stone-200/60" />
+				</div>
+				<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+					{/* connected modules first */}
+					{connectedModules.map((meta) => {
+						const integration = data?.configured?.find((i) => i.brand === meta.brand)
+						if (!integration) return null
+						return (
+							<ModulePanel
+								key={meta.brand}
+								state="connected"
+								integration={integration}
+								deviceCount={deviceCountByBrand.get(meta.brand) ?? 0}
+								meta={meta}
+								onConfigure={() => setConfiguringBrand(meta.brand)}
+								onRemove={() => void handleRemove(meta.brand)}
+							/>
+						)
+					})}
+					{/* available modules */}
+					{availableModules.map((meta) => (
+						<ModulePanel
+							key={meta.brand}
+							state="available"
+							meta={meta}
+							onSubmit={handleSubmit}
+						/>
+					))}
+				</div>
+			</section>
+
+			{/* configure modal (triggered by "Configure" button on connected modules) */}
+			{configuringMeta && (
+				<DialogTrigger isOpen={!!configuringBrand} onOpenChange={(open) => { if (!open) setConfiguringBrand(null) }}>
+					{/* no visual trigger — opened programmatically */}
+					<RaisedButton className="hidden">Configure</RaisedButton>
+					<RaisedModal>
+						{({ close }) => (
+							<IntegrationFormInner
+								meta={configuringMeta}
+								onSubmit={async (config) => {
+									await handleSubmit(configuringMeta.brand, config)
+									close()
+									setConfiguringBrand(null)
+								}}
+								onCancel={() => {
+									close()
+									setConfiguringBrand(null)
+								}}
+							/>
+						)}
+					</RaisedModal>
+				</DialogTrigger>
+			)}
 		</div>
 	)
 }
