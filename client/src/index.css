@@ -51,7 +51,7 @@ html {
 /* matter orbital animations — CSS keyframes for compositor-thread performance */
 @keyframes core-pulse {
 	0%, 100% { transform: scale(1); }
-	50% { transform: scale(1.05); }
+	50% { transform: scale(1.03); }
 }
 
 @keyframes ring-rotate {
@@ -59,24 +59,18 @@ html {
 	to { transform: rotate(360deg); }
 }
 
-.core-orb {
-	animation: core-pulse 3s ease-in-out infinite;
-	transform-origin: 250px 250px;
-	will-change: transform;
-}
-
-.core-orb-error {
+.text-art-orb {
+	animation: core-pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 	transform-origin: 250px 250px;
 }
 
 .metadata-ring-group {
 	animation: ring-rotate 60s linear infinite;
 	transform-origin: 250px 250px;
-	will-change: transform;
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.core-orb,
+	.text-art-orb,
 	.metadata-ring-group {
 		animation: none;
 	}

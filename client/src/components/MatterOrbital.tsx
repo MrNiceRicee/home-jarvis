@@ -1,5 +1,7 @@
 import type { useMatterOrbitalData } from '../hooks/useMatterOrbitalData'
 
+import { TextArtOrb } from './ui/text-art-orb'
+
 type OrbitalData = ReturnType<typeof useMatterOrbitalData>
 
 interface MatterOrbitalProps {
@@ -38,9 +40,7 @@ function MetadataLabel({ x, y, label, value }: Readonly<{
 }
 
 export function MatterOrbital({ data }: Readonly<MatterOrbitalProps>) {
-	const { orbGradient, shouldPulse, statusLabel, port, paired, deviceCount } = data
-	const gradientId = 'core-orb-gradient'
-	const filterId = 'core-glow'
+	const { orbColor, shouldAnimate, statusLabel, port, paired, deviceCount } = data
 
 	// uptime placeholder — shown as dashes since we don't track actual uptime
 	const uptimeDisplay = data.status === 'running' ? 'LIVE' : '--'
@@ -54,24 +54,22 @@ export function MatterOrbital({ data }: Readonly<MatterOrbitalProps>) {
 				aria-label={statusLabel}
 			>
 				<defs>
-					<radialGradient id={gradientId} cx="40%" cy="35%">
-						<stop offset="0%" stopColor={orbGradient.highlight} />
-						<stop offset="50%" stopColor={orbGradient.mid} />
-						<stop offset="100%" stopColor={orbGradient.edge} />
-					</radialGradient>
-					{shouldPulse && (
-						<filter id={filterId}>
-							<feGaussianBlur stdDeviation="6" result="blur" />
-							<feMerge>
-								<feMergeNode in="blur" />
-								<feMergeNode in="SourceGraphic" />
-							</feMerge>
-						</filter>
-					)}
-					{/* glow circle for non-stopped states (using radial gradient, not blur filter) */}
+					{/* phosphor bloom — tight inner glow + wider outer glow */}
+					<filter id="phosphor-bloom">
+						<feGaussianBlur in="SourceGraphic" stdDeviation="1.2" result="blur1" />
+						<feGaussianBlur in="SourceGraphic" stdDeviation="0.4" result="blur2" />
+						<feMerge>
+							<feMergeNode in="blur1" />
+							<feMergeNode in="blur2" />
+							<feMergeNode in="SourceGraphic" />
+						</feMerge>
+					</filter>
+
+					{/* glow halo behind the orb */}
 					<radialGradient id="orb-glow">
-						<stop offset="0%" stopColor={orbGradient.mid} stopOpacity="0.3" />
-						<stop offset="100%" stopColor={orbGradient.mid} stopOpacity="0" />
+						<stop offset="0%" stopColor={orbColor} stopOpacity="0.25" />
+						<stop offset="60%" stopColor={orbColor} stopOpacity="0.08" />
+						<stop offset="100%" stopColor={orbColor} stopOpacity="0" />
 					</radialGradient>
 				</defs>
 
@@ -93,25 +91,13 @@ export function MatterOrbital({ data }: Readonly<MatterOrbitalProps>) {
 				<MetadataLabel x={370} y={310} label="PAIRED" value={paired ? 'YES' : 'NO'} />
 				<MetadataLabel x={130} y={310} label="UPTIME" value={uptimeDisplay} />
 
-				{/* layer 1: core orb glow (radial gradient, not blur) */}
-				<circle
-					cx={250}
-					cy={250}
-					r={50}
-					fill="url(#orb-glow)"
-				/>
+				{/* layer 1: glow halo */}
+				<circle cx={250} cy={250} r={55} fill="url(#orb-glow)" />
 
-				{/* layer 1: core orb */}
-				<circle
-					cx={250}
-					cy={250}
-					r={30}
-					fill={`url(#${gradientId})`}
-					filter={shouldPulse ? `url(#${filterId})` : undefined}
-					className={shouldPulse ? 'core-orb' : 'core-orb-error'}
-				/>
+				{/* layer 1: text-art orb */}
+				<TextArtOrb orbColor={orbColor} shouldAnimate={shouldAnimate} />
 
-				{/* center device count (when paired) */}
+				{/* center device count */}
 				{paired && (
 					<text
 						x={250}
