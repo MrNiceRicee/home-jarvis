@@ -1,7 +1,7 @@
 ---
 title: "feat: UI Redesign — Navbar, Integrations, Matter + Zustand Adoption"
 type: feat
-status: active
+status: completed
 date: 2026-03-05
 origin: docs/brainstorms/2026-03-05-ui-redesign-navbar-integrations-matter-brainstorm.md
 ---
