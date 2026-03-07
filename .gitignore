@@ -40,7 +40,7 @@ logs/
 .turbo/
 
 # Docs — internal brainstorms, plans, research (keep solutions for compounded knowledge)
-docs/
+docs/*
 !docs/solutions/
 
 # Claude Code — user-specific operational data

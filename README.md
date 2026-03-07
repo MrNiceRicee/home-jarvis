@@ -1,24 +1,31 @@
 # Home Jarvis
 
-Personal IoT hub — discover, control, and bridge smart home devices to HomeKit from a single self-hosted server.
+Personal IoT hub — discover, control, and bridge smart home devices to Matter from a single self-hosted server.
 
 ## Features
 
-- **Multi-brand**: Philips Hue, Govee, Elgato Key Light, VeSync, LG ThinQ, GE Cync, Aqara, SmartThings, Resideo
-- **Auto-detection**: mDNS and UDP LAN scanning for local devices (Hue, Govee, Elgato, Aqara)
-- **Real-time UI**: SSE-based live state — no polling, no page refresh
-- **HomeKit bridge**: Expose non-HomeKit devices to Apple Home (Phase 5)
+- **Multi-brand**: Philips Hue, Govee, Elgato Key Light, VeSync, SmartThings, Resideo, SmartHQ (GE)
+- **Auto-detection**: mDNS and UDP LAN scanning for local devices (Hue, Govee, Elgato)
+- **Real-time UI**: SSE-driven live state via zustand — no polling, no page refresh
+- **Matter bridge**: Expose non-Matter devices to Apple Home, Google Home, Alexa via matter.js
 - **Single binary**: Production build is one `./jarvis` — no Node, no runtime required
+
+## Design
+
+Sony Making Modern + terminal aesthetic. Warm champagne surfaces, dark LCD readout windows with scanline overlays, brushed aluminum dials, CRT power-on animations, and a braille pixel renderer for the Matter orbital HUD. Two-font system: IoskeleyMono (readouts) + Michroma (engraved labels). Every page has a distinct personality — dashboard is a device grid, integrations is a eurorack module rack, Matter is a full-viewport mission-control HUD.
+
+See [`docs/solutions/ui-design/design-system-sony-terminal-aesthetic.md`](docs/solutions/ui-design/design-system-sony-terminal-aesthetic.md) for the full design system reference.
 
 ## Stack
 
 | Layer | Technology |
 |-------|-----------|
 | Server | Bun + Elysia (port 3001) |
-| Client | React 19 + Vite + TanStack Router/Query + React Aria + Tailwind v4 |
+| Client | React 19 + Vite + TanStack Router/Query + React Aria + Zustand + Tailwind v4 |
 | Database | SQLite via Drizzle ORM (`bun:sqlite`) |
 | API contract | Elysia × Eden Treaty — fully type-safe end-to-end |
-| Real-time | Server-Sent Events (SSE) |
+| Real-time | Server-Sent Events (SSE) → zustand stores |
+| Matter | matter.js v0.16 (`@matter/main` + `@matter/nodejs`) |
 
 ---
 
@@ -82,12 +89,21 @@ home-jarvis/
 │       │   ├── device-cards/             # LightCard, ThermostatCard, VacuumCard, …
 │       │   ├── IntegrationForm.tsx       # dynamic credential form per brand
 │       │   └── LightMultiSelectBar.tsx   # batch light control
-│       ├── hooks/useDeviceStream.ts      # SSE → TanStack Query cache
+│       ├── hooks/
+│       │   ├── useDeviceStream.ts          # SSE → zustand device store
+│       │   ├── useScanStream.ts            # scan SSE → zustand scan store
+│       │   └── useReducedMotion.ts         # prefers-reduced-motion hook
+│       ├── stores/                         # zustand state management
+│       │   ├── device-store.ts             # SSE-driven device state
+│       │   ├── connection-store.ts         # SSE connection status
+│       │   ├── scan-store.ts               # network scan state
+│       │   └── readout-store.ts            # navbar readout strip
 │       └── lib/
-│           ├── api.ts                    # Eden Treaty client
-│           └── color-utils.ts            # color conversion helpers
+│           ├── api.ts                      # Eden Treaty client
+│           └── color-utils.ts              # color conversion helpers
+├── docs/solutions/                         # compounded knowledge (design system, solutions)
 └── scripts/
-    └── gen-client-manifest.ts            # codegen: client/dist/ → embedded TS module
+    └── gen-client-manifest.ts              # codegen: client/dist/ → embedded TS module
 ```
 
 ---
@@ -213,14 +229,12 @@ DB_PATH=~/Applications/jarvis/data/jarvis.db bun run db:push
 | Brand | Discovery | Auth type | Status |
 |-------|-----------|-----------|--------|
 | Philips Hue | mDNS `_hue._tcp` + N-UPnP cloud | Local API key (press bridge button) | Working |
-| Elgato Key Light | mDNS `_elg._tcp` | None (unauthenticated local HTTP) | Needs testing |
-| Govee | UDP LAN `239.255.255.250:4003` | Cloud API key | Planned (Phase 3) |
-| VeSync (Levoit) | Manual | Email + password | Planned (Phase 3) |
-| Resideo (Honeywell) | Manual | API key + OAuth token | Planned (Phase 3) |
-| LG ThinQ | Manual | OAuth 2.0 | Planned (Phase 4) |
-| GE Cync / SmartHQ | Manual | Email + password | Planned (Phase 4) |
-| SmartThings | Manual | Personal Access Token | Planned (Phase 4) |
-| Aqara | mDNS `_miio._udp` | Access code | Planned (Phase 4) |
+| Elgato Key Light | mDNS `_elg._tcp` | None (unauthenticated local HTTP) | Working |
+| Govee | UDP LAN `239.255.255.250:4003` | Cloud API key | Working |
+| VeSync (Levoit) | Manual | Email + password | Working |
+| Resideo (Honeywell) | Manual | API key + OAuth token | Working |
+| SmartThings | Manual | Personal Access Token | Working |
+| SmartHQ (GE) | Manual | Email + password | Working |
 
 > **Note:** mDNS/UDP auto-detection works on macOS (Bonjour built-in) and Linux (avahi). It does not work inside WSL2 due to multicast limitations — run from a native host or enter the device IP manually.
 
@@ -237,17 +251,18 @@ DB_PATH=~/Applications/jarvis/data/jarvis.db bun run db:push
 
 ### Type safety
 All types flow from the server to the client without duplication:
-- Entity types from `server/src/db/schema.ts` (`Device`, `Integration`, `HomekitConfig`)
+- Entity types from `server/src/db/schema.ts` (`Device`, `Integration`, `MatterConfig`)
 - Domain types from `server/src/integrations/types.ts` (`DeviceState`, `DeviceType`, `IntegrationMeta`)
 - API request/response types inferred via Eden Treaty from `export type App = typeof app`
 
 Never hand-write types the server already owns — import them.
 
 ### Real-time state
-Device state is managed exclusively via SSE, never by polling:
+Device state is managed exclusively via SSE → zustand, never by polling:
 - `GET /api/events` streams a snapshot on connect, then device updates as they happen
-- `useDeviceStream.ts` writes to TanStack Query cache (`setQueryData(['devices'], ...)`)
-- Components read from cache with `staleTime: Infinity` — no fetch, no flicker
+- `useDeviceStream` hook writes to zustand `device-store` via `updateDevice()`
+- Components subscribe to `useDeviceStore((s) => s.devices)` — reactive, no fetch, no flicker
+- Optimistic updates use `addPending`/`removePending` to suppress SSE overwrites during mutations
 
 ### Integration adapter pattern
 Each brand implements `DeviceAdapter`:
