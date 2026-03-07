@@ -34,6 +34,7 @@ export const devices = sqliteTable(
 		state: text('state').notNull().default('{}'), // JSON blob — current device state
 		metadata: text('metadata'), // JSON blob — per-device connection info (ip, port)
 		online: integer('online', { mode: 'boolean' }).notNull().default(true),
+		hidden: integer('hidden', { mode: 'boolean' }).notNull().default(false),
 		matterEnabled: integer('matter_enabled', { mode: 'boolean' }).notNull().default(false),
 		matterEndpointId: text('matter_endpoint_id'),
 		sectionId: text('section_id').notNull().references(() => sections.id, { onDelete: 'restrict' }),

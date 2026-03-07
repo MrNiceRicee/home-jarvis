@@ -30,11 +30,12 @@ export const eventsController = new Elysia({ prefix: '/api' })
 		// Must be set before the first yield
 		set.headers['X-Accel-Buffering'] = 'no'
 
-		// Send initial state snapshot immediately (metadata stripped)
+		// Send initial state snapshot immediately (metadata stripped, hidden excluded)
 		const snapshot = db
 			.select()
 			.from(devices)
 			.all()
+			.filter((d) => !d.hidden)
 			.map(sanitizeDevice)
 		yield sse({ data: { type: 'snapshot', devices: snapshot, timestamp: Date.now() } })
 		log.info('sse snapshot sent', { clientId, deviceCount: snapshot.length })

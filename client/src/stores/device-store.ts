@@ -17,6 +17,7 @@ interface DeviceStoreState {
 	setDevices: (devices: Device[]) => void
 	updateDevice: (id: string, patch: DevicePatch) => void
 	addDevice: (device: Device) => void
+	removeDevice: (id: string) => void
 	setOffline: (id: string) => void
 	addPending: (id: string, properties: string[]) => void
 	removePending: (id: string, properties: string[]) => void
@@ -65,6 +66,8 @@ export const useDeviceStore = create<DeviceStoreState>()(
 				if (devices.some((d) => d.id === device.id)) return
 				set({ devices: [...devices, device] })
 			},
+
+			removeDevice: (id) => set({ devices: get().devices.filter((d) => d.id !== id) }),
 
 			setOffline: (id) =>
 				set({ devices: get().devices.map((d) => (d.id === id ? { ...d, online: false } : d)) }),

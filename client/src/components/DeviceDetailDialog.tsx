@@ -3,9 +3,11 @@ import { Dialog, Heading, Modal as AriaModal, ModalOverlay } from 'react-aria-co
 
 import type { Device, DeviceState } from '../types'
 
+import { api } from '../lib/api'
 import { cn } from '../lib/cn'
 import { BRAND_LABEL, FALLBACK_ICON, TYPE_ICON } from '../lib/device-constants'
 import { DeviceBody } from '../lib/device-labels'
+import { useDeviceStore } from '../stores/device-store'
 import { RaisedButton } from './ui/button'
 import { PowerButton } from './ui/power-button'
 
@@ -17,6 +19,7 @@ interface DeviceDetailDialogProps {
 
 export function DeviceDetailDialog({ device, onClose, onStateChange }: Readonly<DeviceDetailDialogProps>) {
 	const [powerToggling, setPowerToggling] = useState(false)
+	const removeDevice = useDeviceStore((s) => s.removeDevice)
 
 	if (!device) return null
 
@@ -77,9 +80,21 @@ export function DeviceDetailDialog({ device, onClose, onStateChange }: Readonly<
 								}}
 							/>
 						) : <div />}
-						<RaisedButton variant="ghost" onPress={onClose}>
-							Close
-						</RaisedButton>
+						<div className="flex items-center gap-2">
+							<RaisedButton
+								variant="ghost"
+								onPress={() => {
+									removeDevice(device.id)
+									onClose()
+									void api.api.devices({ id: device.id }).hidden.patch({ hidden: true })
+								}}
+							>
+								<span className="text-stone-400">Hide</span>
+							</RaisedButton>
+							<RaisedButton variant="ghost" onPress={onClose}>
+								Close
+							</RaisedButton>
+						</div>
 					</div>
 				</Dialog>
 			</AriaModal>

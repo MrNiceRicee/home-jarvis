@@ -14,6 +14,7 @@ export function sanitizeDevice(device: Device): SanitizedDevice {
 		type: device.type,
 		state: parseJson<DeviceState>(device.state).unwrapOr({}),
 		online: device.online,
+		hidden: device.hidden,
 		matterEnabled: device.matterEnabled,
 		matterEndpointId: device.matterEndpointId,
 		sectionId: device.sectionId,

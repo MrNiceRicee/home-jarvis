@@ -20,12 +20,13 @@ let discoveryInFlight = false
 export const devicesController = new Elysia({ prefix: '/api/devices' })
 	.decorate('db', db)
 
-	/** List all devices with their current state */
-	.get('', ({ db }) => {
-		const rows = db.select().from(devices).all()
-		return rows.map(({ metadata: _metadata, ...d }) => ({
+	/** List all devices with their current state (hidden excluded by default) */
+	.get('', ({ db, query }) => {
+		let rows = db.select().from(devices).all()
+		if (!query.all) rows = rows.filter((d) => !d.hidden)
+		return rows.map(({ metadata: _metadata, state, ...d }) => ({
 			...d,
-			state: parseJson<DeviceState>(d.state).unwrapOr({}),
+			state: parseJson<DeviceState>(state).unwrapOr({}),
 		}))
 	})
 
@@ -311,6 +312,26 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 		},
 		{
 			body: t.Object({ enabled: t.Boolean() }),
+		},
+	)
+
+	/** Toggle device visibility */
+	.patch(
+		'/:id/hidden',
+		({ db, params, body }) => {
+			const device = db.select().from(devices).where(eq(devices.id, params.id)).get()
+			if (!device) return status(404, { error: 'Device not found' })
+
+			db.update(devices)
+				.set({ hidden: body.hidden, updatedAt: Date.now() })
+				.where(eq(devices.id, params.id))
+				.run()
+
+			log.info('setHidden', { deviceId: params.id, deviceName: device.name, hidden: body.hidden })
+			return { ok: true }
+		},
+		{
+			body: t.Object({ hidden: t.Boolean() }),
 		},
 	)
 
