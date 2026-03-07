@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useCallback, useState } from 'react'
+import { Button } from 'react-aria-components'
 import { toast } from 'sonner'
 
 import type { Device, DeviceState, Section } from '../types'
@@ -12,6 +13,7 @@ import { SectionGroup } from '../components/SectionGroup'
 import { Card } from '../components/ui/card'
 import { api } from '../lib/api'
 import { cn } from '../lib/cn'
+import { BRAND_LABEL } from '../lib/device-constants'
 import { useConnectionStore } from '../stores/connection-store'
 import { useDeviceStore } from '../stores/device-store'
 
@@ -33,6 +35,7 @@ function Dashboard() {
 	const devices = useDeviceStore((s) => s.devices)
 	const [expandedDevice, setExpandedDevice] = useState<Device | null>(null)
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+	const [showHidden, setShowHidden] = useState(false)
 
 	const { data: sections = [] } = useQuery<Section[]>({
 		queryKey: ['sections'],
@@ -41,6 +44,16 @@ function Dashboard() {
 			if (error) throw error
 			return data
 		},
+	})
+
+	const { data: hiddenDevices = [] } = useQuery<Device[]>({
+		queryKey: ['devices', 'hidden'],
+		queryFn: async () => {
+			const { data, error } = await api.api.devices.get({ query: { all: 'true' } })
+			if (error) throw error
+			return (data as Device[]).filter((d) => d.hidden)
+		},
+		enabled: showHidden,
 	})
 
 	const stateMutation = useMutation({
@@ -238,9 +251,25 @@ function Dashboard() {
 				})}
 			</div>
 
-			<div className="mt-8 flex justify-center">
+			<div className="mt-8 flex items-center justify-center gap-4">
 				<CreateSectionDialog onSubmit={handleAddSection} />
+				<Button
+					className="text-2xs font-michroma uppercase tracking-wider text-stone-400 hover:text-stone-600 transition-colors cursor-pointer"
+					onPress={() => setShowHidden((v) => !v)}
+				>
+					{showHidden ? 'Hide hidden' : 'Show hidden'}
+				</Button>
 			</div>
+
+			{showHidden && hiddenDevices.length > 0 && (
+				<HiddenDevicesSection
+					devices={hiddenDevices}
+					onUnhide={async (id) => {
+						await api.api.devices({ id }).hidden.patch({ hidden: false })
+						await queryClient.invalidateQueries({ queryKey: ['devices', 'hidden'] })
+					}}
+				/>
+			)}
 
 			<DeviceDetailDialog
 				device={liveExpandedDevice}
@@ -271,6 +300,30 @@ function SkeletonCard() {
 			<div className="w-full h-10 rounded-md bg-stone-200/30" />
 			<div className="w-full h-6 rounded bg-stone-200/20" />
 		</Card>
+	)
+}
+
+function HiddenDevicesSection({ devices, onUnhide }: Readonly<{ devices: Device[]; onUnhide: (id: string) => Promise<void> }>) {
+	return (
+		<div className="mt-8 opacity-50">
+			<h3 className="text-2xs font-michroma uppercase tracking-wider text-stone-400 mb-3">Hidden devices</h3>
+			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+				{devices.map((d) => (
+					<Card key={d.id} className="p-3 flex items-center justify-between">
+						<div className="min-w-0">
+							<p className="text-xs font-michroma text-stone-600 truncate">{d.name}</p>
+							<p className="text-2xs font-michroma text-stone-400 uppercase">{BRAND_LABEL[d.brand] ?? d.brand} · {d.type}</p>
+						</div>
+						<Button
+							className="text-2xs font-michroma uppercase tracking-wider text-stone-500 hover:text-stone-800 transition-colors cursor-pointer px-2 py-1"
+							onPress={() => void onUnhide(d.id)}
+						>
+							Unhide
+						</Button>
+					</Card>
+				))}
+			</div>
+		</div>
 	)
 }
 
