@@ -12,7 +12,12 @@ function extractResult(result: Record<string, unknown>): Record<string, unknown>
 	return result.result as Record<string, unknown> | undefined
 }
 
-/** map mode + level to our fanSpeed convention: auto=0, sleep=20, manual 1/2/3=40/60/80 */
+/** detect camelCase V2 response format (Vital 100S/200S, Everest, newer devices) */
+function isV2Response(r: Record<string, unknown>): boolean {
+	return 'powerSwitch' in r || 'workMode' in r || 'fanSpeedLevel' in r
+}
+
+/** map mode + level to our fanSpeed convention: auto=0, sleep=20, manual 1/2/3/4=40/60/80/100 */
 function parseFanSpeed(r: Record<string, unknown>): { mode?: string; fanSpeed?: number } {
 	const mode = typeof r.mode === 'string' ? r.mode : undefined
 	if (mode === 'auto') return { mode, fanSpeed: 0 }
@@ -23,11 +28,49 @@ function parseFanSpeed(r: Record<string, unknown>): { mode?: string; fanSpeed?: 
 	return { mode, fanSpeed }
 }
 
+/** V2 camelCase fan speed — Vital 200S uses workMode + fanSpeedLevel */
+function parseFanSpeedV2(r: Record<string, unknown>): { mode?: string; fanSpeed?: number } {
+	const mode = typeof r.workMode === 'string' ? r.workMode : undefined
+	if (mode === 'auto') return { mode, fanSpeed: 0 }
+	if (mode === 'sleep') return { mode, fanSpeed: 20 }
+	if (mode === 'pet') return { mode, fanSpeed: 0 }
+
+	const level = typeof r.fanSpeedLevel === 'number' ? r.fanSpeedLevel : undefined
+	// fanSpeedLevel 255 means auto/unknown in V2 protocol
+	if (level === 255) return { mode, fanSpeed: 0 }
+	const fanSpeed = level !== undefined ? (level + 1) * 20 : undefined
+	return { mode, fanSpeed }
+}
+
+/** parse V2 camelCase response (Vital 100S/200S, Everest, newer devices) */
+function parseAirPurifierStateV2(r: Record<string, unknown>): DeviceState {
+	const state: DeviceState = {}
+
+	if ('powerSwitch' in r) state.on = r.powerSwitch === 1
+	if ('PM25' in r && typeof r.PM25 === 'number') {
+		state.pm25 = r.PM25
+		state.airQuality = pm25ToAirQuality(r.PM25)
+	}
+	if ('filterLifePercent' in r && typeof r.filterLifePercent === 'number') {
+		state.filterLife = r.filterLifePercent
+	}
+
+	const fan = parseFanSpeedV2(r)
+	state.mode = fan.mode
+	state.fanSpeed = fan.fanSpeed
+
+	return state
+}
+
 export function parseAirPurifierState(result: Record<string, unknown>): DeviceState {
 	const state: DeviceState = {}
 	const r = extractResult(result)
 	if (!r) return state
 
+	// V2 camelCase format (Vital 100S/200S, Everest, newer VS_ devices)
+	if (isV2Response(r)) return parseAirPurifierStateV2(r)
+
+	// V1 snake_case format (Core, LV-PUR, older devices)
 	if ('enabled' in r) state.on = r.enabled === true
 	if ('switch_on' in r) state.on = r.switch_on === true
 	if ('air_quality_value' in r && typeof r.air_quality_value === 'number') {

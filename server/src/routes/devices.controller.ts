@@ -45,7 +45,7 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 		Promise.all(
 			enabled.map(async (integration) => {
 				const config = parseJson<Record<string, string>>(integration.config).unwrapOr({})
-				const adapterResult = createAdapter(integration.brand, config)
+				const adapterResult = createAdapter(integration.brand, config, integration.session)
 				if (adapterResult.isErr()) {
 					log.warn('discover adapter unavailable', { brand: integration.brand })
 					return
@@ -184,7 +184,7 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 
 			const config = parseJson<Record<string, string>>(integration.config).unwrapOr({})
 
-			const adapterResult = createAdapter(integration.brand, config)
+			const adapterResult = createAdapter(integration.brand, config, integration.session)
 			if (adapterResult.isErr()) {
 				log.error('setState adapter error', { brand: integration.brand, error: adapterResult.error.message })
 				return status(500, { error: adapterResult.error.message })
@@ -215,6 +215,34 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 			})
 
 			log.info('setState ok', { deviceId: params.id, deviceName: device.name, brand: device.brand })
+
+			// delayed re-poll: fetch confirmed state from the device after the cloud propagates
+			const adapter = adapterResult.value
+			const deviceId = params.id
+			const externalId = device.externalId
+			const brand = device.brand
+			setTimeout(async () => {
+				try {
+					const confirmed = await adapter.getState(externalId)
+					if (confirmed.isErr()) return
+					const confirmedState = confirmed.value
+					const ts = Date.now()
+					db.update(devices)
+						.set({ state: JSON.stringify(confirmedState), updatedAt: ts })
+						.where(eq(devices.id, deviceId))
+						.run()
+					eventBus.publish({
+						type: 'device:update',
+						deviceId,
+						brand,
+						state: confirmedState,
+						timestamp: ts,
+						source: 'poller',
+					})
+					log.debug('post-setState confirm', { deviceId, brand })
+				} catch { /* ignore re-poll failures — poller will catch up */ }
+			}, 5000)
+
 			return { ...device, state: newState }
 		},
 		{

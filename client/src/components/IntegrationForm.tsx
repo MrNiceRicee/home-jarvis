@@ -323,7 +323,7 @@ export function IntegrationFormInner({ meta, prefill, onSubmit, onCancel }: Read
 					{meta.displayName}
 				</Heading>
 				<p className="font-ioskeley text-xs text-stone-600 mb-5">
-					Uses OAuth 2.0 — you'll be redirected to LG to authorize.
+					Uses OAuth 2.0 — you'll be redirected to {meta.displayName} to authorize.
 				</p>
 				<div className="flex gap-2 justify-end">
 					<RaisedButton variant="raised" onPress={onCancel}>
@@ -331,9 +331,9 @@ export function IntegrationFormInner({ meta, prefill, onSubmit, onCancel }: Read
 					</RaisedButton>
 					<RaisedButton
 						variant="primary"
-						onPress={() => (window.location.href = '/api/integrations/lg/oauth/start')}
+						onPress={() => (window.location.href = `/api/integrations/${meta.brand}/oauth/start`)}
 					>
-						Authorize with LG
+						Authorize with {meta.displayName}
 					</RaisedButton>
 				</div>
 			</div>
