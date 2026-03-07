@@ -1,8 +1,7 @@
-import { ResultAsync, err, errAsync, ok } from 'neverthrow'
-
-import type { DeviceAdapter, DeviceState, DeviceType, DiscoveredDevice } from '../types'
+import { err, errAsync, ok, ResultAsync } from 'neverthrow'
 
 import { toErrorMessage } from '../../lib/error-utils'
+import type { DeviceAdapter, DeviceState, DeviceType, DiscoveredDevice } from '../types'
 
 const BASE_URL = 'https://openapi.api.govee.com'
 const TIMEOUT = 10_000
@@ -98,7 +97,10 @@ function applyCapability(state: DeviceState, instance: string, v: unknown): bool
 	}
 }
 
-function parseCapabilityStates(capabilities: GoveeCapabilityState[]): { state: DeviceState; online: boolean } {
+function parseCapabilityStates(capabilities: GoveeCapabilityState[]): {
+	state: DeviceState
+	online: boolean
+} {
 	const state: DeviceState = {}
 	let online = true
 
@@ -168,17 +170,20 @@ export class GoveeAdapter implements DeviceAdapter {
 				signal: AbortSignal.timeout(TIMEOUT),
 			}),
 			(e) => new Error(`Network error: ${toErrorMessage(e)}`),
-		).andThen((res) => {
-			if (res.status === 429) return err(new Error('Govee rate limit exceeded — retry next cycle'))
-			if (!res.ok) return err(new Error(`Govee state error: ${res.status}`))
-			return ResultAsync.fromPromise(
-				res.json() as Promise<GoveeStateResponse>,
-				() => new Error('Failed to parse state response'),
-			)
-		}).map((data) => {
-			const { state } = parseCapabilityStates(data.payload.capabilities)
-			return state
-		})
+		)
+			.andThen((res) => {
+				if (res.status === 429)
+					return err(new Error('Govee rate limit exceeded — retry next cycle'))
+				if (!res.ok) return err(new Error(`Govee state error: ${res.status}`))
+				return ResultAsync.fromPromise(
+					res.json() as Promise<GoveeStateResponse>,
+					() => new Error('Failed to parse state response'),
+				)
+			})
+			.map((data) => {
+				const { state } = parseCapabilityStates(data.payload.capabilities)
+				return state
+			})
 	}
 
 	setState(externalId: string, state: Partial<DeviceState>): ResultAsync<void, Error> {
@@ -220,14 +225,16 @@ export class GoveeAdapter implements DeviceAdapter {
 				signal: AbortSignal.timeout(TIMEOUT),
 			}),
 			(e) => new Error(`Network error: ${toErrorMessage(e)}`),
-		).andThen((res) => {
-			if (res.status === 429) return err(new Error('Govee rate limit exceeded'))
-			if (!res.ok) return err(new Error(`Govee API error: ${res.status}`))
-			return ResultAsync.fromPromise(
-				res.json() as Promise<GoveeDeviceListResponse>,
-				() => new Error('Failed to parse device list'),
-			)
-		}).map((data) => data.data ?? [])
+		)
+			.andThen((res) => {
+				if (res.status === 429) return err(new Error('Govee rate limit exceeded'))
+				if (!res.ok) return err(new Error(`Govee API error: ${res.status}`))
+				return ResultAsync.fromPromise(
+					res.json() as Promise<GoveeDeviceListResponse>,
+					() => new Error('Failed to parse device list'),
+				)
+			})
+			.map((data) => data.data ?? [])
 	}
 
 	private async fetchStatesForDevices(devices: GoveeDevice[]): Promise<DiscoveredDevice[]> {
@@ -264,20 +271,38 @@ export class GoveeAdapter implements DeviceAdapter {
 		return results
 	}
 
-	private buildControlCommands(state: Partial<DeviceState>): Array<{ type: string; instance: string; value: unknown }> {
+	private buildControlCommands(
+		state: Partial<DeviceState>,
+	): Array<{ type: string; instance: string; value: unknown }> {
 		const cmds: Array<{ type: string; instance: string; value: unknown }> = []
 
 		if (state.on !== undefined) {
-			cmds.push({ type: 'devices.capabilities.on_off', instance: 'powerSwitch', value: state.on ? 1 : 0 })
+			cmds.push({
+				type: 'devices.capabilities.on_off',
+				instance: 'powerSwitch',
+				value: state.on ? 1 : 0,
+			})
 		}
 		if (state.brightness !== undefined) {
-			cmds.push({ type: 'devices.capabilities.range', instance: 'brightness', value: state.brightness })
+			cmds.push({
+				type: 'devices.capabilities.range',
+				instance: 'brightness',
+				value: state.brightness,
+			})
 		}
 		if (state.color) {
-			cmds.push({ type: 'devices.capabilities.color_setting', instance: 'colorRgb', value: packRgb(state.color) })
+			cmds.push({
+				type: 'devices.capabilities.color_setting',
+				instance: 'colorRgb',
+				value: packRgb(state.color),
+			})
 		}
 		if (state.colorTemp !== undefined) {
-			cmds.push({ type: 'devices.capabilities.color_setting', instance: 'colorTemperatureK', value: state.colorTemp })
+			cmds.push({
+				type: 'devices.capabilities.color_setting',
+				instance: 'colorTemperatureK',
+				value: state.colorTemp,
+			})
 		}
 
 		return cmds

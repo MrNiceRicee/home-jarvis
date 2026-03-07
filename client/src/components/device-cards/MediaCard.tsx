@@ -2,14 +2,14 @@ import { MinusIcon, PlusIcon, SpeakerHighIcon, SpeakerLowIcon } from '@phosphor-
 import { useEffect, useState } from 'react'
 import { Button, Label, Slider, SliderThumb, SliderTrack } from 'react-aria-components'
 
-import type { Device, DeviceState } from '../../types'
-
 import { cn } from '../../lib/cn'
+import { FADER_THUMB_STYLE } from '../../lib/slider-styles'
+import type { Device, DeviceState } from '../../types'
 import { ReadoutDisplay } from '../ui/readout-display'
 
-// brushed aluminum knob — matches LightCard fader thumb
-const FADER_THUMB_STYLE = {
-	backgroundColor: '#d4d0ca',
+// vertical fader overrides gradient direction for the shared aluminum knob
+const V_FADER_THUMB_STYLE = {
+	...FADER_THUMB_STYLE,
 	backgroundImage: 'linear-gradient(90deg, #e8e4de 0%, #d4d0ca 40%, #c0bcb6 60%, #d4d0ca 100%)',
 } as const
 
@@ -34,26 +34,30 @@ interface MediaCardProps {
 	onStateChange?: (deviceId: string, state: Partial<DeviceState>) => Promise<void>
 }
 
-export function MediaCard({ device, variant = 'compact', onStateChange }: Readonly<MediaCardProps>) {
+export function MediaCard({
+	device,
+	variant = 'compact',
+	onStateChange,
+}: Readonly<MediaCardProps>) {
 	const state = device.state
 	const isOn = state.on ?? false
 	const isFull = variant === 'full'
 	const [volume, setVolume] = useState(state.volume ?? 0)
 	const disabled = !device.online || !isOn
 
-	// eslint-disable-next-line react-hooks/set-state-in-effect -- sse state sync
-	useEffect(() => { setVolume(state.volume ?? 0) }, [state.volume])
+	useEffect(() => {
+		// eslint-disable-next-line react-hooks/set-state-in-effect -- sse state sync
+		setVolume(state.volume ?? 0)
+	}, [state.volume])
 
-	const readoutText = isOn
-		? (state.track ?? 'ON')
-		: 'OFF'
+	const readoutText = isOn ? (state.track ?? 'ON') : 'OFF'
 
 	const trackSuffix = state.track ? `, ${state.track}` : ''
-	const readoutLabel = isOn
-		? `Volume ${volume}${trackSuffix}`
-		: 'TV off'
+	const readoutLabel = isOn ? `Volume ${volume}${trackSuffix}` : 'TV off'
 
-	const commitVolume = (v: number) => { void onStateChange?.(device.id, { volume: v }) }
+	const commitVolume = (v: number) => {
+		void onStateChange?.(device.id, { volume: v })
+	}
 
 	if (isFull) {
 		return (
@@ -61,29 +65,53 @@ export function MediaCard({ device, variant = 'compact', onStateChange }: Readon
 				{/* box 1: volume track + controls */}
 				{state.volume !== undefined && (
 					<div className="flex gap-2 items-stretch">
-						<VolumeFader volume={volume} isFull disabled={disabled} onChange={setVolume} onChangeEnd={commitVolume} />
+						<VolumeFader
+							volume={volume}
+							isFull
+							disabled={disabled}
+							onChange={setVolume}
+							onChangeEnd={commitVolume}
+						/>
 						<div className="flex flex-col items-center justify-between">
 							<VolumeStepButton
 								icon={<PlusIcon size={12} weight="bold" />}
 								label="Volume up"
 								disabled={disabled || volume >= 100}
-								onPress={() => { const n = Math.min(100, volume + 1); setVolume(n); commitVolume(n) }}
+								onPress={() => {
+									const n = Math.min(100, volume + 1)
+									setVolume(n)
+									commitVolume(n)
+								}}
 							/>
-							<ReadoutDisplay size="sm" glowIntensity={1} aria-label={`Volume ${volume}`} className="aspect-square justify-center">
+							<ReadoutDisplay
+								size="sm"
+								glowIntensity={1}
+								aria-label={`Volume ${volume}`}
+								className="aspect-square justify-center"
+							>
 								<span className={cn('text-xs', !isOn && 'text-display-text/30')}>{volume}</span>
 							</ReadoutDisplay>
 							<VolumeStepButton
 								icon={<MinusIcon size={12} weight="bold" />}
 								label="Volume down"
 								disabled={disabled || volume <= 0}
-								onPress={() => { const n = Math.max(0, volume - 1); setVolume(n); commitVolume(n) }}
+								onPress={() => {
+									const n = Math.max(0, volume - 1)
+									setVolume(n)
+									commitVolume(n)
+								}}
 							/>
 						</div>
 					</div>
 				)}
 				{/* box 2: readout + rest */}
 				<div className="flex-1 min-w-0 space-y-3">
-					<ReadoutDisplay size="lg" glowIntensity={1} aria-label={readoutLabel} className="w-full justify-center">
+					<ReadoutDisplay
+						size="lg"
+						glowIntensity={1}
+						aria-label={readoutLabel}
+						className="w-full justify-center"
+					>
 						<span className={cn(!isOn && 'text-display-text/30')}>{readoutText}</span>
 					</ReadoutDisplay>
 				</div>
@@ -96,29 +124,53 @@ export function MediaCard({ device, variant = 'compact', onStateChange }: Readon
 			{/* box 1: volume track + controls */}
 			{state.volume !== undefined && (
 				<div className="flex gap-2 items-stretch">
-					<VolumeFader volume={volume} isFull={false} disabled={disabled} onChange={setVolume} onChangeEnd={commitVolume} />
+					<VolumeFader
+						volume={volume}
+						isFull={false}
+						disabled={disabled}
+						onChange={setVolume}
+						onChangeEnd={commitVolume}
+					/>
 					<div className="flex flex-col items-center justify-between">
 						<VolumeStepButton
 							icon={<PlusIcon size={12} weight="bold" />}
 							label="Volume up"
 							disabled={disabled || volume >= 100}
-							onPress={() => { const n = Math.min(100, volume + 1); setVolume(n); commitVolume(n) }}
+							onPress={() => {
+								const n = Math.min(100, volume + 1)
+								setVolume(n)
+								commitVolume(n)
+							}}
 						/>
-						<ReadoutDisplay size="sm" glowIntensity={1} aria-label={`Volume ${volume}`} className="aspect-square justify-center">
+						<ReadoutDisplay
+							size="sm"
+							glowIntensity={1}
+							aria-label={`Volume ${volume}`}
+							className="aspect-square justify-center"
+						>
 							<span className={cn('text-xs', !isOn && 'text-display-text/30')}>{volume}</span>
 						</ReadoutDisplay>
 						<VolumeStepButton
 							icon={<MinusIcon size={12} weight="bold" />}
 							label="Volume down"
 							disabled={disabled || volume <= 0}
-							onPress={() => { const n = Math.max(0, volume - 1); setVolume(n); commitVolume(n) }}
+							onPress={() => {
+								const n = Math.max(0, volume - 1)
+								setVolume(n)
+								commitVolume(n)
+							}}
 						/>
 					</div>
 				</div>
 			)}
 			{/* box 2: readout */}
 			<div className="flex-1 min-w-0">
-				<ReadoutDisplay size="lg" glowIntensity={1} aria-label={readoutLabel} className="w-full justify-center">
+				<ReadoutDisplay
+					size="lg"
+					glowIntensity={1}
+					aria-label={readoutLabel}
+					className="w-full justify-center"
+				>
 					<span className={cn(!isOn && 'text-display-text/30')}>{readoutText}</span>
 				</ReadoutDisplay>
 			</div>
@@ -166,7 +218,13 @@ interface VolumeFaderProps {
 	onChangeEnd: (v: number) => void
 }
 
-function VolumeFader({ volume, isFull, disabled, onChange, onChangeEnd }: Readonly<VolumeFaderProps>) {
+function VolumeFader({
+	volume,
+	isFull,
+	disabled,
+	onChange,
+	onChangeEnd,
+}: Readonly<VolumeFaderProps>) {
 	return (
 		<Slider
 			orientation="vertical"
@@ -203,7 +261,8 @@ function VolumeFader({ volume, isFull, disabled, onChange, onChangeEnd }: Readon
 									className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-1.5 rounded-full"
 									style={{
 										background: 'linear-gradient(180deg, #d5d0c8 0%, #e0dbd3 100%)',
-										boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.15), inset 0 0 2px rgba(0,0,0,0.1), 0 0.5px 0 rgba(255,255,255,0.8)',
+										boxShadow:
+											'inset 0 2px 4px rgba(0,0,0,0.15), inset 0 0 2px rgba(0,0,0,0.1), 0 0.5px 0 rgba(255,255,255,0.8)',
 									}}
 								/>
 								{/* filled portion */}
@@ -218,7 +277,7 @@ function VolumeFader({ volume, isFull, disabled, onChange, onChangeEnd }: Readon
 								{/* thumb — translate: none prevents Tailwind v4 from doubling React Aria's transform */}
 								<SliderThumb
 									className="z-10 h-3 w-5.5 rounded-[3px] border border-stone-400/60 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-stone-400 shadow-[0_1px_3px_rgba(0,0,0,0.15),inset_0_0.5px_0_rgba(255,255,255,0.6)] relative after:absolute after:content-[''] after:inset-y-0.5 after:left-1/2 after:-translate-x-1/2 after:w-px after:bg-stone-400/40"
-									style={{ ...FADER_THUMB_STYLE, translate: 'none', left: '50%' }}
+									style={{ ...V_FADER_THUMB_STYLE, translate: 'none', left: '50%' }}
 								/>
 							</>
 						)}

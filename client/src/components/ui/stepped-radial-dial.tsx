@@ -43,7 +43,11 @@ function normalizeAngle(a: number): number {
 }
 
 export function SteppedRadialDial({
-	label, options, value, onChange, disabled,
+	label,
+	options,
+	value,
+	onChange,
+	disabled,
 	accentColor = '#34d399',
 }: Readonly<SteppedRadialDialProps>) {
 	const count = options.length
@@ -52,51 +56,63 @@ export function SteppedRadialDial({
 	const containerRef = useRef<HTMLDivElement>(null)
 
 	// snap a pointer position to the nearest detent
-	const snapToDetent = useCallback((clientX: number, clientY: number) => {
-		const el = containerRef.current
-		if (!el || disabled) return
-		const rect = el.getBoundingClientRect()
-		const cx = rect.left + rect.width / 2
-		const cy = rect.top + rect.height / 2
-		const dx = clientX - cx
-		const dy = clientY - cy
+	const snapToDetent = useCallback(
+		(clientX: number, clientY: number) => {
+			const el = containerRef.current
+			if (!el || disabled) return
+			const rect = el.getBoundingClientRect()
+			const cx = rect.left + rect.width / 2
+			const cy = rect.top + rect.height / 2
+			const dx = clientX - cx
+			const dy = clientY - cy
 
-		// CSS angle: atan2(x, -y) gives 0°=up, CW positive
-		const pointerAngle = Math.atan2(dx, -dy) * (180 / Math.PI)
+			// CSS angle: atan2(x, -y) gives 0°=up, CW positive
+			const pointerAngle = Math.atan2(dx, -dy) * (180 / Math.PI)
 
-		// dead zone check: if angle is outside the arc (bottom gap), snap to nearest end
-		const normalized = normalizeAngle(pointerAngle)
-		if (Math.abs(normalized) > END_ANGLE) {
-			// in dead zone — snap to whichever end is closer
-			const key = normalized > 0 ? options[count - 1].key : options[0].key
+			// dead zone check: if angle is outside the arc (bottom gap), snap to nearest end
+			const normalized = normalizeAngle(pointerAngle)
+			if (Math.abs(normalized) > END_ANGLE) {
+				// in dead zone — snap to whichever end is closer
+				const key = normalized > 0 ? options[count - 1].key : options[0].key
+				if (key !== value) onChange(key)
+				return
+			}
+
+			// find nearest detent
+			let nearestIdx = 0
+			let minDist = Infinity
+			for (let i = 0; i < count; i++) {
+				const dist = Math.abs(normalized - detentAngle(i, count))
+				if (dist < minDist) {
+					minDist = dist
+					nearestIdx = i
+				}
+			}
+
+			const key = options[nearestIdx].key
 			if (key !== value) onChange(key)
-			return
-		}
+		},
+		[count, disabled, onChange, options, value],
+	)
 
-		// find nearest detent
-		let nearestIdx = 0
-		let minDist = Infinity
-		for (let i = 0; i < count; i++) {
-			const dist = Math.abs(normalized - detentAngle(i, count))
-			if (dist < minDist) { minDist = dist; nearestIdx = i }
-		}
+	const handlePointerDown = useCallback(
+		(e: React.PointerEvent) => {
+			if (disabled) return
+			// prevent DnD sortable from capturing this interaction
+			e.stopPropagation()
+			e.currentTarget.setPointerCapture(e.pointerId)
+			snapToDetent(e.clientX, e.clientY)
+		},
+		[disabled, snapToDetent],
+	)
 
-		const key = options[nearestIdx].key
-		if (key !== value) onChange(key)
-	}, [count, disabled, onChange, options, value])
-
-	const handlePointerDown = useCallback((e: React.PointerEvent) => {
-		if (disabled) return
-		// prevent DnD sortable from capturing this interaction
-		e.stopPropagation()
-		e.currentTarget.setPointerCapture(e.pointerId)
-		snapToDetent(e.clientX, e.clientY)
-	}, [disabled, snapToDetent])
-
-	const handlePointerMove = useCallback((e: React.PointerEvent) => {
-		if (!e.currentTarget.hasPointerCapture(e.pointerId)) return
-		snapToDetent(e.clientX, e.clientY)
-	}, [snapToDetent])
+	const handlePointerMove = useCallback(
+		(e: React.PointerEvent) => {
+			if (!e.currentTarget.hasPointerCapture(e.pointerId)) return
+			snapToDetent(e.clientX, e.clientY)
+		},
+		[snapToDetent],
+	)
 
 	// SVG tick marks along the arc
 	const ticks = options.map((_, i) => {
@@ -109,7 +125,9 @@ export function SteppedRadialDial({
 	return (
 		<div>
 			{label && (
-				<span className="font-michroma text-2xs uppercase tracking-widest text-display-text/40 mb-1 block text-center">{label}</span>
+				<span className="font-michroma text-2xs uppercase tracking-widest text-display-text/40 mb-1 block text-center">
+					{label}
+				</span>
 			)}
 			<RadioGroup
 				value={value}
@@ -137,7 +155,9 @@ export function SteppedRadialDial({
 				>
 					{/* subtle arc track */}
 					<circle
-						cx="0" cy="0" r="33"
+						cx="0"
+						cy="0"
+						r="33"
 						fill="none"
 						stroke="rgba(255,255,255,0.06)"
 						strokeWidth="2"
@@ -149,8 +169,10 @@ export function SteppedRadialDial({
 					{ticks.map((t, i) => (
 						<line
 							key={i}
-							x1={t.inner.x} y1={t.inner.y}
-							x2={t.outer.x} y2={t.outer.y}
+							x1={t.inner.x}
+							y1={t.inner.y}
+							x2={t.outer.x}
+							y2={t.outer.y}
 							stroke={t.active && !disabled ? accentColor : 'rgba(255,255,255,0.3)'}
 							strokeWidth={t.active && !disabled ? 2 : 1}
 							strokeLinecap="round"
@@ -176,7 +198,8 @@ export function SteppedRadialDial({
 						className="absolute rounded-full"
 						style={{
 							inset: 2,
-							backgroundImage: 'radial-gradient(circle at 38% 32%, #e0dcd6 0%, #d0ccc6 25%, #b8b4ae 55%, #a8a4a0 75%, #bab6b0 100%)',
+							backgroundImage:
+								'radial-gradient(circle at 38% 32%, #e0dcd6 0%, #d0ccc6 25%, #b8b4ae 55%, #a8a4a0 75%, #bab6b0 100%)',
 							boxShadow: 'inset 0 1px 3px rgba(255,255,255,0.4), inset 0 -1px 2px rgba(0,0,0,0.15)',
 						}}
 					/>
@@ -217,12 +240,16 @@ export function SteppedRadialDial({
 						>
 							<span
 								className="font-michroma text-2xs uppercase tracking-wider transition-all duration-200"
-								style={isActive && !disabled ? {
-									color: accentColor,
-									textShadow: `0 0 8px ${accentColor}, 0 0 16px color-mix(in srgb, ${accentColor} 40%, transparent)`,
-								} : {
-									color: 'rgba(250,240,220,0.55)',
-								}}
+								style={
+									isActive && !disabled
+										? {
+												color: accentColor,
+												textShadow: `0 0 8px ${accentColor}, 0 0 16px color-mix(in srgb, ${accentColor} 40%, transparent)`,
+											}
+										: {
+												color: 'rgba(250,240,220,0.55)',
+											}
+								}
 							>
 								{opt.label}
 							</span>

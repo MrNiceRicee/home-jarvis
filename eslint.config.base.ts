@@ -1,5 +1,4 @@
 import js from '@eslint/js'
-import perfectionist from 'eslint-plugin-perfectionist'
 import sonarjs from 'eslint-plugin-sonarjs'
 import tseslint from 'typescript-eslint'
 
@@ -9,7 +8,6 @@ export const baseConfig = [
 	...tseslint.configs.recommended,
 	sonarjs.configs.recommended,
 	{
-		plugins: { perfectionist },
 		languageOptions: {
 			parserOptions: {
 				// Type-aware linting: uses the nearest tsconfig.json for each file
@@ -17,9 +15,6 @@ export const baseConfig = [
 			},
 		},
 		rules: {
-			// --- Import sorting ---
-			'perfectionist/sort-imports': ['error', { type: 'natural' }],
-
 			// --- File size ---
 			'max-lines': ['error', { max: 500, skipBlankLines: true, skipComments: true }],
 

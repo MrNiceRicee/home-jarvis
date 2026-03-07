@@ -37,9 +37,5 @@ export function NumberTicker({ value, className, speed = 60 }: NumberTickerProps
 
 	const shown = reducedMotion ? value : display
 
-	return (
-		<span className={cn('tabular-nums', className)}>
-			{shown}
-		</span>
-	)
+	return <span className={cn('tabular-nums', className)}>{shown}</span>
 }

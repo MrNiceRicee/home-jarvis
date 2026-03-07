@@ -43,9 +43,10 @@ export const useDeviceStore = create<DeviceStoreState>()(
 						delete filteredState[prop as keyof DeviceState]
 					}
 					filteredState satisfies Partial<DeviceState>
-					filteredPatch = Object.keys(filteredState).length > 0
-						? { ...patch, state: filteredState }
-						: { ...patch, state: undefined }
+					filteredPatch =
+						Object.keys(filteredState).length > 0
+							? { ...patch, state: filteredState }
+							: { ...patch, state: undefined }
 				}
 
 				set({

@@ -1,14 +1,13 @@
-import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'crypto'
+import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from 'crypto'
 import { eq } from 'drizzle-orm'
 import Elysia, { status, t } from 'elysia'
 
-import type { Integration } from '../db/schema'
-
 import { db } from '../db'
+import type { Integration } from '../db/schema'
 import { integrations } from '../db/schema'
 import { startPolling, stopPolling } from '../discovery/cloud-poller'
-import { discoverHueBridges, createHueApiKey } from '../integrations/hue/adapter'
-import { INTEGRATION_META, createAdapter, getOAuthConfig } from '../integrations/registry'
+import { createHueApiKey, discoverHueBridges } from '../integrations/hue/adapter'
+import { createAdapter, getOAuthConfig, INTEGRATION_META } from '../integrations/registry'
 import { env } from '../lib/env'
 import { toErrorMessage } from '../lib/error-utils'
 import { log } from '../lib/logger'
@@ -39,7 +38,8 @@ function verifyState(state: string): { brand: string; ts: number; nonce: string 
 	if (sigBuf.length !== expectedBuf.length || !timingSafeEqual(sigBuf, expectedBuf)) return null
 
 	try {
-		const data = JSON.parse(payload) as { brand: string; ts: number; nonce: string }
+		const data: unknown = JSON.parse(payload)
+		if (!isStatePayload(data)) return null
 		if (Date.now() - data.ts > STATE_MAX_AGE_MS) return null
 		return data
 	} catch {
@@ -47,8 +47,28 @@ function verifyState(state: string): { brand: string; ts: number; nonce: string 
 	}
 }
 
+/** SSRF prevention: returns error message if brand has an IP field that isn't private */
+function validateBrandIp(brand: string, config: Record<string, string>): string | null {
+	if (brand === 'hue' && config.bridgeIp && !isPrivateIp(config.bridgeIp))
+		return 'Bridge IP must be a private network address'
+	if (brand === 'elgato' && config.ip && !isPrivateIp(config.ip))
+		return 'Device IP must be a private network address'
+	return null
+}
+
+/** vesync API requires MD5 — hash password before persisting to DB */
+function hashVesyncPassword(config: Record<string, string>) {
+	const pw = config.password
+	if (!pw || /^[a-f0-9]{32}$/.test(pw)) return
+	config.password = createHash('md5').update(pw).digest('hex') // eslint-disable-line sonarjs/hashing -- vesync API requires MD5, not used for security
+}
+
 /** strip sensitive fields (config contains credentials, session contains auth tokens) */
-function stripSensitive({ config: _config, session: _session, ...safe }: Integration): Omit<Integration, 'config' | 'session'> {
+function stripSensitive({
+	config: _config,
+	session: _session,
+	...safe
+}: Integration): Omit<Integration, 'config' | 'session'> {
 	return safe
 }
 
@@ -65,7 +85,11 @@ async function exchangeOAuthCode(
 		headers.Authorization = `Basic ${Buffer.from(credentials).toString('base64')}`
 	}
 
-	const params: Record<string, string> = { grant_type: 'authorization_code', code, redirect_uri: callbackUri }
+	const params: Record<string, string> = {
+		grant_type: 'authorization_code',
+		code,
+		redirect_uri: callbackUri,
+	}
 	if (useBodyAuth) {
 		params.client_id = oauth.clientId
 		params.client_secret = oauth.clientSecret
@@ -88,8 +112,15 @@ async function exchangeOAuthCode(
 		return { error: body.includes('invalid_grant') ? 'code_expired' : 'exchange_failed' }
 	}
 
-	const tokenData = (await tokenRes.json()) as { access_token: string; refresh_token: string; expires_in: number | string }
-	const expiresIn = typeof tokenData.expires_in === 'string' ? Number.parseInt(tokenData.expires_in, 10) : tokenData.expires_in
+	const tokenData: unknown = await tokenRes.json()
+	if (!isTokenResponse(tokenData)) return { error: 'invalid_token_response' }
+	const expiresIn =
+		typeof tokenData.expires_in === 'string'
+			? Number.parseInt(tokenData.expires_in, 10)
+			: Number(tokenData.expires_in)
+	if (!Number.isFinite(expiresIn) || expiresIn <= 0) {
+		return { error: 'invalid_token_response' }
+	}
 
 	return {
 		session: JSON.stringify({
@@ -98,6 +129,28 @@ async function exchangeOAuthCode(
 			expiresAt: Date.now() + expiresIn * 1000,
 		}),
 	}
+}
+
+function isStatePayload(d: unknown): d is { brand: string; ts: number; nonce: string } {
+	return (
+		typeof d === 'object' &&
+		d !== null &&
+		typeof (d as Record<string, unknown>).brand === 'string' &&
+		typeof (d as Record<string, unknown>).ts === 'number' &&
+		typeof (d as Record<string, unknown>).nonce === 'string'
+	)
+}
+
+function isTokenResponse(
+	d: unknown,
+): d is { access_token: string; refresh_token: string; expires_in: number | string } {
+	return (
+		typeof d === 'object' &&
+		d !== null &&
+		typeof (d as Record<string, unknown>).access_token === 'string' &&
+		typeof (d as Record<string, unknown>).refresh_token === 'string' &&
+		'expires_in' in (d as Record<string, unknown>)
+	)
 }
 
 export const integrationsController = new Elysia({ prefix: '/api/integrations' })
@@ -124,13 +177,11 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 				return status(400, { error: `Unknown brand: ${brand}` })
 			}
 
-			// SSRF prevention: validate IPs are private before making any requests
-			if (brand === 'hue' && config.bridgeIp && !isPrivateIp(config.bridgeIp)) {
-				return status(400, { error: 'Bridge IP must be a private network address' })
-			}
-			if (brand === 'elgato' && config.ip && !isPrivateIp(config.ip)) {
-				return status(400, { error: 'Device IP must be a private network address' })
-			}
+			const ipError = validateBrandIp(brand, config)
+			if (ipError) return status(400, { error: ipError })
+
+			// hash vesync password before storing — never persist plaintext
+			if (brand === 'vesync' && config.password) hashVesyncPassword(config)
 
 			// Skip validation for OAuth brands (LG) and discovery-only brands (Elgato)
 			if (!meta.oauthFlow && !meta.discoveryOnly) {
@@ -142,7 +193,10 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 				}
 				const credResult = await adapterResult.value.validateCredentials(config)
 				if (credResult.isErr()) {
-					log.warn('addIntegration credential validation failed', { brand, error: credResult.error.message })
+					log.warn('addIntegration credential validation failed', {
+						brand,
+						error: credResult.error.message,
+					})
 					return status(422, { error: credResult.error.message })
 				}
 				log.info('addIntegration credentials valid', { brand })
@@ -155,7 +209,13 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 			if (existing) {
 				// clear session + authError on config change — forces re-auth on next poll
 				db.update(integrations)
-					.set({ config: JSON.stringify(config), session: null, authError: null, enabled: true, updatedAt: now })
+					.set({
+						config: JSON.stringify(config),
+						session: null,
+						authError: null,
+						enabled: true,
+						updatedAt: now,
+					})
 					.where(eq(integrations.brand, brand))
 					.run()
 
@@ -222,7 +282,10 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 		const result = await discoverHueBridges()
 		return result.match(
 			(bridges) => {
-				log.info('hue discoverBridges ok', { count: bridges.length, ips: bridges.map((b) => b.internalipaddress) })
+				log.info('hue discoverBridges ok', {
+					count: bridges.length,
+					ips: bridges.map((b) => b.internalipaddress),
+				})
 				return bridges
 			},
 			(err) => {
@@ -376,5 +439,7 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 			log.info('oauth callback: integration created', { brand, integrationId: id })
 		}
 
-		return redirect(`${env.CLIENT_URL}/integrations?oauth=success&brand=${encodeURIComponent(brand)}`)
+		return redirect(
+			`${env.CLIENT_URL}/integrations?oauth=success&brand=${encodeURIComponent(brand)}`,
+		)
 	})

@@ -48,7 +48,10 @@ export function BrailleWave({ isActive, className }: BrailleWaveProps) {
 	}
 
 	return (
-		<span className={cn('font-ioskeley', className)} style={{ fontFamily: "'IoskeleyMono', 'BrailleFallback', monospace" }}>
+		<span
+			className={cn('font-ioskeley', className)}
+			style={{ fontFamily: "'IoskeleyMono', 'BrailleFallback', monospace" }}
+		>
 			<span aria-hidden="true">{wave}</span>
 			<span className="sr-only">Scanning</span>
 		</span>

@@ -4,15 +4,16 @@ import { Elysia } from 'elysia'
 
 import { db } from './db'
 import { devices, integrations, sections } from './db/schema'
-import { adapterSession, startAllPolling } from './discovery/cloud-poller'
+import { persistAdapterSession, startAllPolling } from './discovery/cloud-poller'
 import { clientAssets, hasClientAssets } from './generated/client-manifest'
 import { createAdapter } from './integrations/registry'
 import { env } from './lib/env'
+import { toErrorMessage } from './lib/error-utils'
 import { eventBus } from './lib/events'
 import { log } from './lib/logger'
 import { parseJson } from './lib/parse-json'
 import { matterBridge } from './matter/bridge'
-import { devicesController } from './routes/devices.controller'
+import { clearConfirmTimers, devicesController } from './routes/devices.controller'
 import { eventsController } from './routes/events.controller'
 import { integrationsController } from './routes/integrations.controller'
 import { matterController } from './routes/matter.controller'
@@ -62,7 +63,10 @@ const app = new Elysia()
 		return new Response(body, {
 			headers: {
 				'Content-Type': asset.contentType,
-				'Cache-Control': pathname === '/' || pathname.endsWith('.html') ? 'no-cache' : 'max-age=31536000,immutable',
+				'Cache-Control':
+					pathname === '/' || pathname.endsWith('.html')
+						? 'no-cache'
+						: 'max-age=31536000,immutable',
 			},
 		})
 	})
@@ -77,12 +81,14 @@ db.insert(sections)
 
 // Start polling for all configured integrations
 startAllPolling(db).catch((err: unknown) => {
-	log.error('startAllPolling failed', { error: err instanceof Error ? err.message : String(err) })
+	log.error('startAllPolling failed', { error: toErrorMessage(err) })
 })
 
 // Start Matter bridge
 matterBridge.start(db).catch((err: unknown) => {
-	log.error('matter bridge start failed', { error: err instanceof Error ? err.message : String(err) })
+	log.error('matter bridge start failed', {
+		error: toErrorMessage(err),
+	})
 })
 
 // Forward inbound Matter commands to physical devices
@@ -90,7 +96,11 @@ matterBridge.onCommand((deviceId, state) => {
 	const device = db.select().from(devices).where(eq(devices.id, deviceId)).get()
 	if (!device?.integrationId) return
 
-	const integration = db.select().from(integrations).where(eq(integrations.id, device.integrationId)).get()
+	const integration = db
+		.select()
+		.from(integrations)
+		.where(eq(integrations.id, device.integrationId))
+		.get()
 	if (!integration) return
 
 	const config = parseJson<Record<string, string>>(integration.config).unwrapOr({})
@@ -103,13 +113,7 @@ matterBridge.onCommand((deviceId, state) => {
 	void adapter.setState(device.externalId, state).match(
 		() => {
 			// persist session if adapter refreshed tokens during setState
-			const updatedSession = adapterSession(adapter)
-			if (updatedSession && updatedSession !== integration.session) {
-				db.update(integrations)
-					.set({ session: updatedSession, updatedAt: Date.now() })
-					.where(eq(integrations.id, integration.id))
-					.run()
-			}
+			persistAdapterSession(db, adapter, integration)
 
 			// update DB state to match
 			const currentState = parseJson<Record<string, unknown>>(device.state).unwrapOr({})
@@ -121,7 +125,11 @@ matterBridge.onCommand((deviceId, state) => {
 			log.info('matter inbound forwarded', { deviceId, brand: device.brand })
 		},
 		(error) => {
-			log.error('matter inbound forward failed', { deviceId, brand: device.brand, error: error.message })
+			log.error('matter inbound forward failed', {
+				deviceId,
+				brand: device.brand,
+				error: error.message,
+			})
 		},
 	)
 })
@@ -135,8 +143,14 @@ eventBus.on('device:update', (event) => {
 })
 
 // Clean shutdown
-process.on('SIGTERM', () => void matterBridge.stop())
-process.on('SIGINT', () => void matterBridge.stop())
+process.on('SIGTERM', () => {
+	clearConfirmTimers()
+	void matterBridge.stop()
+})
+process.on('SIGINT', () => {
+	clearConfirmTimers()
+	void matterBridge.stop()
+})
 
 log.info('server started', {
 	port: app.server?.port,

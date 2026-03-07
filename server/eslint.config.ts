@@ -1,5 +1,5 @@
-import boundaries from 'eslint-plugin-boundaries'
 import { defineConfig, globalIgnores } from 'eslint/config'
+import boundaries from 'eslint-plugin-boundaries'
 import globals from 'globals'
 
 import { baseConfig } from '../eslint.config.base.ts'

@@ -9,7 +9,12 @@ interface PowerButtonProps {
 	onToggle: () => void
 }
 
-export function PowerButton({ isOn, isDisabled, isToggling, onToggle }: Readonly<PowerButtonProps>) {
+export function PowerButton({
+	isOn,
+	isDisabled,
+	isToggling,
+	onToggle,
+}: Readonly<PowerButtonProps>) {
 	const glowing = isOn && !isToggling
 	const iconColor = glowing ? 'rgb(52,211,153)' : '#a8a29e'
 
@@ -38,9 +43,14 @@ export function PowerButton({ isOn, isDisabled, isToggling, onToggle }: Readonly
 				stroke={iconColor}
 				strokeWidth="1.5"
 				strokeLinecap="round"
-				style={glowing ? {
-					filter: 'drop-shadow(0 0 3px rgba(52,211,153,0.7)) drop-shadow(0 0 6px rgba(52,211,153,0.4))',
-				} : undefined}
+				style={
+					glowing
+						? {
+								filter:
+									'drop-shadow(0 0 3px rgba(52,211,153,0.7)) drop-shadow(0 0 6px rgba(52,211,153,0.4))',
+							}
+						: undefined
+				}
 			>
 				<path d="M6 1v4" />
 				<path d="M9.5 3.5a4.5 4.5 0 1 1-7 0" />

@@ -1,13 +1,9 @@
 import { useEffect, useState } from 'react'
-import {
-	Form,
-	Heading,
-} from 'react-aria-components'
-
-import type { IntegrationMeta, CredentialField, DetectedDevice } from '../types'
+import { Form, Heading } from 'react-aria-components'
 
 import { api } from '../lib/api'
 import { toErrorMessage } from '../lib/error-utils'
+import type { CredentialField, DetectedDevice, IntegrationMeta } from '../types'
 import { RaisedButton } from './ui/button'
 import { RaisedInput } from './ui/input'
 import { TerminalButton } from './ui/terminal-button'
@@ -92,9 +88,10 @@ export function IntegrationFormInner({ meta, prefill, onSubmit, onCancel }: Read
 			})
 			if (error) {
 				const val = error.value
-				const msg = typeof val === 'object' && val != null && 'error' in val && typeof val.error === 'string'
-					? val.error
-					: 'Link failed'
+				const msg =
+					typeof val === 'object' && val != null && 'error' in val && typeof val.error === 'string'
+						? val.error
+						: 'Link failed'
 				throw new Error(msg)
 			}
 			if (data && typeof data === 'object' && 'apiKey' in data && typeof data.apiKey === 'string') {
@@ -122,7 +119,11 @@ export function IntegrationFormInner({ meta, prefill, onSubmit, onCancel }: Read
 	if (meta.oauthFlow) {
 		return (
 			<div>
-				<Heading slot="title" className="font-michroma text-2xs text-stone-800 tracking-[0.15em] uppercase mb-1" style={{ textShadow: '0 -1px 0 rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.4)' }}>
+				<Heading
+					slot="title"
+					className="font-michroma text-2xs text-stone-800 tracking-[0.15em] uppercase mb-1"
+					style={{ textShadow: '0 -1px 0 rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.4)' }}
+				>
 					{meta.displayName}
 				</Heading>
 				<p className="font-ioskeley text-xs text-stone-600 mb-5">
@@ -145,7 +146,11 @@ export function IntegrationFormInner({ meta, prefill, onSubmit, onCancel }: Read
 
 	return (
 		<Form onSubmit={handleSubmit}>
-			<Heading slot="title" className="font-michroma text-2xs text-stone-800 tracking-[0.15em] uppercase mb-4" style={{ textShadow: '0 -1px 0 rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.4)' }}>
+			<Heading
+				slot="title"
+				className="font-michroma text-2xs text-stone-800 tracking-[0.15em] uppercase mb-4"
+				style={{ textShadow: '0 -1px 0 rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.4)' }}
+			>
 				Connect {meta.displayName}
 			</Heading>
 
@@ -171,7 +176,9 @@ export function IntegrationFormInner({ meta, prefill, onSubmit, onCancel }: Read
 					>
 						{linkingHue ? 'Waiting for button press...' : 'Press Bridge Button & Link'}
 					</RaisedButton>
-					{hueLinkError && <p className="font-ioskeley text-2xs text-red-700 mt-1">{hueLinkError}</p>}
+					{hueLinkError && (
+						<p className="font-ioskeley text-2xs text-red-700 mt-1">{hueLinkError}</p>
+					)}
 					{values.apiKey && (
 						<p className="font-ioskeley text-2xs text-emerald-700 mt-1">bridge linked</p>
 					)}
@@ -179,7 +186,13 @@ export function IntegrationFormInner({ meta, prefill, onSubmit, onCancel }: Read
 			)}
 
 			{error && (
-				<div className="mb-4 p-3 rounded-lg font-ioskeley text-xs text-red-400" style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
+				<div
+					className="mb-4 p-3 rounded-lg font-ioskeley text-xs text-red-400"
+					style={{
+						background: 'rgba(239, 68, 68, 0.08)',
+						border: '1px solid rgba(239, 68, 68, 0.15)',
+					}}
+				>
 					{error}
 				</div>
 			)}

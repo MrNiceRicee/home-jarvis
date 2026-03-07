@@ -1,10 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useCallback, useState } from 'react'
 import { Button } from 'react-aria-components'
 import { toast } from 'sonner'
-
-import type { Device, DeviceState, Section } from '../types'
 
 import { CreateSectionDialog } from '../components/CreateSectionDialog'
 import { DeviceDetailDialog } from '../components/DeviceDetailDialog'
@@ -16,6 +14,7 @@ import { cn } from '../lib/cn'
 import { BRAND_LABEL } from '../lib/device-constants'
 import { useConnectionStore } from '../stores/connection-store'
 import { useDeviceStore } from '../stores/device-store'
+import type { Device, DeviceState, Section } from '../types'
 
 export const Route = createFileRoute('/')({ component: Dashboard })
 
@@ -87,9 +86,12 @@ function Dashboard() {
 		},
 	})
 
-	const handleStateChange = useCallback(async (id: string, state: Partial<DeviceState>) => {
-		await stateMutation.mutateAsync({ id, state })
-	}, [stateMutation])
+	const handleStateChange = useCallback(
+		async (id: string, state: Partial<DeviceState>) => {
+			await stateMutation.mutateAsync({ id, state })
+		},
+		[stateMutation],
+	)
 
 	const handleMatterToggle = useCallback(async (deviceId: string, enabled: boolean) => {
 		const { error } = await api.api.devices({ id: deviceId }).matter.patch({ enabled })
@@ -100,9 +102,7 @@ function Dashboard() {
 		useDeviceStore.getState().updateDevice(deviceId, {})
 		// matter toggle updates matterEnabled, not state — update directly
 		useDeviceStore.setState((prev) => ({
-			devices: prev.devices.map((d) =>
-				d.id === deviceId ? { ...d, matterEnabled: enabled } : d,
-			),
+			devices: prev.devices.map((d) => (d.id === deviceId ? { ...d, matterEnabled: enabled } : d)),
 		}))
 	}, [])
 
@@ -112,42 +112,51 @@ function Dashboard() {
 		await queryClient.invalidateQueries({ queryKey: ['sections'] })
 	}
 
-	const handleRenameSection = useCallback(async (sectionId: string, name: string) => {
-		const { error } = await api.api.sections({ id: sectionId }).patch({ name })
-		if (error) {
-			toast.error('Failed to rename section')
-			throw error
-		}
-		await queryClient.invalidateQueries({ queryKey: ['sections'] })
-	}, [queryClient])
-
-	const handleDeleteSection = useCallback(async (sectionId: string) => {
-		const { error } = await api.api.sections({ id: sectionId }).delete()
-		if (error) {
-			toast.error('Cannot delete section — move devices out first')
-			return
-		}
-		await queryClient.invalidateQueries({ queryKey: ['sections'] })
-	}, [queryClient])
-
-	const handleReorder = useCallback((updates: Array<{ id: string; sectionId: string; position: number }>) => {
-		// snapshot order for rollback
-		const snapshot = useDeviceStore.getState().devices.map((d) => ({
-			id: d.id,
-			sectionId: d.sectionId,
-			position: d.position,
-		}))
-
-		// optimistic reorder
-		applyPositionUpdates(updates)
-
-		void api.api.devices.positions.patch(updates).then(({ error }) => {
+	const handleRenameSection = useCallback(
+		async (sectionId: string, name: string) => {
+			const { error } = await api.api.sections({ id: sectionId }).patch({ name })
 			if (error) {
-				toast.error('Failed to save device order')
-				applyPositionUpdates(snapshot)
+				toast.error('Failed to rename section')
+				throw error
 			}
-		})
-	}, [])
+			await queryClient.invalidateQueries({ queryKey: ['sections'] })
+		},
+		[queryClient],
+	)
+
+	const handleDeleteSection = useCallback(
+		async (sectionId: string) => {
+			const { error } = await api.api.sections({ id: sectionId }).delete()
+			if (error) {
+				toast.error('Cannot delete section — move devices out first')
+				return
+			}
+			await queryClient.invalidateQueries({ queryKey: ['sections'] })
+		},
+		[queryClient],
+	)
+
+	const handleReorder = useCallback(
+		(updates: Array<{ id: string; sectionId: string; position: number }>) => {
+			// snapshot order for rollback
+			const snapshot = useDeviceStore.getState().devices.map((d) => ({
+				id: d.id,
+				sectionId: d.sectionId,
+				position: d.position,
+			}))
+
+			// optimistic reorder
+			applyPositionUpdates(updates)
+
+			void api.api.devices.positions.patch(updates).then(({ error }) => {
+				if (error) {
+					toast.error('Failed to save device order')
+					applyPositionUpdates(snapshot)
+				}
+			})
+		},
+		[],
+	)
 
 	const handleToggleSelect = useCallback((deviceId: string) => {
 		setSelectedIds((prev) => {
@@ -163,7 +172,7 @@ function Dashboard() {
 
 	// keep expanded device in sync with SSE updates
 	const liveExpandedDevice = expandedDevice
-		? devices.find((d) => d.id === expandedDevice.id) ?? expandedDevice
+		? (devices.find((d) => d.id === expandedDevice.id) ?? expandedDevice)
 		: null
 
 	// skeleton loading while SSE connects
@@ -215,9 +224,10 @@ function Dashboard() {
 	}
 
 	// build ordered section list — use DB sections, adding a fallback "Home" if needed
-	const orderedSections: Section[] = sections.length > 0
-		? [...sections].sort((a, b) => a.position - b.position)
-		: [{ id: 'home', name: 'Home', position: 0, createdAt: 0, updatedAt: 0 }]
+	const orderedSections: Section[] =
+		sections.length > 0
+			? [...sections].sort((a, b) => a.position - b.position)
+			: [{ id: 'home', name: 'Home', position: 0, createdAt: 0, updatedAt: 0 }]
 
 	return (
 		<div>
@@ -303,16 +313,23 @@ function SkeletonCard() {
 	)
 }
 
-function HiddenDevicesSection({ devices, onUnhide }: Readonly<{ devices: Device[]; onUnhide: (id: string) => Promise<void> }>) {
+function HiddenDevicesSection({
+	devices,
+	onUnhide,
+}: Readonly<{ devices: Device[]; onUnhide: (id: string) => Promise<void> }>) {
 	return (
 		<div className="mt-8 opacity-50">
-			<h3 className="text-2xs font-michroma uppercase tracking-wider text-stone-400 mb-3">Hidden devices</h3>
+			<h3 className="text-2xs font-michroma uppercase tracking-wider text-stone-400 mb-3">
+				Hidden devices
+			</h3>
 			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
 				{devices.map((d) => (
 					<Card key={d.id} className="p-3 flex items-center justify-between">
 						<div className="min-w-0">
 							<p className="text-xs font-michroma text-stone-600 truncate">{d.name}</p>
-							<p className="text-2xs font-michroma text-stone-400 uppercase">{BRAND_LABEL[d.brand] ?? d.brand} · {d.type}</p>
+							<p className="text-2xs font-michroma text-stone-400 uppercase">
+								{BRAND_LABEL[d.brand] ?? d.brand} · {d.type}
+							</p>
 						</div>
 						<Button
 							className="text-2xs font-michroma uppercase tracking-wider text-stone-500 hover:text-stone-800 transition-colors cursor-pointer px-2 py-1"

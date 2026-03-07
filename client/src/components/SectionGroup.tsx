@@ -1,27 +1,21 @@
 import {
+	closestCenter,
 	DndContext,
+	type DragEndEvent,
 	DragOverlay,
+	type DragStartEvent,
 	KeyboardSensor,
 	PointerSensor,
-	closestCenter,
 	useSensor,
 	useSensors,
-	type DragEndEvent,
-	type DragStartEvent,
 } from '@dnd-kit/core'
-import {
-	SortableContext,
-	arrayMove,
-	rectSortingStrategy,
-	useSortable,
-} from '@dnd-kit/sortable'
+import { arrayMove, rectSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { memo, useRef, useState } from 'react'
 import { Button } from 'react-aria-components'
 
-import type { Device, DeviceState, Section } from '../types'
-
 import { cn } from '../lib/cn'
+import type { Device, DeviceState, Section } from '../types'
 import { DeviceCard } from './DeviceCard'
 
 interface SectionGroupProps {
@@ -37,7 +31,18 @@ interface SectionGroupProps {
 	onToggleSelect?: (deviceId: string) => void
 }
 
-export function SectionGroup({ section, devices, onExpand, onMatterToggle, onReorder, onStateChange, onRename, onDelete, selectedIds, onToggleSelect }: Readonly<SectionGroupProps>) {
+export function SectionGroup({
+	section,
+	devices,
+	onExpand,
+	onMatterToggle,
+	onReorder,
+	onStateChange,
+	onRename,
+	onDelete,
+	selectedIds,
+	onToggleSelect,
+}: Readonly<SectionGroupProps>) {
 	const [editing, setEditing] = useState(false)
 	const [editName, setEditName] = useState(section.name)
 	const [activeId, setActiveId] = useState<string | null>(null)
@@ -92,10 +97,17 @@ export function SectionGroup({ section, devices, onExpand, onMatterToggle, onReo
 						ref={inputRef}
 						value={editName}
 						onChange={(e) => setEditName(e.target.value)}
-						onBlur={() => { void commitRename() }}
+						onBlur={() => {
+							void commitRename()
+						}}
 						onKeyDown={(e) => {
-							if (e.key === 'Enter') { void commitRename() }
-							if (e.key === 'Escape') { setEditName(section.name); setEditing(false) }
+							if (e.key === 'Enter') {
+								void commitRename()
+							}
+							if (e.key === 'Escape') {
+								setEditName(section.name)
+								setEditing(false)
+							}
 						}}
 						className="font-michroma text-xs uppercase tracking-wider text-stone-700 bg-transparent border-b border-amber-400 outline-none py-0.5 px-0"
 						autoFocus
@@ -103,7 +115,11 @@ export function SectionGroup({ section, devices, onExpand, onMatterToggle, onReo
 				) : (
 					<button
 						type="button"
-						onClick={() => { if (onRename) { setEditing(true) } }}
+						onClick={() => {
+							if (onRename) {
+								setEditing(true)
+							}
+						}}
 						className={cn(
 							'font-michroma text-xs uppercase tracking-wider text-stone-400',
 							onRename && 'hover:text-stone-600 cursor-text',
@@ -116,7 +132,9 @@ export function SectionGroup({ section, devices, onExpand, onMatterToggle, onReo
 				{/* actions — visible on hover */}
 				{onDelete && devices.length === 0 && (
 					<Button
-						onPress={() => { void onDelete(section.id) }}
+						onPress={() => {
+							void onDelete(section.id)
+						}}
 						className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-stone-400 hover:text-red-500 cursor-pointer ml-auto"
 						aria-label={`Delete section ${section.name}`}
 					>
@@ -126,7 +144,9 @@ export function SectionGroup({ section, devices, onExpand, onMatterToggle, onReo
 			</div>
 
 			{devices.length === 0 ? (
-				<p className="text-xs font-michroma text-stone-400 italic py-4">No devices in this section</p>
+				<p className="text-xs font-michroma text-stone-400 italic py-4">
+					No devices in this section
+				</p>
 			) : (
 				<DndContext
 					sensors={sensors}
@@ -146,7 +166,9 @@ export function SectionGroup({ section, devices, onExpand, onMatterToggle, onReo
 										onExpand={onExpand}
 										onMatterToggle={onMatterToggle}
 										onStateChange={onStateChange}
-										onToggleSelect={isLight && onToggleSelect ? () => onToggleSelect(device.id) : undefined}
+										onToggleSelect={
+											isLight && onToggleSelect ? () => onToggleSelect(device.id) : undefined
+										}
 									/>
 								)
 							})}
@@ -174,15 +196,17 @@ interface SortableDeviceCardProps {
 	onToggleSelect?: () => void
 }
 
-const SortableDeviceCard = memo(function SortableDeviceCard({ device, isSelected, onExpand, onMatterToggle, onStateChange, onToggleSelect }: Readonly<SortableDeviceCardProps>) {
-	const {
-		attributes,
-		listeners,
-		setNodeRef,
-		transform,
-		transition,
-		isDragging,
-	} = useSortable({ id: device.id })
+const SortableDeviceCard = memo(function SortableDeviceCard({
+	device,
+	isSelected,
+	onExpand,
+	onMatterToggle,
+	onStateChange,
+	onToggleSelect,
+}: Readonly<SortableDeviceCardProps>) {
+	const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+		id: device.id,
+	})
 
 	const style = {
 		transform: CSS.Transform.toString(transform),

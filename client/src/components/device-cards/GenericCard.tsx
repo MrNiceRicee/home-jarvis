@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { Button } from 'react-aria-components'
 
-import type { Device, DeviceState } from '../../types'
-
 import { cn } from '../../lib/cn'
+import type { Device, DeviceState } from '../../types'
 
 interface GenericCardProps {
 	device: Device

@@ -1,6 +1,5 @@
-import type { App } from 'home-jarvis-server'
-
 import { treaty } from '@elysiajs/eden'
+import type { App } from 'home-jarvis-server'
 
 /**
  * Eden Treaty client — fully typed from the server's App type.

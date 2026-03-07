@@ -21,7 +21,10 @@ export const sectionsController = new Elysia({ prefix: '/api/sections' })
 		({ db, body }) => {
 			const name = body.name.trim()
 			if (!name || name.length > 50 || !SECTION_NAME_PATTERN.test(name)) {
-				return status(400, { error: 'Invalid section name. Max 50 chars, letters/numbers/spaces/dashes/underscores only.' })
+				return status(400, {
+					error:
+						'Invalid section name. Max 50 chars, letters/numbers/spaces/dashes/underscores only.',
+				})
 			}
 
 			const existing = db.select().from(sections).where(eq(sections.name, name)).get()
@@ -37,9 +40,7 @@ export const sectionsController = new Elysia({ prefix: '/api/sections' })
 
 			const id = crypto.randomUUID()
 			const now = Date.now()
-			db.insert(sections)
-				.values({ id, name, position, createdAt: now, updatedAt: now })
-				.run()
+			db.insert(sections).values({ id, name, position, createdAt: now, updatedAt: now }).run()
 
 			log.info('section created', { id, name, position })
 			return db.select().from(sections).where(eq(sections.id, id)).get()
@@ -101,7 +102,9 @@ export const sectionsController = new Elysia({ prefix: '/api/sections' })
 			.get()
 
 		if (deviceCount && deviceCount.count > 0) {
-			return status(400, { error: 'Cannot delete a section that contains devices. Move devices first.' })
+			return status(400, {
+				error: 'Cannot delete a section that contains devices. Move devices first.',
+			})
 		}
 
 		db.delete(sections).where(eq(sections.id, params.id)).run()

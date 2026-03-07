@@ -1,13 +1,12 @@
 import { useState } from 'react'
-import { Dialog, Heading, Modal as AriaModal, ModalOverlay } from 'react-aria-components'
-
-import type { Device, DeviceState } from '../types'
+import { Modal as AriaModal, Dialog, Heading, ModalOverlay } from 'react-aria-components'
 
 import { api } from '../lib/api'
 import { cn } from '../lib/cn'
 import { BRAND_LABEL, FALLBACK_ICON, TYPE_ICON } from '../lib/device-constants'
 import { DeviceBody } from '../lib/device-labels'
 import { useDeviceStore } from '../stores/device-store'
+import type { Device, DeviceState } from '../types'
 import { RaisedButton } from './ui/button'
 import { PowerButton } from './ui/power-button'
 
@@ -17,7 +16,11 @@ interface DeviceDetailDialogProps {
 	onStateChange?: (deviceId: string, state: Partial<DeviceState>) => Promise<void>
 }
 
-export function DeviceDetailDialog({ device, onClose, onStateChange }: Readonly<DeviceDetailDialogProps>) {
+export function DeviceDetailDialog({
+	device,
+	onClose,
+	onStateChange,
+}: Readonly<DeviceDetailDialogProps>) {
 	const [powerToggling, setPowerToggling] = useState(false)
 	const removeDevice = useDeviceStore((s) => s.removeDevice)
 
@@ -29,7 +32,9 @@ export function DeviceDetailDialog({ device, onClose, onStateChange }: Readonly<
 	return (
 		<ModalOverlay
 			isOpen
-			onOpenChange={(open) => { if (!open) onClose() }}
+			onOpenChange={(open) => {
+				if (!open) onClose()
+			}}
 			isDismissable
 			className="fixed inset-0 bg-stone-900/15 backdrop-blur-sm z-50 flex items-center justify-center entering:animate-in entering:fade-in exiting:animate-out exiting:fade-out"
 		>
@@ -43,7 +48,8 @@ export function DeviceDetailDialog({ device, onClose, onStateChange }: Readonly<
 					'exiting:animate-out exiting:zoom-out-95',
 				)}
 				style={{
-					boxShadow: '0 1px 2px rgba(120,90,50,0.05), 0 4px 12px rgba(120,90,50,0.04), 0 8px 24px rgba(120,90,50,0.02), 0 16px 48px rgba(120,90,50,0.06), inset 0 0.5px 0 rgba(255,255,255,0.5)',
+					boxShadow:
+						'0 1px 2px rgba(120,90,50,0.05), 0 4px 12px rgba(120,90,50,0.04), 0 8px 24px rgba(120,90,50,0.02), 0 16px 48px rgba(120,90,50,0.06), inset 0 0.5px 0 rgba(255,255,255,0.5)',
 				}}
 			>
 				<Dialog className="outline-none">
@@ -75,11 +81,14 @@ export function DeviceDetailDialog({ device, onClose, onStateChange }: Readonly<
 								onToggle={() => {
 									if (!onStateChange) return
 									setPowerToggling(true)
-									void onStateChange(device.id, { on: !(device.state.on ?? false) })
-										.finally(() => setPowerToggling(false))
+									void onStateChange(device.id, { on: !(device.state.on ?? false) }).finally(() =>
+										setPowerToggling(false),
+									)
 								}}
 							/>
-						) : <div />}
+						) : (
+							<div />
+						)}
 						<div className="flex items-center gap-2">
 							<RaisedButton
 								variant="ghost"

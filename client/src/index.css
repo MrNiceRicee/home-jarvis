@@ -2,19 +2,19 @@
 @plugin "tailwindcss-react-aria-components";
 
 @font-face {
-	font-family: 'IoskeleyMono';
-	src: url('/fonts/IoskeleyMono-Regular.woff2') format('woff2');
+	font-family: "IoskeleyMono";
+	src: url("/fonts/IoskeleyMono-Regular.woff2") format("woff2");
 	font-display: swap;
 }
 
 @font-face {
-	font-family: 'Michroma';
-	src: url('/fonts/Michroma-Regular.ttf') format('truetype');
+	font-family: "Michroma";
+	src: url("/fonts/Michroma-Regular.ttf") format("truetype");
 	font-display: swap;
 }
 
 html {
-	font-family: 'IoskeleyMono', monospace;
+	font-family: "IoskeleyMono", monospace;
 }
 
 @theme {
@@ -25,8 +25,8 @@ html {
 	--color-display-text: #faf0dc;
 
 	/* font families */
-	--font-ioskeley: 'IoskeleyMono', monospace;
-	--font-michroma: 'Michroma', sans-serif;
+	--font-ioskeley: "IoskeleyMono", monospace;
+	--font-michroma: "Michroma", sans-serif;
 
 	/* label size — Michroma at 10px for control labels (BRT, CCT, FAN, etc.) */
 	--text-2xs: 0.625rem;
@@ -60,7 +60,7 @@ html {
 /* registration marks — top corners via pseudo-elements */
 .hud-frame::before,
 .hud-frame::after {
-	content: '';
+	content: "";
 	position: absolute;
 	width: 16px;
 	height: 16px;
@@ -100,13 +100,22 @@ html {
 
 /* matter orbital animations — CSS keyframes for compositor-thread performance */
 @keyframes core-pulse {
-	0%, 100% { transform: scale(1); }
-	50% { transform: scale(1.03); }
+	0%,
+	100% {
+		transform: scale(1);
+	}
+	50% {
+		transform: scale(1.03);
+	}
 }
 
 @keyframes ring-rotate {
-	from { transform: rotate(0deg); }
-	to { transform: rotate(360deg); }
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 .metadata-ring-group {
@@ -134,15 +143,20 @@ html {
 
 /* braille font fallback for BrailleWave */
 @font-face {
-	font-family: 'BrailleFallback';
-	src: local('DejaVu Sans'), local('Segoe UI Symbol'), local('Apple Braille');
+	font-family: "BrailleFallback";
+	src: local("DejaVu Sans"), local("Segoe UI Symbol"), local("Apple Braille");
 	unicode-range: U+2800-28FF;
 }
 
 /* blinking terminal cursor */
 @keyframes cursor-blink {
-	0%, 100% { opacity: 1; }
-	50% { opacity: 0; }
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0;
+	}
 }
 .scan-cursor {
 	animation: cursor-blink 1s step-end infinite;
@@ -168,16 +182,30 @@ html {
 
 /* bright phosphor flash during power-on */
 @keyframes crt-flash {
-	0% { opacity: 0; }
-	10% { opacity: 1; }
-	50% { opacity: 0.8; }
-	100% { opacity: 0; pointer-events: none; }
+	0% {
+		opacity: 0;
+	}
+	10% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.8;
+	}
+	100% {
+		opacity: 0;
+		pointer-events: none;
+	}
 }
 .screen-enter::after {
-	content: '';
+	content: "";
 	position: absolute;
 	inset: 0;
-	background: radial-gradient(ellipse at center, rgba(255,255,255,0.9) 0%, rgba(200,220,210,0.4) 40%, transparent 70%);
+	background: radial-gradient(
+		ellipse at center,
+		rgba(255, 255, 255, 0.9) 0%,
+		rgba(200, 220, 210, 0.4) 40%,
+		transparent 70%
+	);
 	animation: crt-flash 0.6s ease-out both;
 	animation-delay: var(--stagger, 0ms);
 	pointer-events: none;

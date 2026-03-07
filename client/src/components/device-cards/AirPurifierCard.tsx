@@ -1,5 +1,4 @@
 import type { Device, DeviceState } from '../../types'
-
 import { ReadoutDisplay } from '../ui/readout-display'
 import { SteppedRadialDial } from '../ui/stepped-radial-dial'
 
@@ -69,12 +68,19 @@ function fanSpeedToStepValue(speed: number): number {
 	let minDist = Math.abs(speed - FAN_STEPS[0].value)
 	for (let i = 1; i < FAN_STEPS.length; i++) {
 		const dist = Math.abs(speed - FAN_STEPS[i].value)
-		if (dist < minDist) { closest = FAN_STEPS[i].value; minDist = dist }
+		if (dist < minDist) {
+			closest = FAN_STEPS[i].value
+			minDist = dist
+		}
 	}
 	return closest
 }
 
-function buildReadoutLabel(pm25: number | undefined, aqiLabelText: string | undefined, isOn: boolean): string {
+function buildReadoutLabel(
+	pm25: number | undefined,
+	aqiLabelText: string | undefined,
+	isOn: boolean,
+): string {
 	if (pm25 !== undefined) {
 		const base = `PM2.5: ${pm25} micrograms per cubic meter`
 		return aqiLabelText ? `${base}, air quality: ${aqiLabelText}` : base
@@ -90,7 +96,11 @@ interface AirPurifierCardProps {
 	onStateChange?: (deviceId: string, state: Partial<DeviceState>) => Promise<void>
 }
 
-export function AirPurifierCard({ device, variant = 'compact', onStateChange }: Readonly<AirPurifierCardProps>) {
+export function AirPurifierCard({
+	device,
+	variant = 'compact',
+	onStateChange,
+}: Readonly<AirPurifierCardProps>) {
 	const state = device.state
 	const isOn = state.on ?? false
 	const isFull = variant === 'full'
@@ -105,16 +115,29 @@ export function AirPurifierCard({ device, variant = 'compact', onStateChange }: 
 	return (
 		<div className="space-y-3">
 			{/* ── PM2.5 readout with AQI label ────────────────────────── */}
-			<ReadoutDisplay size="lg" glowIntensity={isOn ? 1 : 0} aria-label={readoutLabel} className="w-full justify-between">
+			<ReadoutDisplay
+				size="lg"
+				glowIntensity={isOn ? 1 : 0}
+				aria-label={readoutLabel}
+				className="w-full justify-between"
+			>
 				{isOn ? (
 					<>
 						{state.pm25 !== undefined ? (
-							<span>{state.pm25}<span className="text-xs text-display-text/50 ml-0.5">ug/m3</span></span>
+							<span>
+								{state.pm25}
+								<span className="text-xs text-display-text/50 ml-0.5">ug/m3</span>
+							</span>
 						) : (
 							<span>ON</span>
 						)}
 						{aqi && (
-							<span className="text-sm font-michroma" style={{ color: aqi.css, textShadow: `0 0 8px ${aqi.css}` }}>{aqi.label}</span>
+							<span
+								className="text-sm font-michroma"
+								style={{ color: aqi.css, textShadow: `0 0 8px ${aqi.css}` }}
+							>
+								{aqi.label}
+							</span>
 						)}
 					</>
 				) : (
@@ -133,7 +156,9 @@ export function AirPurifierCard({ device, variant = 'compact', onStateChange }: 
 				hasFan
 				activeFanValue={activeFanValue}
 				isFull={isFull}
-				onFanChange={(key) => { void onStateChange?.(device.id, { fanSpeed: Number(key) }) }}
+				onFanChange={(key) => {
+					void onStateChange?.(device.id, { fanSpeed: Number(key) })
+				}}
 				disabled={!device.online || !isOn}
 			/>
 		</div>
@@ -157,9 +182,17 @@ interface MeterPanelProps {
 }
 
 function MeterPanel({
-	litAqi, filterLit, filterLife, aqi,
-	hasAqi, hasFilter, hasFan,
-	activeFanValue, isFull, onFanChange, disabled,
+	litAqi,
+	filterLit,
+	filterLife,
+	aqi,
+	hasAqi,
+	hasFilter,
+	hasFan,
+	activeFanValue,
+	isFull,
+	onFanChange,
+	disabled,
 }: Readonly<MeterPanelProps>) {
 	const isOff = disabled
 
@@ -169,14 +202,17 @@ function MeterPanel({
 			style={{
 				background: 'linear-gradient(180deg, #1e1d18 0%, #181712 100%)',
 				border: '1px solid #0f0e0a',
-				boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.6), inset 0 0 3px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.15)',
+				boxShadow:
+					'inset 0 2px 8px rgba(0,0,0,0.6), inset 0 0 3px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.15)',
 			}}
 		>
 			<div className="flex items-end justify-between gap-2">
 				{/* ── Left: AQI vertical meter ──────────────────────── */}
 				{hasAqi && (
 					<div className="flex flex-col items-center gap-1 shrink-0">
-						<span className="font-michroma text-[8px] uppercase tracking-widest text-display-text/60">AQI</span>
+						<span className="font-michroma text-[8px] uppercase tracking-widest text-display-text/60">
+							AQI
+						</span>
 						<VerticalMeter
 							segments={AQI_SEGMENT_COLORS.length}
 							lit={litAqi}
@@ -191,7 +227,9 @@ function MeterPanel({
 								{aqi.label}
 							</span>
 						) : (
-							<span className="font-michroma text-[8px] uppercase tracking-wider text-display-text/20">&nbsp;</span>
+							<span className="font-michroma text-[8px] uppercase tracking-wider text-display-text/20">
+								&nbsp;
+							</span>
 						)}
 					</div>
 				)}
@@ -212,7 +250,9 @@ function MeterPanel({
 				{/* ── Right: Filter vertical meter ──────────────────── */}
 				{hasFilter && (
 					<div className="flex flex-col items-center gap-1 shrink-0">
-						<span className="font-michroma text-[8px] uppercase tracking-widest text-display-text/60">FLTR</span>
+						<span className="font-michroma text-[8px] uppercase tracking-widest text-display-text/60">
+							FLTR
+						</span>
 						<VerticalMeter
 							segments={FILTER_SEGMENT_COUNT}
 							lit={filterLit}
@@ -254,20 +294,30 @@ function VerticalMeter({ segments, lit, getColor, off }: Readonly<VerticalMeterP
 	})
 
 	return (
-		<div className="flex flex-col gap-[2px]" role="meter" aria-valuemin={0} aria-valuemax={segments} aria-valuenow={off ? 0 : lit}>
+		<div
+			className="flex flex-col gap-[2px]"
+			role="meter"
+			aria-valuemin={0}
+			aria-valuemax={segments}
+			aria-valuenow={off ? 0 : lit}
+		>
 			{segArray.map((seg, i) => {
 				const { color, glow, dim } = getColor(seg.colorIndex, lit)
 				return (
 					<div
 						key={i}
 						className="w-5 h-1.5 rounded-[1px] transition-all duration-300"
-						style={seg.isLit ? {
-							background: color,
-							boxShadow: `0 0 4px ${glow}, 0 0 1px ${glow}`,
-						} : {
-							background: off ? UNLIT_DIM : dim,
-							boxShadow: 'inset 0 0.5px 1px rgba(0,0,0,0.3)',
-						}}
+						style={
+							seg.isLit
+								? {
+										background: color,
+										boxShadow: `0 0 4px ${glow}, 0 0 1px ${glow}`,
+									}
+								: {
+										background: off ? UNLIT_DIM : dim,
+										boxShadow: 'inset 0 0.5px 1px rgba(0,0,0,0.3)',
+									}
+						}
 					/>
 				)
 			})}

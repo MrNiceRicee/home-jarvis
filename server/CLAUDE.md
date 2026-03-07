@@ -28,7 +28,6 @@ src/
     hue/adapter.ts
   discovery/
     cloud-poller.ts
-    mdns-scanner.ts
     local-scanner.ts
   db/
     index.ts                    # Drizzle + bun:sqlite instance
@@ -52,7 +51,7 @@ src/
 ```ts
 export type Device = typeof devices.$inferSelect
 export type Integration = typeof integrations.$inferSelect
-export type HomekitConfig = typeof homekitConfig.$inferSelect
+export type MatterConfig = typeof matterConfig.$inferSelect
 ```
 
 `src/integrations/types.ts` owns `DeviceState`, `DeviceType`, `IntegrationMeta`, `CredentialField`.

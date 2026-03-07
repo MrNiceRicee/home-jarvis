@@ -10,10 +10,18 @@ interface TwoPositionToggleProps {
 	disabled?: boolean
 }
 
-export function TwoPositionToggle({ label, options, value, onChange, disabled }: Readonly<TwoPositionToggleProps>) {
+export function TwoPositionToggle({
+	label,
+	options,
+	value,
+	onChange,
+	disabled,
+}: Readonly<TwoPositionToggleProps>) {
 	return (
 		<div>
-			<span className="font-michroma text-2xs uppercase tracking-widest text-stone-400 mb-1.5 block">{label}</span>
+			<span className="font-michroma text-2xs uppercase tracking-widest text-stone-400 mb-1.5 block">
+				{label}
+			</span>
 			<RadioGroup
 				value={value}
 				onChange={onChange}

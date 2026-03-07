@@ -15,10 +15,19 @@ interface CardProps {
 	selected?: boolean
 }
 
-export function Card({ children, className, accent, glowShadow, muted, selected }: Readonly<CardProps>) {
+export function Card({
+	children,
+	className,
+	accent,
+	glowShadow,
+	muted,
+	selected,
+}: Readonly<CardProps>) {
 	// emboss + warm shadow layers for stamped faceplate feel
-	const baseShadow = '0 1px 2px rgba(120,90,50,0.05), 0 4px 12px rgba(120,90,50,0.04), 0 8px 24px rgba(120,90,50,0.02), inset 0 0.5px 0 rgba(255,255,255,0.5)'
-	const hoverShadow = '0 2px 4px rgba(120,90,50,0.06), 0 8px 20px rgba(120,90,50,0.06), 0 12px 32px rgba(120,90,50,0.03), inset 0 0.5px 0 rgba(255,255,255,0.5)'
+	const baseShadow =
+		'0 1px 2px rgba(120,90,50,0.05), 0 4px 12px rgba(120,90,50,0.04), 0 8px 24px rgba(120,90,50,0.02), inset 0 0.5px 0 rgba(255,255,255,0.5)'
+	const hoverShadow =
+		'0 2px 4px rgba(120,90,50,0.06), 0 8px 20px rgba(120,90,50,0.06), 0 12px 32px rgba(120,90,50,0.03), inset 0 0.5px 0 rgba(255,255,255,0.5)'
 
 	return (
 		<div
@@ -33,9 +42,7 @@ export function Card({ children, className, accent, glowShadow, muted, selected 
 			)}
 			style={{
 				borderColor: accent ?? (muted ? '#e7e5e0' : 'rgba(168,151,125,0.12)'),
-				boxShadow: glowShadow
-					? `${baseShadow}, ${glowShadow}`
-					: baseShadow,
+				boxShadow: glowShadow ? `${baseShadow}, ${glowShadow}` : baseShadow,
 			}}
 			onMouseEnter={(e) => {
 				if (!glowShadow) e.currentTarget.style.boxShadow = hoverShadow
@@ -63,14 +70,16 @@ export function CardHeader({ children, className, style }: Readonly<CardHeaderPr
 	)
 }
 
-export function CardBody({ children, className }: Readonly<{ children: ReactNode; className?: string }>) {
+export function CardBody({
+	children,
+	className,
+}: Readonly<{ children: ReactNode; className?: string }>) {
 	return <div className={cn('px-4 pb-4', className)}>{children}</div>
 }
 
-export function CardFooter({ children, className }: Readonly<{ children: ReactNode; className?: string }>) {
-	return (
-		<div className={cn('flex flex-col', className)}>
-			{children}
-		</div>
-	)
+export function CardFooter({
+	children,
+	className,
+}: Readonly<{ children: ReactNode; className?: string }>) {
+	return <div className={cn('flex flex-col', className)}>{children}</div>
 }

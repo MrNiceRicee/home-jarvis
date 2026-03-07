@@ -2,12 +2,11 @@ import { randomUUID } from 'crypto'
 import { eq, inArray } from 'drizzle-orm'
 import Elysia, { status, t } from 'elysia'
 
-import type { DeviceState } from '../integrations/types'
-
 import { db } from '../db'
 import { devices, integrations, sections } from '../db/schema'
-import { adapterSession, runDiscovery } from '../discovery/cloud-poller'
-import { INTEGRATION_META, createAdapter } from '../integrations/registry'
+import { persistAdapterSession, runDiscovery } from '../discovery/cloud-poller'
+import { createAdapter, INTEGRATION_META } from '../integrations/registry'
+import type { DeviceState } from '../integrations/types'
 import { eventBus } from '../lib/events'
 import { log } from '../lib/logger'
 import { nextPosition } from '../lib/next-position'
@@ -18,6 +17,11 @@ import { matterBridge } from '../matter/bridge'
 
 let discoveryInFlight = false
 const confirmTimers = new Map<string, ReturnType<typeof setTimeout>>()
+
+export function clearConfirmTimers() {
+	for (const timer of confirmTimers.values()) clearTimeout(timer)
+	confirmTimers.clear()
+}
 
 export const devicesController = new Elysia({ prefix: '/api/devices' })
 	.decorate('db', db)
@@ -41,20 +45,31 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 		const allIntegrations = db.select().from(integrations).all()
 		const enabled = allIntegrations.filter((i) => i.enabled)
 
-		log.info('discover started', { integrationCount: enabled.length, brands: enabled.map((i) => i.brand) })
+		log.info('discover started', {
+			integrationCount: enabled.length,
+			brands: enabled.map((i) => i.brand),
+		})
 
 		// run discovery in background — upserts devices into DB and emits SSE events
 		discoveryInFlight = true
 		void Promise.allSettled(
 			enabled.map(async (integration) => {
 				const config = parseJson<Record<string, string>>(integration.config).unwrapOr({})
-				await runDiscovery(db, integration.id, integration.brand, config, integration.session ?? null)
+				await runDiscovery(
+					db,
+					integration.id,
+					integration.brand,
+					config,
+					integration.session ?? null,
+				)
 			}),
 		)
 			.then((results) => {
 				for (const r of results) {
 					if (r.status === 'rejected') {
-						log.error('discover integration error', { error: r.reason instanceof Error ? r.reason.message : String(r.reason) })
+						log.error('discover integration error', {
+							error: r.reason instanceof Error ? r.reason.message : String(r.reason),
+						})
 					}
 				}
 			})
@@ -134,6 +149,7 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 						state: d.state,
 						online: true,
 						timestamp: now,
+						source: 'scan',
 						device: sanitizeDevice(inserted),
 					})
 				}
@@ -173,23 +189,39 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 				.where(eq(integrations.id, device.integrationId))
 				.get()
 			if (!integration) {
-				log.warn('setState integration not found', { deviceId: params.id, integrationId: device.integrationId })
+				log.warn('setState integration not found', {
+					deviceId: params.id,
+					integrationId: device.integrationId,
+				})
 				return status(404, { error: 'Integration not found' })
 			}
 
-			log.info('setState', { deviceId: params.id, deviceName: device.name, brand: device.brand, state: body })
+			log.info('setState', {
+				deviceId: params.id,
+				deviceName: device.name,
+				brand: device.brand,
+				stateKeys: Object.keys(body),
+			})
 
 			const config = parseJson<Record<string, string>>(integration.config).unwrapOr({})
 
 			const adapterResult = createAdapter(integration.brand, config, integration.session)
 			if (adapterResult.isErr()) {
-				log.error('setState adapter error', { brand: integration.brand, error: adapterResult.error.message })
+				log.error('setState adapter error', {
+					brand: integration.brand,
+					error: adapterResult.error.message,
+				})
 				return status(500, { error: adapterResult.error.message })
 			}
 
 			const setResult = await adapterResult.value.setState(device.externalId, body)
 			if (setResult.isErr()) {
-				log.error('setState failed', { deviceId: params.id, deviceName: device.name, brand: device.brand, error: setResult.error.message })
+				log.error('setState failed', {
+					deviceId: params.id,
+					deviceName: device.name,
+					brand: device.brand,
+					error: setResult.error.message,
+				})
 				return status(500, { error: setResult.error.message })
 			}
 
@@ -213,13 +245,7 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 
 			// persist session if adapter refreshed tokens during setState
 			const adapter = adapterResult.value
-			const updatedSession = adapterSession(adapter)
-			if (updatedSession && updatedSession !== integration.session) {
-				db.update(integrations)
-					.set({ session: updatedSession, updatedAt: now })
-					.where(eq(integrations.id, integration.id))
-					.run()
-			}
+			persistAdapterSession(db, adapter, integration)
 
 			log.info('setState ok', { deviceId: params.id, deviceName: device.name, brand: device.brand })
 
@@ -252,7 +278,9 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 						source: 'poller',
 					})
 					log.debug('post-setState confirm', { deviceId, brand })
-				} catch { /* ignore re-poll failures — poller will catch up */ }
+				} catch {
+					/* ignore re-poll failures — poller will catch up */
+				}
 			}, 5000)
 			confirmTimers.set(deviceId, timer)
 
@@ -291,7 +319,9 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 			)
 			if (nativeMatterBrands.has(device.brand)) {
 				log.warn('setMatter native brand blocked', { deviceId: params.id, brand: device.brand })
-				return status(400, { error: `${device.brand} supports Matter natively. Add via your smart home app.` })
+				return status(400, {
+					error: `${device.brand} supports Matter natively. Add via your smart home app.`,
+				})
 			}
 
 			log.info('setMatter', { deviceId: params.id, deviceName: device.name, enabled: body.enabled })
@@ -338,6 +368,14 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 				.set({ hidden: body.hidden, updatedAt: Date.now() })
 				.where(eq(devices.id, params.id))
 				.run()
+
+			eventBus.publish({
+				type: 'device:update',
+				deviceId: params.id,
+				brand: device.brand,
+				timestamp: Date.now(),
+				source: 'dashboard',
+			})
 
 			log.info('setHidden', { deviceId: params.id, deviceName: device.name, hidden: body.hidden })
 			return { ok: true }
@@ -399,7 +437,11 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 
 			// validate all sectionIds and deviceIds exist
 			const sectionIds = [...new Set(body.map((i) => i.sectionId))]
-			const existingSections = db.select().from(sections).where(inArray(sections.id, sectionIds)).all()
+			const existingSections = db
+				.select()
+				.from(sections)
+				.where(inArray(sections.id, sectionIds))
+				.all()
 			if (existingSections.length !== sectionIds.length) {
 				return status(400, { error: 'One or more section IDs are invalid' })
 			}

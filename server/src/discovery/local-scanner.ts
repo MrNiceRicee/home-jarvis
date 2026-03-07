@@ -1,10 +1,11 @@
-import Bonjour from 'bonjour-hap'
-import { ResultAsync, ok } from 'neverthrow'
 import * as dgram from 'node:dgram'
+import Bonjour from 'bonjour-hap'
+import { ok, ResultAsync } from 'neverthrow'
 
 import { discoverHueBridges } from '../integrations/hue/adapter'
 import { toErrorMessage } from '../lib/error-utils'
 import { log } from '../lib/logger'
+import { parseJson } from '../lib/parse-json'
 
 export interface DetectedDevice {
 	brand: string
@@ -64,7 +65,9 @@ function scanHueMdns(timeoutMs = 3000): ResultAsync<DetectedDevice[], Error> {
 				try {
 					browser.stop()
 					instance.destroy()
-				} catch { /* cleanup */ }
+				} catch {
+					/* cleanup */
+				}
 				resolve(found)
 			}, timeoutMs)
 		}),
@@ -74,10 +77,7 @@ function scanHueMdns(timeoutMs = 3000): ResultAsync<DetectedDevice[], Error> {
 
 function scanHue(): ResultAsync<DetectedDevice[], Error> {
 	return ResultAsync.fromPromise(
-		Promise.all([
-			scanHueCloud().unwrapOr([]),
-			scanHueMdns().unwrapOr([]),
-		]).then(([cloud, mdns]) => {
+		Promise.all([scanHueCloud().unwrapOr([]), scanHueMdns().unwrapOr([])]).then(([cloud, mdns]) => {
 			const seen = new Set<string>()
 			return [...cloud, ...mdns].filter((d) => {
 				const ip = d.details.bridgeIp
@@ -107,7 +107,9 @@ function scanGovee(timeoutMs = 3000): ResultAsync<DetectedDevice[], Error> {
 
 			socket.on('message', (msg) => {
 				try {
-					const parsed = JSON.parse(msg.toString()) as { msg?: { data?: GoveeResponseData } }
+					const result = parseJson<{ msg?: { data?: GoveeResponseData } }>(msg.toString())
+					if (result.isErr()) return
+					const parsed = result.value
 					const device = parsed?.msg?.data
 					if (device?.ip && device?.sku && !seen.has(device.ip)) {
 						seen.add(device.ip)
@@ -118,12 +120,18 @@ function scanGovee(timeoutMs = 3000): ResultAsync<DetectedDevice[], Error> {
 							via: 'udp',
 						})
 					}
-				} catch { /* malformed UDP packet */ }
+				} catch {
+					/* malformed UDP packet */
+				}
 			})
 
 			socket.on('error', (e) => {
 				log.error('scanGovee socket error', { error: e.message })
-				try { socket.close() } catch { /* already closed */ }
+				try {
+					socket.close()
+				} catch {
+					/* already closed */
+				}
 				resolve(found)
 			})
 
@@ -131,7 +139,9 @@ function scanGovee(timeoutMs = 3000): ResultAsync<DetectedDevice[], Error> {
 				try {
 					// eslint-disable-next-line sonarjs/no-hardcoded-ip -- multicast address (protocol constant)
 					socket.addMembership('239.255.255.250')
-				} catch { /* multicast may not be available */ }
+				} catch {
+					/* multicast may not be available */
+				}
 
 				const payload = Buffer.from(
 					JSON.stringify({ msg: { cmd: 'scan', data: { account_topic: 'reserve' } } }),
@@ -139,14 +149,22 @@ function scanGovee(timeoutMs = 3000): ResultAsync<DetectedDevice[], Error> {
 				// eslint-disable-next-line sonarjs/no-hardcoded-ip -- multicast address (protocol constant)
 				socket.send(payload, 4003, '239.255.255.250', (err) => {
 					if (err) {
-						try { socket.close() } catch { /* ignore */ }
+						try {
+							socket.close()
+						} catch {
+							/* ignore */
+						}
 						resolve(found)
 					}
 				})
 			})
 
 			setTimeout(() => {
-				try { socket.close() } catch { /* ignore */ }
+				try {
+					socket.close()
+				} catch {
+					/* ignore */
+				}
 				resolve(found)
 			}, timeoutMs)
 		}),
@@ -191,7 +209,9 @@ function scanMdns(
 				try {
 					browser.stop()
 					instance.destroy()
-				} catch { /* cleanup */ }
+				} catch {
+					/* cleanup */
+				}
 				resolve(found)
 			}, timeoutMs)
 		}),
@@ -226,12 +246,11 @@ export async function runStreamingScan(
 			const scanner = BRAND_SCANNERS[brand]
 			if (!scanner) return
 
-			const result = await scanner()
-				.orElse((e) => {
-					log.error('scan failed', { brand, error: e.message })
-					callbacks.onBrandComplete(brand, 0, e.message)
-					return ok([])
-				})
+			const result = await scanner().orElse((e) => {
+				log.error('scan failed', { brand, error: e.message })
+				callbacks.onBrandComplete(brand, 0, e.message)
+				return ok([])
+			})
 
 			const devices = result.isOk() ? result.value : []
 			for (const device of devices) {
@@ -246,10 +265,4 @@ export async function runStreamingScan(
 	)
 
 	return allDevices
-}
-
-// ─── Backward-compatible wrapper ─────────────────────────────────────────────
-
-export async function runLocalScan(): Promise<DetectedDevice[]> {
-	return runStreamingScan({ onDevice: () => {}, onBrandComplete: () => {} })
 }

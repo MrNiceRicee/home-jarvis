@@ -73,7 +73,6 @@ home-jarvis/
 │       │   └── elgato/adapter.ts         # Elgato Key Light (mDNS + local HTTP)
 │       ├── discovery/                    # device scanning
 │       │   ├── local-scanner.ts          # unified scan: Hue, Govee UDP, Aqara, Elgato mDNS
-│       │   ├── mdns-scanner.ts           # low-level mDNS via bonjour-hap
 │       │   └── cloud-poller.ts           # scheduled polling for cloud integrations
 │       ├── lib/                          # shared utilities
 │       │   ├── events.ts                 # SSE event bus

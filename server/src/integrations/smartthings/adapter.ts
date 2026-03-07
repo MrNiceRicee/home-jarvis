@@ -1,12 +1,16 @@
-import { ResultAsync, err, errAsync, ok, okAsync } from 'neverthrow'
-
-import type { DeviceAdapter, DeviceState, DeviceType, DiscoveredDevice } from '../types'
-import type { SmartThingsDevice, SmartThingsDeviceHealth, SmartThingsDeviceListResponse, SmartThingsDeviceStatus } from './types'
+import { err, errAsync, ok, okAsync, ResultAsync } from 'neverthrow'
 
 import { toErrorMessage } from '../../lib/error-utils'
 import { log } from '../../lib/logger'
+import type { DeviceAdapter, DeviceState, DeviceType, DiscoveredDevice } from '../types'
 import { isDeviceType } from '../types'
 import { flatCapabilityIds, mapSmartThingsType, parseSmartThingsState } from './parsers'
+import type {
+	SmartThingsDevice,
+	SmartThingsDeviceHealth,
+	SmartThingsDeviceListResponse,
+	SmartThingsDeviceStatus,
+} from './types'
 
 const API_BASE = 'https://api.smartthings.com/v1'
 const TIMEOUT = 15_000
@@ -31,7 +35,10 @@ export class SmartThingsAdapter implements DeviceAdapter {
 
 	validateCredentials(config: Record<string, string>): ResultAsync<void, Error> {
 		const pat = config.pat
-		if (!pat) return errAsync(new Error('Personal Access Token is required — get one from account.smartthings.com'))
+		if (!pat)
+			return errAsync(
+				new Error('Personal Access Token is required — get one from account.smartthings.com'),
+			)
 
 		return ResultAsync.fromPromise(
 			fetch(`${API_BASE}/devices?page=0&pageSize=1`, {
@@ -40,7 +47,8 @@ export class SmartThingsAdapter implements DeviceAdapter {
 			}),
 			(e) => new Error(`SmartThings unreachable: ${toErrorMessage(e)}`),
 		).andThen((res) => {
-			if (res.status === 401 || res.status === 403) return err(new Error('Invalid or expired Personal Access Token'))
+			if (res.status === 401 || res.status === 403)
+				return err(new Error('Invalid or expired Personal Access Token'))
 			if (!res.ok) return err(new Error(`SmartThings API returned ${res.status}`))
 			return ok(undefined)
 		})
@@ -61,8 +69,10 @@ export class SmartThingsAdapter implements DeviceAdapter {
 
 		return ResultAsync.fromPromise(
 			Promise.all([
-				this.apiFetch<SmartThingsDeviceStatus>(`/devices/${deviceId}/status`),
-				this.apiFetch<SmartThingsDeviceHealth>(`/devices/${deviceId}/health`).catch(() => null),
+				this.apiFetch<SmartThingsDeviceStatus>(`/devices/${encodeURIComponent(deviceId)}/status`),
+				this.apiFetch<SmartThingsDeviceHealth>(
+					`/devices/${encodeURIComponent(deviceId)}/health`,
+				).catch(() => null),
 			]),
 			(e) => new Error(`SmartThings status failed: ${toErrorMessage(e)}`),
 		).map(([status, health]) => {
@@ -79,7 +89,7 @@ export class SmartThingsAdapter implements DeviceAdapter {
 		if (commands.length === 0) return okAsync(undefined)
 
 		return ResultAsync.fromPromise(
-			this.apiFetch<unknown>(`/devices/${deviceId}/commands`, {
+			this.apiFetch<unknown>(`/devices/${encodeURIComponent(deviceId)}/commands`, {
 				method: 'POST',
 				body: JSON.stringify({ commands }),
 			}),
@@ -101,7 +111,8 @@ export class SmartThingsAdapter implements DeviceAdapter {
 		let url: string | null = `/devices`
 
 		while (url) {
-			const data: SmartThingsDeviceListResponse = await this.apiFetch<SmartThingsDeviceListResponse>(url)
+			const data: SmartThingsDeviceListResponse =
+				await this.apiFetch<SmartThingsDeviceListResponse>(url)
 			all.push(...data.items)
 			url = data._links?.next?.href ?? null
 			// next href is full URL — extract path
@@ -140,8 +151,12 @@ export class SmartThingsAdapter implements DeviceAdapter {
 
 					try {
 						const [status, health] = await Promise.all([
-							this.apiFetch<SmartThingsDeviceStatus>(`/devices/${d.deviceId}/status`),
-							this.apiFetch<SmartThingsDeviceHealth>(`/devices/${d.deviceId}/health`).catch(() => null),
+							this.apiFetch<SmartThingsDeviceStatus>(
+								`/devices/${encodeURIComponent(d.deviceId)}/status`,
+							),
+							this.apiFetch<SmartThingsDeviceHealth>(
+								`/devices/${encodeURIComponent(d.deviceId)}/health`,
+							).catch(() => null),
 						])
 						base.state = parseSmartThingsState(status, type)
 						if (health?.state === 'OFFLINE') {
@@ -149,7 +164,10 @@ export class SmartThingsAdapter implements DeviceAdapter {
 							base.state.on = false
 						}
 					} catch (e) {
-						log.warn('smartthings: state fetch failed for device', { deviceId: d.deviceId, error: toErrorMessage(e) })
+						log.warn('smartthings: state fetch failed for device', {
+							deviceId: d.deviceId,
+							error: toErrorMessage(e),
+						})
 					}
 
 					return base

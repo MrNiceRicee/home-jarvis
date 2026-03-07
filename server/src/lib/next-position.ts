@@ -1,7 +1,6 @@
 import { eq, sql } from 'drizzle-orm'
 
 import type { DB } from '../db'
-
 import { devices } from '../db/schema'
 
 /** compute MAX(position) + 1 within a section for insertion ordering */

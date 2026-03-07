@@ -1,15 +1,14 @@
 import { eq } from 'drizzle-orm'
 
 import type { DB } from '../../db'
-import type { DeviceState } from '../types'
-import type { SmartHQSession, SmartHQWebSocketEndpoint } from './types'
-
 import { devices, integrations } from '../../db/schema'
 import { toErrorMessage } from '../../lib/error-utils'
 import { eventBus } from '../../lib/events'
 import { log } from '../../lib/logger'
 import { parseJson } from '../../lib/parse-json'
+import type { DeviceState } from '../types'
 import { SmartHQAdapter } from './adapter'
+import type { SmartHQSession, SmartHQWebSocketEndpoint } from './types'
 
 const RECONNECT_BASE_MS = 10_000
 const RECONNECT_MAX_MS = 5 * 60_000
@@ -37,7 +36,8 @@ class SmartHQStream {
 
 		this.adapter = new SmartHQAdapter({}, session, (newSession) => {
 			if (!this.db || !this.integrationId) return
-			this.db.update(integrations)
+			this.db
+				.update(integrations)
 				.set({ session: newSession, updatedAt: Date.now() })
 				.where(eq(integrations.id, this.integrationId))
 				.run()
@@ -71,17 +71,18 @@ class SmartHQStream {
 		const session = this.adapter.session
 		if (!session) return
 
-		const parsed = parseJson<SmartHQSession>(session).match(
-			(s) => s,
-			() => null,
-		)
-		if (!parsed) return
+		const parsed = parseJson<SmartHQSession>(session)
+		if (parsed.isErr()) {
+			log.error('failed to parse SmartHQ session', { error: parsed.error.message })
+			return
+		}
+		const smarthqSession = parsed.value
 
 		try {
 			const res = await fetch('https://client.mysmarthq.com/v2/pubsub', {
 				method: 'POST',
 				headers: {
-					Authorization: `Bearer ${parsed.accessToken}`,
+					Authorization: `Bearer ${smarthqSession.accessToken}`,
 					'Content-Type': 'application/json',
 				},
 				body: JSON.stringify({
@@ -114,18 +115,16 @@ class SmartHQStream {
 				return
 			}
 
-			const parsed = parseJson<SmartHQSession>(session).match(
-				(s) => s,
-				() => null,
-			)
-			if (!parsed) {
-				log.warn('smarthq websocket: invalid session JSON')
+			const parsed = parseJson<SmartHQSession>(session)
+			if (parsed.isErr()) {
+				log.error('failed to parse SmartHQ session', { error: parsed.error.message })
 				this.scheduleReconnect()
 				return
 			}
+			const smarthqSession = parsed.value
 
 			const res = await fetch('https://client.mysmarthq.com/v2/websocket', {
-				headers: { Authorization: `Bearer ${parsed.accessToken}` },
+				headers: { Authorization: `Bearer ${smarthqSession.accessToken}` },
 				signal: AbortSignal.timeout(15_000),
 			})
 
@@ -153,7 +152,7 @@ class SmartHQStream {
 			}
 
 			this.ws.onmessage = (event) => {
-				this.handleMessage(event.data as string)
+				if (typeof event.data === 'string') this.handleMessage(event.data)
 			}
 
 			this.ws.onclose = () => {
@@ -174,27 +173,24 @@ class SmartHQStream {
 	private handleMessage(raw: string) {
 		if (!this.db) return
 
-		const result = parseJson<Record<string, unknown>>(raw)
-		if (result.isErr()) {
-			log.error('smarthq stream: invalid JSON', { error: result.error.message })
+		const parsed = parseJson<Record<string, unknown>>(raw)
+		if (parsed.isErr()) {
+			log.warn('failed to parse WebSocket message', { error: parsed.error.message })
 			return
 		}
-		const msg = result.value
+		const msg = parsed.value
 
-		const deviceId = msg.deviceId as string | undefined
+		const deviceId = typeof msg.deviceId === 'string' ? msg.deviceId : undefined
 		if (!deviceId) return
 
-		const device = this.db
-			.select()
-			.from(devices)
-			.where(eq(devices.externalId, deviceId))
-			.get()
+		const device = this.db.select().from(devices).where(eq(devices.externalId, deviceId)).get()
 
 		if (!device) return
 
 		if (msg.kind === 'device#presence') {
 			const online = msg.presence === 'ONLINE'
-			this.db.update(devices)
+			this.db
+				.update(devices)
 				.set({ online, updatedAt: Date.now(), lastSeen: Date.now() })
 				.where(eq(devices.id, device.id))
 				.run()
@@ -230,7 +226,10 @@ class SmartHQStream {
 		try {
 			const result = await this.adapter.getState(externalId)
 			if (result.isErr()) {
-				log.error('smarthq state refresh failed', { deviceId: jarvisDeviceId, error: result.error.message })
+				log.error('smarthq state refresh failed', {
+					deviceId: jarvisDeviceId,
+					error: result.error.message,
+				})
 				return
 			}
 
@@ -242,7 +241,8 @@ class SmartHQStream {
 			const merged = { ...currentState, ...newState }
 			const now = Date.now()
 
-			this.db.update(devices)
+			this.db
+				.update(devices)
 				.set({ state: JSON.stringify(merged), online: true, lastSeen: now, updatedAt: now })
 				.where(eq(devices.id, jarvisDeviceId))
 				.run()
@@ -263,7 +263,8 @@ class SmartHQStream {
 	private scheduleReconnect() {
 		if (this.stopped || this.reconnectTimer) return
 
-		const jitter = this.reconnectDelay * 0.25 * (crypto.getRandomValues(new Float32Array(1))[0]! * 2 - 1)
+		const jitter =
+			this.reconnectDelay * 0.25 * ((crypto.getRandomValues(new Float32Array(1))[0] ?? 0) * 2 - 1)
 		const delay = Math.round(this.reconnectDelay + jitter)
 
 		log.info('smarthq websocket reconnecting', { delayMs: delay })

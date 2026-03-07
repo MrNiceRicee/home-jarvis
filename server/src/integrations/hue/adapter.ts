@@ -1,9 +1,8 @@
-import { ResultAsync, ok, err, errAsync } from 'neverthrow'
-
-import type { DeviceAdapter, DiscoveredDevice, DeviceState } from '../types'
+import { err, errAsync, ok, ResultAsync } from 'neverthrow'
 
 import { toErrorMessage } from '../../lib/error-utils'
 import { isPrivateIp } from '../../lib/validate-ip'
+import type { DeviceAdapter, DeviceState, DiscoveredDevice } from '../types'
 
 interface HueBridgeInfo {
 	id: string
@@ -29,13 +28,28 @@ function hsvToRgb(h: number, s: number, v: number): { r: number; g: number; b: n
 	const c = v * s
 	const x = c * (1 - Math.abs(((h / 60) % 2) - 1))
 	const m = v - c
-	let r = 0, g = 0, b = 0
-	if (h < 60) { r = c; g = x }
-	else if (h < 120) { r = x; g = c }
-	else if (h < 180) { g = c; b = x }
-	else if (h < 240) { g = x; b = c }
-	else if (h < 300) { r = x; b = c }
-	else { r = c; b = x }
+	let r = 0,
+		g = 0,
+		b = 0
+	if (h < 60) {
+		r = c
+		g = x
+	} else if (h < 120) {
+		r = x
+		g = c
+	} else if (h < 180) {
+		g = c
+		b = x
+	} else if (h < 240) {
+		g = x
+		b = c
+	} else if (h < 300) {
+		r = x
+		b = c
+	} else {
+		r = c
+		b = x
+	}
 	return {
 		r: Math.round((r + m) * 255),
 		g: Math.round((g + m) * 255),
@@ -50,14 +64,43 @@ export class HueAdapter implements DeviceAdapter {
 
 	private bridgeIp: string
 	private apiKey: string
+	private inflight: ResultAsync<Record<string, HueLight>, Error> | null = null
+	private inflightTs = 0
+	private readonly CACHE_TTL_MS = 5_000
 
 	constructor(config: Record<string, string>) {
 		this.bridgeIp = config.bridgeIp ?? ''
 		this.apiKey = config.apiKey ?? ''
+		if (this.bridgeIp && !isPrivateIp(this.bridgeIp))
+			throw new Error('Bridge IP must be a private network address')
 	}
 
 	get baseUrl() {
 		return `http://${this.bridgeIp}/api/${this.apiKey}`
+	}
+
+	private fetchLights(): ResultAsync<Record<string, HueLight>, Error> {
+		const now = Date.now()
+		if (this.inflight && now - this.inflightTs < this.CACHE_TTL_MS) {
+			return this.inflight
+		}
+		this.inflightTs = now
+		const result = ResultAsync.fromPromise(
+			fetch(`${this.baseUrl}/lights`, { signal: AbortSignal.timeout(5000) }),
+			(e) => new Error(`Network error: ${toErrorMessage(e)}`),
+		).andThen((res) => {
+			if (!res.ok) return err(new Error(`Hue bridge error: ${res.status}`))
+			return ResultAsync.fromPromise(
+				res.json() as Promise<Record<string, HueLight>>,
+				() => new Error('Failed to parse response'),
+			)
+		})
+		// clear cache on fetch failure so next caller retries immediately
+		void result.mapErr(() => {
+			this.inflight = null
+		})
+		this.inflight = result
+		return this.inflight
 	}
 
 	validateCredentials(config: Record<string, string>): ResultAsync<void, Error> {
@@ -65,56 +108,46 @@ export class HueAdapter implements DeviceAdapter {
 		const key = config.apiKey
 		if (!ip) return errAsync(new Error('Bridge IP is required'))
 		if (!isPrivateIp(ip)) return errAsync(new Error('Bridge IP must be a private network address'))
-		if (!key) return errAsync(new Error('API key is required — press the button on the bridge first'))
+		if (!key)
+			return errAsync(new Error('API key is required — press the button on the bridge first'))
 
 		return ResultAsync.fromPromise(
 			fetch(`http://${ip}/api/${key}/config`, { signal: AbortSignal.timeout(5000) }),
 			(e) => new Error(`Bridge unreachable: ${toErrorMessage(e)}`),
-		).andThen((res) => {
-			if (!res.ok) return err(new Error(`Bridge returned ${res.status}`))
-			return ResultAsync.fromPromise(
-				res.json() as Promise<{ name?: string; error?: { description: string } }>,
-				() => new Error('Invalid response from bridge'),
-			)
-		}).andThen((data) => {
-			if ('error' in data || (Array.isArray(data) && data[0]?.error)) {
-				return err(new Error((data as { error?: { description: string } }).error?.description ?? 'Invalid API key'))
-			}
-			return ok(undefined)
-		})
+		)
+			.andThen((res) => {
+				if (!res.ok) return err(new Error(`Bridge returned ${res.status}`))
+				return ResultAsync.fromPromise(
+					res.json() as Promise<{ name?: string; error?: { description: string } }>,
+					() => new Error('Invalid response from bridge'),
+				)
+			})
+			.andThen((data) => {
+				if ('error' in data || (Array.isArray(data) && data[0]?.error)) {
+					return err(
+						new Error(
+							(data as { error?: { description: string } }).error?.description ?? 'Invalid API key',
+						),
+					)
+				}
+				return ok(undefined)
+			})
 	}
 
 	discover(): ResultAsync<DiscoveredDevice[], Error> {
-		return ResultAsync.fromPromise(
-			fetch(`${this.baseUrl}/lights`, { signal: AbortSignal.timeout(8000) }),
-			(e) => new Error(`Network error: ${toErrorMessage(e)}`),
-		).andThen((res) => {
-			if (!res.ok) return err(new Error(`Hue bridge error: ${res.status}`))
-			return ResultAsync.fromPromise(
-				res.json() as Promise<Record<string, HueLight>>,
-				() => new Error('Failed to parse lights response'),
-			)
-		}).map((lights) =>
+		return this.fetchLights().map((lights) =>
 			Object.entries(lights).map(([id, light]) => ({
 				externalId: light.uniqueid || id,
 				name: light.name,
 				type: 'light' as const,
 				state: this.parseState(light.state),
 				online: light.state.reachable,
-			}))
+			})),
 		)
 	}
 
 	getState(externalId: string): ResultAsync<DeviceState, Error> {
-		return ResultAsync.fromPromise(
-			fetch(`${this.baseUrl}/lights`, { signal: AbortSignal.timeout(5000) }),
-			(e) => new Error(`Network error: ${toErrorMessage(e)}`),
-		).andThen((res) =>
-			ResultAsync.fromPromise(
-				res.json() as Promise<Record<string, HueLight>>,
-				() => new Error('Failed to parse response'),
-			)
-		).andThen((lights) => {
+		return this.fetchLights().andThen((lights) => {
 			const entry = Object.values(lights).find((l) => l.uniqueid === externalId)
 			if (!entry) return err(new Error(`Light ${externalId} not found`))
 			return ok(this.parseState(entry.state))
@@ -122,15 +155,7 @@ export class HueAdapter implements DeviceAdapter {
 	}
 
 	setState(externalId: string, state: Partial<DeviceState>): ResultAsync<void, Error> {
-		return ResultAsync.fromPromise(
-			fetch(`${this.baseUrl}/lights`, { signal: AbortSignal.timeout(5000) }),
-			(e) => new Error(`Network error: ${toErrorMessage(e)}`),
-		).andThen((res) =>
-			ResultAsync.fromPromise(
-				res.json() as Promise<Record<string, HueLight>>,
-				() => new Error('Failed to parse response'),
-			)
-		).andThen((lights) => {
+		return this.fetchLights().andThen((lights) => {
 			const entry = Object.entries(lights).find(([, l]) => l.uniqueid === externalId)
 			if (!entry) return err(new Error(`Light ${externalId} not found`))
 			const [lightId] = entry
@@ -143,7 +168,9 @@ export class HueAdapter implements DeviceAdapter {
 			}
 			if (state.color) {
 				const { r, g, b } = state.color
-				const R = r / 255, G = g / 255, B = b / 255
+				const R = r / 255,
+					G = g / 255,
+					B = b / 255
 				const X = R * 0.664511 + G * 0.154324 + B * 0.162028
 				const Y = R * 0.283881 + G * 0.668433 + B * 0.047685
 				const Z = R * 0.000088 + G * 0.07231 + B * 0.986039
@@ -159,7 +186,11 @@ export class HueAdapter implements DeviceAdapter {
 					signal: AbortSignal.timeout(5000),
 				}),
 				(e) => new Error(`Failed to set state: ${toErrorMessage(e)}`),
-			).map(() => undefined)
+			).map(() => {
+				// invalidate fetchLights cache so next getState sees fresh data
+				this.inflight = null
+				this.inflightTs = 0
+			})
 		})
 	}
 
@@ -205,8 +236,9 @@ type HueLinkResponse = Array<{
  * Create an API key by POST-ing to the bridge.
  * Retries automatically for ~30s so the user can press the button after clicking "Link Bridge".
  */
-export function createHueApiKey(bridgeIp: string, _retriesLeft = 12): ResultAsync<string, Error> {
-	const retriesLeft = _retriesLeft
+export function createHueApiKey(bridgeIp: string, retriesLeft = 12): ResultAsync<string, Error> {
+	if (!isPrivateIp(bridgeIp))
+		return errAsync(new Error('Bridge IP must be a private network address'))
 	return ResultAsync.fromPromise(
 		fetch(`http://${bridgeIp}/api`, {
 			method: 'POST',

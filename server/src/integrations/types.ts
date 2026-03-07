@@ -17,27 +17,26 @@ export type DeviceType =
 	| 'media_player'
 
 export const DEVICE_TYPES = new Set<DeviceType>([
-	'light', 'switch', 'thermostat', 'air_purifier', 'sensor', 'vacuum',
-	'washer_dryer', 'dishwasher', 'oven', 'fridge', 'tv', 'media_player',
+	'light',
+	'switch',
+	'thermostat',
+	'air_purifier',
+	'sensor',
+	'vacuum',
+	'washer_dryer',
+	'dishwasher',
+	'oven',
+	'fridge',
+	'tv',
+	'media_player',
 ])
 
 export function isDeviceType(s: string): s is DeviceType {
 	return DEVICE_TYPES.has(s as DeviceType)
 }
 
-export type TemperatureUnit = 'C' | 'F'
-
-export function isTemperatureUnit(s: string): s is TemperatureUnit {
-	return s === 'C' || s === 'F'
-}
-
 export type ThermostatMode = 'heat' | 'cool' | 'auto' | 'off'
 
-export function isThermostatMode(s: string): s is ThermostatMode {
-	return s === 'heat' || s === 'cool' || s === 'auto' || s === 'off'
-}
-
-export type VacuumStatus = 'cleaning' | 'docked' | 'returning' | 'paused' | 'error'
 export type CycleStatus = 'running' | 'paused' | 'done' | 'idle'
 
 export interface DeviceState {
@@ -50,9 +49,19 @@ export interface DeviceState {
 	fanSpeed?: number // 0–100 (air purifiers)
 	airQuality?: number // 0–5 (AQI category)
 	targetTemperature?: number
+	/**
+	 * operating mode — semantics vary by device type:
+	 * - thermostat: 'heat' | 'cool' | 'auto' | 'off' (+ SmartThings extras: 'eco', 'emergency heat')
+	 * - air_purifier: 'auto' | 'sleep' | 'manual' | 'pet'
+	 */
 	mode?: string
 
 	// Vacuum
+	/**
+	 * device status — intended for vacuum cleaners:
+	 * - vacuum: 'cleaning' | 'docked' | 'returning' | 'paused' | 'error'
+	 * not currently set by any adapter
+	 */
 	status?: string
 	battery?: number // 0–100
 
@@ -90,6 +99,8 @@ export interface DeviceAdapter {
 	readonly brand: string
 	readonly displayName: string
 	readonly discoveryMethod: 'local' | 'cloud' | 'both'
+	/** adapter session token — present on OAuth adapters, persisted after token refresh */
+	session?: string | null
 
 	/** Validate credentials — Returns Err with a human-readable message if invalid */
 	validateCredentials(config: Record<string, string>): ResultAsync<void, Error>

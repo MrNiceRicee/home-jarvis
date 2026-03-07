@@ -1,8 +1,7 @@
-import type { CSSProperties } from 'react'
-
 import { Radio, RadioGroup } from 'react-aria-components'
 
 import { cn } from '../../lib/cn'
+import { ledStyle } from '../../lib/led-style'
 import { PanelButton } from './panel-button'
 
 interface ToggleBankOption {
@@ -20,11 +19,20 @@ interface ToggleBankProps {
 	disabled?: boolean
 }
 
-export function ToggleBank({ label, options, value, onChange, mode, disabled }: Readonly<ToggleBankProps>) {
+export function ToggleBank({
+	label,
+	options,
+	value,
+	onChange,
+	mode,
+	disabled,
+}: Readonly<ToggleBankProps>) {
 	if (mode === 'selection') {
 		return (
 			<div>
-				<span className="font-michroma text-2xs uppercase tracking-widest text-stone-400 mb-1.5 block">{label}</span>
+				<span className="font-michroma text-2xs uppercase tracking-widest text-stone-400 mb-1.5 block">
+					{label}
+				</span>
 				<RadioGroup
 					value={value ?? ''}
 					onChange={onChange}
@@ -33,7 +41,12 @@ export function ToggleBank({ label, options, value, onChange, mode, disabled }: 
 					aria-label={label}
 				>
 					{options.map((opt) => (
-						<Radio key={opt.key} value={opt.key} className="outline-none focus-visible:[&>div:first-child]:ring-2 focus-visible:[&>div:first-child]:ring-stone-400 focus-visible:[&>div:first-child]:ring-offset-1" aria-label={opt.label}>
+						<Radio
+							key={opt.key}
+							value={opt.key}
+							className="outline-none focus-visible:[&>div:first-child]:ring-2 focus-visible:[&>div:first-child]:ring-stone-400 focus-visible:[&>div:first-child]:ring-offset-1"
+							aria-label={opt.label}
+						>
 							{({ isSelected }) => (
 								<ToggleBankItem
 									label={opt.label}
@@ -51,7 +64,9 @@ export function ToggleBank({ label, options, value, onChange, mode, disabled }: 
 
 	return (
 		<div>
-			<span className="font-michroma text-2xs uppercase tracking-widest text-stone-400 mb-1.5 block">{label}</span>
+			<span className="font-michroma text-2xs uppercase tracking-widest text-stone-400 mb-1.5 block">
+				{label}
+			</span>
 			<div className="flex flex-wrap gap-x-3 gap-y-2" role="toolbar" aria-label={label}>
 				{options.map((opt) => (
 					<ToggleBankActionItem
@@ -68,24 +83,12 @@ export function ToggleBank({ label, options, value, onChange, mode, disabled }: 
 	)
 }
 
-function getToggleLedStyle(isActive: boolean, ledColor?: string): CSSProperties | undefined {
-	if (isActive) {
-		const c = ledColor ?? 'rgb(52,211,153)'
-		return {
-			backgroundColor: c,
-			boxShadow: `0 0 4px ${c}, 0 0 8px color-mix(in srgb, ${c} 40%, transparent)`,
-		}
-	}
-	if (ledColor) {
-		return {
-			backgroundColor: `color-mix(in srgb, ${ledColor} 60%, #78716c)`,
-			boxShadow: `0 0 2px color-mix(in srgb, ${ledColor} 30%, transparent)`,
-		}
-	}
-	return undefined
-}
-
-function ToggleBankItem({ label, ledColor, isActive, disabled }: Readonly<{
+function ToggleBankItem({
+	label,
+	ledColor,
+	isActive,
+	disabled,
+}: Readonly<{
 	label: string
 	ledColor?: string
 	isActive: boolean
@@ -106,16 +109,27 @@ function ToggleBankItem({ label, ledColor, isActive, disabled }: Readonly<{
 				)}
 			>
 				<span
-					className={cn('absolute top-1 right-1 w-1.5 h-1.5 rounded-full', !isActive && !ledColor && 'bg-stone-400/30')}
-					style={getToggleLedStyle(isActive, ledColor)}
+					className={cn(
+						'absolute top-1 right-1 w-1.5 h-1.5 rounded-full',
+						!isActive && !ledColor && 'bg-stone-400/30',
+					)}
+					style={ledStyle(isActive, ledColor)}
 				/>
 			</div>
-			<span className="font-michroma text-2xs uppercase tracking-wider text-stone-400">{label}</span>
+			<span className="font-michroma text-2xs uppercase tracking-wider text-stone-400">
+				{label}
+			</span>
 		</div>
 	)
 }
 
-function ToggleBankActionItem({ label, ledColor, isActive, disabled, onPress }: Readonly<{
+function ToggleBankActionItem({
+	label,
+	ledColor,
+	isActive,
+	disabled,
+	onPress,
+}: Readonly<{
 	label: string
 	ledColor?: string
 	isActive: boolean

@@ -1,12 +1,11 @@
 import { memo, useCallback, useState } from 'react'
 import { Button, Tooltip, TooltipTrigger } from 'react-aria-components'
 
-import type { Device, DeviceState } from '../types'
-
 import { cn } from '../lib/cn'
 import { type LightAccent, lightAccentStyle, tempToColor } from '../lib/color-utils'
 import { BRAND_LABEL } from '../lib/device-constants'
 import { DeviceBody } from '../lib/device-labels'
+import type { Device, DeviceState } from '../types'
 import { Card, CardBody, CardFooter, CardHeader } from './ui/card'
 import { PowerButton } from './ui/power-button'
 
@@ -48,15 +47,29 @@ export const DeviceCard = memo(function DeviceCard({
 	const baseAccent = device.type === 'light' ? lightAccentStyle(device.state) : undefined
 	const [liveAccent, setLiveAccent] = useState<LightAccent | null>(null)
 
-	const handleAccentChange = useCallback((override: { brightness?: number; colorTemp?: number; color?: { r: number; g: number; b: number } } | null) => {
-		if (!override) { setLiveAccent(null); return }
-		setLiveAccent(lightAccentStyle({
-			on: true,
-			brightness: override.brightness,
-			colorTemp: override.colorTemp,
-			color: override.color,
-		}) ?? null)
-	}, [])
+	const handleAccentChange = useCallback(
+		(
+			override: {
+				brightness?: number
+				colorTemp?: number
+				color?: { r: number; g: number; b: number }
+			} | null,
+		) => {
+			if (!override) {
+				setLiveAccent(null)
+				return
+			}
+			setLiveAccent(
+				lightAccentStyle({
+					on: true,
+					brightness: override.brightness,
+					colorTemp: override.colorTemp,
+					color: override.color,
+				}) ?? null,
+			)
+		},
+		[],
+	)
 
 	const accent = liveAccent ?? baseAccent
 
@@ -70,7 +83,11 @@ export const DeviceCard = memo(function DeviceCard({
 			isSelected={isSelected}
 			onToggleSelect={onToggleSelect}
 		>
-			<DeviceBody device={device} onStateChange={onStateChange} onAccentChange={handleAccentChange} />
+			<DeviceBody
+				device={device}
+				onStateChange={onStateChange}
+				onAccentChange={handleAccentChange}
+			/>
 		</CardShell>
 	)
 })
@@ -99,7 +116,18 @@ function CardShell({
 	const [matterLoading, setMatterLoading] = useState(false)
 	const [powerToggling, setPowerToggling] = useState(false)
 
-	const POWER_TYPES = ['light', 'switch', 'thermostat', 'air_purifier', 'vacuum', 'washer_dryer', 'dishwasher', 'oven', 'tv', 'media_player']
+	const POWER_TYPES = [
+		'light',
+		'switch',
+		'thermostat',
+		'air_purifier',
+		'vacuum',
+		'washer_dryer',
+		'dishwasher',
+		'oven',
+		'tv',
+		'media_player',
+	]
 	const hasPower = device.state.on !== undefined || POWER_TYPES.includes(device.type)
 	const isNativeMatter = NATIVE_MATTER_BRANDS.has(device.brand)
 
@@ -151,7 +179,9 @@ function CardShell({
 							/>
 						)}
 						<div className="min-w-0">
-							<p className="text-sm font-michroma text-stone-800 truncate leading-tight">{device.name}</p>
+							<p className="text-sm font-michroma text-stone-800 truncate leading-tight">
+								{device.name}
+							</p>
 							<p className="font-michroma text-2xs uppercase tracking-wider text-stone-400 truncate mt-0.5">
 								{BRAND_LABEL[device.brand] ?? device.brand} · {typeLabel}
 							</p>
@@ -194,15 +224,18 @@ function CardShell({
 						onToggle={() => {
 							if (!onStateChange) return
 							setPowerToggling(true)
-							void onStateChange(device.id, { on: !(device.state.on ?? false) })
-								.finally(() => setPowerToggling(false))
+							void onStateChange(device.id, { on: !(device.state.on ?? false) }).finally(() =>
+								setPowerToggling(false),
+							)
 						}}
 					/>
 
 					{isNativeMatter ? (
 						<TooltipTrigger delay={200}>
 							<Button className="inline-flex items-center gap-1.5 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-1 rounded-sm px-1 py-0.5">
-								<span className="font-michroma text-2xs uppercase tracking-wider text-stone-400">MATTER</span>
+								<span className="font-michroma text-2xs uppercase tracking-wider text-stone-400">
+									MATTER
+								</span>
 							</Button>
 							<Tooltip className="bg-stone-900 text-white text-xs rounded-lg px-3 py-1.5 shadow-lg max-w-[200px] text-center">
 								{nativeTooltip}
@@ -211,7 +244,9 @@ function CardShell({
 					) : (
 						<TooltipTrigger delay={200}>
 							<Button
-								onPress={() => { void handleMatterToggle(!device.matterEnabled) }}
+								onPress={() => {
+									void handleMatterToggle(!device.matterEnabled)
+								}}
 								isDisabled={matterLoading || !device.online}
 								className={cn(
 									'inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-40 outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-1 rounded-sm px-1 py-0.5',
@@ -219,10 +254,12 @@ function CardShell({
 								)}
 								aria-label={device.matterEnabled ? 'Disable Matter bridge' : 'Enable Matter bridge'}
 							>
-								<span className={cn(
-									'font-michroma text-2xs uppercase tracking-wider',
-									device.matterEnabled ? 'text-emerald-600' : 'text-stone-400',
-								)}>
+								<span
+									className={cn(
+										'font-michroma text-2xs uppercase tracking-wider',
+										device.matterEnabled ? 'text-emerald-600' : 'text-stone-400',
+									)}
+								>
 									MATTER
 								</span>
 							</Button>
@@ -281,7 +318,12 @@ function lightBarColor(state: DeviceState): string {
 }
 
 // footer left — power button, door LED, or empty
-function FooterLeft({ device, hasPower, powerToggling, onToggle }: Readonly<{
+function FooterLeft({
+	device,
+	hasPower,
+	powerToggling,
+	onToggle,
+}: Readonly<{
 	device: Device
 	hasPower: boolean
 	powerToggling: boolean
@@ -309,9 +351,16 @@ function DoorStatusLed({ doorOpen }: Readonly<{ doorOpen: boolean }>) {
 		<div className="flex items-center gap-2">
 			<div
 				className="w-2 h-2 rounded-full transition-all duration-500"
-				style={doorOpen
-					? { background: '#f87171', boxShadow: '0 0 6px rgba(248,113,113,0.6), 0 0 2px rgba(248,113,113,0.4)' }
-					: { background: '#34d399', boxShadow: '0 0 6px rgba(52,211,153,0.4), 0 0 2px rgba(52,211,153,0.3)' }
+				style={
+					doorOpen
+						? {
+								background: '#f87171',
+								boxShadow: '0 0 6px rgba(248,113,113,0.6), 0 0 2px rgba(248,113,113,0.4)',
+							}
+						: {
+								background: '#34d399',
+								boxShadow: '0 0 6px rgba(52,211,153,0.4), 0 0 2px rgba(52,211,153,0.3)',
+							}
 				}
 			/>
 			<span className="font-michroma text-[8px] uppercase tracking-widest text-stone-400">

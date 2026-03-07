@@ -1,8 +1,7 @@
-import type { Device } from '../../types'
-
 import { cn } from '../../lib/cn'
 import { displayTemp } from '../../lib/temperature'
 import { usePreferencesStore } from '../../stores/preferences-store'
+import type { Device } from '../../types'
 import { ReadoutDisplay } from '../ui/readout-display'
 import { TwoPositionToggle } from '../ui/two-position-toggle'
 
@@ -22,11 +21,16 @@ export function FridgeCard({ device, variant = 'compact' }: Readonly<FridgeCardP
 	const hasCooler = state.temperature !== undefined || state.targetCoolTemp !== undefined
 	const hasFreezer = state.targetFreezeTemp !== undefined
 
-	const readoutLabel = [
-		state.temperature !== undefined && `Fridge ${displayTemp(state.temperature, unit)}${unitSuffix}`,
-		state.targetFreezeTemp !== undefined && `Freezer ${displayTemp(state.targetFreezeTemp, unit)}${unitSuffix}`,
-		doorOpen && 'Door open',
-	].filter(Boolean).join(', ') || 'Refrigerator'
+	const readoutLabel =
+		[
+			state.temperature !== undefined &&
+				`Fridge ${displayTemp(state.temperature, unit)}${unitSuffix}`,
+			state.targetFreezeTemp !== undefined &&
+				`Freezer ${displayTemp(state.targetFreezeTemp, unit)}${unitSuffix}`,
+			doorOpen && 'Door open',
+		]
+			.filter(Boolean)
+			.join(', ') || 'Refrigerator'
 
 	return (
 		<div className="space-y-3">
@@ -73,11 +77,19 @@ interface CompartmentReadoutProps {
 	ariaLabel?: string
 }
 
-function CompartmentReadout({ label, temp, unit, tint, ariaLabel }: Readonly<CompartmentReadoutProps>) {
+function CompartmentReadout({
+	label,
+	temp,
+	unit,
+	tint,
+	ariaLabel,
+}: Readonly<CompartmentReadoutProps>) {
 	const unitSuffix = unit === 'F' ? '°F' : '°C'
 	return (
 		<div>
-			<span className="font-michroma text-2xs uppercase tracking-widest text-stone-400 mb-1 block">{label}</span>
+			<span className="font-michroma text-2xs uppercase tracking-widest text-stone-400 mb-1 block">
+				{label}
+			</span>
 			<ReadoutDisplay
 				size="lg"
 				glowIntensity={0.4}
@@ -86,7 +98,8 @@ function CompartmentReadout({ label, temp, unit, tint, ariaLabel }: Readonly<Com
 			>
 				{temp !== undefined ? (
 					<span style={{ color: tint, textShadow: `0 0 10px ${tint}40` }}>
-						{displayTemp(temp, unit)}<span className="text-sm ml-0.5">{unitSuffix}</span>
+						{displayTemp(temp, unit)}
+						<span className="text-sm ml-0.5">{unitSuffix}</span>
 					</span>
 				) : (
 					<span className="text-display-text/30">--</span>

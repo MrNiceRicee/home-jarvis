@@ -12,7 +12,7 @@
  */
 
 import { existsSync } from 'node:fs'
-import { readdir, readFile, writeFile, mkdir } from 'node:fs/promises'
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
 import { extname, join, relative } from 'node:path'
 
 const DIST_DIR = join(import.meta.dir, '../client/dist')

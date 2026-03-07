@@ -34,7 +34,8 @@ export function Navbar() {
 			className="sticky top-0 z-10 border-b border-[rgba(168,151,125,0.12)]"
 			style={{
 				background: 'linear-gradient(to bottom, rgba(255,253,248,0.95), rgba(245,242,236,0.9))',
-				boxShadow: '0 1px 4px rgba(120,90,50,0.04), 0 6px 20px rgba(120,90,50,0.03), 0 12px 40px rgba(120,90,50,0.02), inset 0 -1px 0 rgba(120,90,50,0.06)',
+				boxShadow:
+					'0 1px 4px rgba(120,90,50,0.04), 0 6px 20px rgba(120,90,50,0.03), 0 12px 40px rgba(120,90,50,0.02), inset 0 -1px 0 rgba(120,90,50,0.06)',
 				backdropFilter: 'blur(12px)',
 			}}
 		>

@@ -1,24 +1,8 @@
-import type { CSSProperties, ReactNode } from 'react'
-
+import type { ReactNode } from 'react'
 import { Button as AriaButton, type ButtonProps as AriaButtonProps } from 'react-aria-components'
 
 import { cn } from '../../lib/cn'
-
-function getLedStyle(led: 'on' | 'off' | 'pulse', ledColor: string): CSSProperties | undefined {
-	if (led === 'on' || led === 'pulse') {
-		return {
-			backgroundColor: ledColor,
-			boxShadow: `0 0 4px ${ledColor}, 0 0 8px color-mix(in srgb, ${ledColor} 40%, transparent)`,
-		}
-	}
-	if (led === 'off' && ledColor) {
-		return {
-			backgroundColor: `color-mix(in srgb, ${ledColor} 60%, #78716c)`,
-			boxShadow: `0 0 2px color-mix(in srgb, ${ledColor} 30%, transparent)`,
-		}
-	}
-	return undefined
-}
+import { ledStyle } from '../../lib/led-style'
 
 interface PanelButtonProps extends Omit<AriaButtonProps, 'className' | 'children'> {
 	led?: 'on' | 'off' | 'pulse'
@@ -29,7 +13,15 @@ interface PanelButtonProps extends Omit<AriaButtonProps, 'className' | 'children
 	children?: ReactNode
 }
 
-export function PanelButton({ led, ledColor = 'rgb(52,211,153)', size = 'md', label, className, children, ...props }: Readonly<PanelButtonProps>) {
+export function PanelButton({
+	led,
+	ledColor = 'rgb(52,211,153)',
+	size = 'md',
+	label,
+	className,
+	children,
+	...props
+}: Readonly<PanelButtonProps>) {
 	const sizeClass = size === 'sm' ? 'w-7 h-7' : 'w-9 h-9'
 
 	return (
@@ -57,13 +49,15 @@ export function PanelButton({ led, ledColor = 'rgb(52,211,153)', size = 'md', la
 							led === 'pulse' && 'animate-pulse',
 							led === 'off' && !ledColor && 'bg-stone-400/30',
 						)}
-						style={getLedStyle(led, ledColor)}
+						style={ledStyle(led === 'on' || led === 'pulse', ledColor)}
 					/>
 				)}
 				{children}
 			</AriaButton>
 			{label && (
-				<span className="font-michroma text-2xs uppercase tracking-wider text-stone-400">{label}</span>
+				<span className="font-michroma text-2xs uppercase tracking-wider text-stone-400">
+					{label}
+				</span>
 			)}
 		</div>
 	)

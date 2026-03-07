@@ -23,12 +23,17 @@ import { OnOffPlugInUnitDevice } from '@matter/main/devices/on-off-plug-in-unit'
 import { ThermostatDevice } from '@matter/main/devices/thermostat'
 import { BridgedNodeEndpoint } from '@matter/main/endpoints/bridged-node'
 import { Endpoint } from '@matter/main/node'
-import { type Result, err, ok } from 'neverthrow'
+import { err, ok, type Result } from 'neverthrow'
 
 import type { Device } from '../db/schema'
 import type { DeviceState } from '../integrations/types'
-
-import { kelvinToMired, toFanPercent, toMatterAirQuality, toMatterLevel, toMatterTemp } from '../lib/unit-conversions'
+import {
+	clampPercent,
+	kelvinToMired,
+	toMatterAirQuality,
+	toMatterLevel,
+	toMatterTemp,
+} from '../lib/unit-conversions'
 
 // ─── Error types ─────────────────────────────────────────────────────────────
 
@@ -93,19 +98,16 @@ function isColorTempLight(state: DeviceState): boolean {
 // ─── Endpoint builders ───────────────────────────────────────────────────────
 
 function createOnOffLight(device: Device, state: DeviceState): Endpoint {
-	return new Endpoint(
-		OnOffLightDevice.with(BridgedDeviceBasicInformationServer),
-		{
-			id: device.id,
-			bridgedDeviceBasicInformation: {
-				nodeLabel: device.name,
-				reachable: device.online,
-			},
-			onOff: {
-				onOff: state.on ?? false,
-			},
+	return new Endpoint(OnOffLightDevice.with(BridgedDeviceBasicInformationServer), {
+		id: device.id,
+		bridgedDeviceBasicInformation: {
+			nodeLabel: device.name,
+			reachable: device.online,
 		},
-	)
+		onOff: {
+			onOff: state.on ?? false,
+		},
+	})
 }
 
 // elgato range: 2900–7000K → ~143–345 mireds
@@ -114,29 +116,26 @@ const CT_PHYSICAL_MAX_MIREDS = 345
 
 function createColorTempLight(device: Device, state: DeviceState): Endpoint {
 	const mireds = state.colorTemp ? kelvinToMired(state.colorTemp) : 250
-	return new Endpoint(
-		ExtendedColorLightDevice.with(BridgedDeviceBasicInformationServer),
-		{
-			id: device.id,
-			bridgedDeviceBasicInformation: {
-				nodeLabel: device.name,
-				reachable: device.online,
-			},
-			onOff: {
-				onOff: state.on ?? false,
-			},
-			levelControl: {
-				currentLevel: state.brightness ? toMatterLevel(state.brightness) : 254,
-			},
-			colorControl: {
-				colorMode: 2, // ColorTemperatureMireds
-				colorTemperatureMireds: mireds,
-				colorTempPhysicalMinMireds: CT_PHYSICAL_MIN_MIREDS,
-				colorTempPhysicalMaxMireds: CT_PHYSICAL_MAX_MIREDS,
-				coupleColorTempToLevelMinMireds: CT_PHYSICAL_MIN_MIREDS,
-			},
+	return new Endpoint(ExtendedColorLightDevice.with(BridgedDeviceBasicInformationServer), {
+		id: device.id,
+		bridgedDeviceBasicInformation: {
+			nodeLabel: device.name,
+			reachable: device.online,
 		},
-	)
+		onOff: {
+			onOff: state.on ?? false,
+		},
+		levelControl: {
+			currentLevel: state.brightness ? toMatterLevel(state.brightness) : 254,
+		},
+		colorControl: {
+			colorMode: 2, // ColorTemperatureMireds
+			colorTemperatureMireds: mireds,
+			colorTempPhysicalMinMireds: CT_PHYSICAL_MIN_MIREDS,
+			colorTempPhysicalMaxMireds: CT_PHYSICAL_MAX_MIREDS,
+			coupleColorTempToLevelMinMireds: CT_PHYSICAL_MIN_MIREDS,
+		},
+	})
 }
 
 // ─── Air purifier (composed device: fan + air quality sensor) ────────────────
@@ -150,7 +149,11 @@ const BridgedAirPurifier = AirPurifierDevice.with(
 
 // air quality sensor with numeric PM2.5 + fair/poor/verypoor quality levels
 const BridgedAirQualitySensor = AirQualitySensorDevice.with(
-	AirQualityServer.with(AirQuality.Feature.Fair, AirQuality.Feature.Moderate, AirQuality.Feature.VeryPoor),
+	AirQualityServer.with(
+		AirQuality.Feature.Fair,
+		AirQuality.Feature.Moderate,
+		AirQuality.Feature.VeryPoor,
+	),
 	Pm25ConcentrationMeasurementServer.with(ConcentrationMeasurement.Feature.NumericMeasurement),
 )
 
@@ -168,12 +171,16 @@ export interface ThermostatComposed {
 	humidityEndpoint: Endpoint | null
 }
 
-export type ComposedEndpoint = AirPurifierComposed | ThermostatComposed | WasherComposed | DishwasherComposed
+export type ComposedEndpoint =
+	| AirPurifierComposed
+	| ThermostatComposed
+	| WasherComposed
+	| DishwasherComposed
 
 function createAirPurifier(device: Device, state: DeviceState): ComposedEndpoint {
 	const fanMode = toFanMode(state.mode, state.on)
 	const isAuto = fanMode === 5
-	const percent = state.fanSpeed ? toFanPercent(state.fanSpeed) : 0
+	const percent = state.fanSpeed ? clampPercent(state.fanSpeed) : 0
 
 	// parent bridged node — holds identity info
 	const parent = new Endpoint(BridgedNodeEndpoint, {
@@ -240,7 +247,10 @@ function thermostatSetpoints(targetCelsius: number | undefined, mode?: string) {
 }
 
 function createThermostat(device: Device, state: DeviceState): ThermostatComposed {
-	const { occupiedHeatingSetpoint, occupiedCoolingSetpoint } = thermostatSetpoints(state.targetTemperature, state.mode)
+	const { occupiedHeatingSetpoint, occupiedCoolingSetpoint } = thermostatSetpoints(
+		state.targetTemperature,
+		state.mode,
+	)
 
 	const parent = new Endpoint(BridgedNodeEndpoint, {
 		id: device.id,
@@ -279,10 +289,7 @@ function createThermostat(device: Device, state: DeviceState): ThermostatCompose
 
 // ─── Laundry Washer ──────────────────────────────────────────────────────────
 
-const BridgedLaundryWasher = LaundryWasherDevice.with(
-	OperationalStateServer,
-	OnOffServer,
-)
+const BridgedLaundryWasher = LaundryWasherDevice.with(OperationalStateServer, OnOffServer)
 
 export interface WasherComposed {
 	kind: 'washer'
@@ -305,9 +312,18 @@ function createLaundryWasher(device: Device, state: DeviceState): WasherComposed
 		operationalState: {
 			operationalState: toOperationalState(state.cycleStatus),
 			operationalStateList: [
-				{ operationalStateId: OperationalState.OperationalStateEnum.Stopped, operationalStateLabel: 'Idle' },
-				{ operationalStateId: OperationalState.OperationalStateEnum.Running, operationalStateLabel: 'Running' },
-				{ operationalStateId: OperationalState.OperationalStateEnum.Paused, operationalStateLabel: 'Paused' },
+				{
+					operationalStateId: OperationalState.OperationalStateEnum.Stopped,
+					operationalStateLabel: 'Idle',
+				},
+				{
+					operationalStateId: OperationalState.OperationalStateEnum.Running,
+					operationalStateLabel: 'Running',
+				},
+				{
+					operationalStateId: OperationalState.OperationalStateEnum.Paused,
+					operationalStateLabel: 'Paused',
+				},
 			],
 		},
 	})
@@ -317,10 +333,7 @@ function createLaundryWasher(device: Device, state: DeviceState): WasherComposed
 
 // ─── Dishwasher ──────────────────────────────────────────────────────────────
 
-const BridgedDishwasher = DishwasherDevice.with(
-	OperationalStateServer,
-	OnOffServer,
-)
+const BridgedDishwasher = DishwasherDevice.with(OperationalStateServer, OnOffServer)
 
 export interface DishwasherComposed {
 	kind: 'dishwasher'
@@ -343,9 +356,18 @@ function createDishwasher(device: Device, state: DeviceState): DishwasherCompose
 		operationalState: {
 			operationalState: toOperationalState(state.cycleStatus),
 			operationalStateList: [
-				{ operationalStateId: OperationalState.OperationalStateEnum.Stopped, operationalStateLabel: 'Idle' },
-				{ operationalStateId: OperationalState.OperationalStateEnum.Running, operationalStateLabel: 'Running' },
-				{ operationalStateId: OperationalState.OperationalStateEnum.Paused, operationalStateLabel: 'Paused' },
+				{
+					operationalStateId: OperationalState.OperationalStateEnum.Stopped,
+					operationalStateLabel: 'Idle',
+				},
+				{
+					operationalStateId: OperationalState.OperationalStateEnum.Running,
+					operationalStateLabel: 'Running',
+				},
+				{
+					operationalStateId: OperationalState.OperationalStateEnum.Paused,
+					operationalStateLabel: 'Paused',
+				},
 			],
 		},
 	})
@@ -356,19 +378,16 @@ function createDishwasher(device: Device, state: DeviceState): DishwasherCompose
 // ─── Plug ────────────────────────────────────────────────────────────────────
 
 function createOnOffPlugIn(device: Device, state: DeviceState): Endpoint {
-	return new Endpoint(
-		OnOffPlugInUnitDevice.with(BridgedDeviceBasicInformationServer),
-		{
-			id: device.id,
-			bridgedDeviceBasicInformation: {
-				nodeLabel: device.name,
-				reachable: device.online,
-			},
-			onOff: {
-				onOff: state.on ?? false,
-			},
+	return new Endpoint(OnOffPlugInUnitDevice.with(BridgedDeviceBasicInformationServer), {
+		id: device.id,
+		bridgedDeviceBasicInformation: {
+			nodeLabel: device.name,
+			reachable: device.online,
 		},
-	)
+		onOff: {
+			onOff: state.on ?? false,
+		},
+	})
 }
 
 // ─── Factory ─────────────────────────────────────────────────────────────────
@@ -377,12 +396,17 @@ export type EndpointResult =
 	| { composed: false; endpoint: Endpoint }
 	| { composed: true; composedDevice: ComposedEndpoint }
 
-export function createMatterEndpoint(device: Device, state: DeviceState): Result<EndpointResult, FactoryError> {
+export function createMatterEndpoint(
+	device: Device,
+	state: DeviceState,
+): Result<EndpointResult, FactoryError> {
 	switch (device.type) {
 		case 'light':
 			return ok({
 				composed: false,
-				endpoint: isColorTempLight(state) ? createColorTempLight(device, state) : createOnOffLight(device, state),
+				endpoint: isColorTempLight(state)
+					? createColorTempLight(device, state)
+					: createOnOffLight(device, state),
 			})
 
 		case 'air_purifier':
@@ -422,6 +446,8 @@ export function createMatterEndpoint(device: Device, state: DeviceState): Result
 			return ok({ composed: false, endpoint: createOnOffPlugIn(device, state) })
 
 		default:
-			return err(new FactoryError(`unsupported device type for matter: ${device.type}`, device.type))
+			return err(
+				new FactoryError(`unsupported device type for matter: ${device.type}`, device.type),
+			)
 	}
 }

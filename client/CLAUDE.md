@@ -93,7 +93,7 @@ After integration mutations, invalidate: `queryClient.invalidateQueries({ queryK
 ## Lint Rules
 
 - `sonarjs/prefer-read-only-props`: wrap prop types with `Readonly<Props>`
-- `perfectionist/sort-imports`: `@tanstack/*` imports must be sorted alphabetically
+- Biome import sorting: imports are auto-sorted by Biome — no manual ordering needed
 
 ## Gotchas
 

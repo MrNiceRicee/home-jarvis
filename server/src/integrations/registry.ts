@@ -1,14 +1,14 @@
-import { type Result, err, ok } from 'neverthrow'
-
-import type { DeviceAdapter, IntegrationMeta } from './types'
+import { err, ok, type Result } from 'neverthrow'
 
 import { env } from '../lib/env'
+import { isPrivateIp } from '../lib/validate-ip'
 import { ElgatoAdapter } from './elgato/adapter'
 import { GoveeAdapter } from './govee/adapter'
 import { HueAdapter } from './hue/adapter'
 import { ResideoAdapter } from './resideo/adapter'
 import { SmartHQAdapter } from './smarthq/adapter'
 import { SmartThingsAdapter } from './smartthings/adapter'
+import type { DeviceAdapter, IntegrationMeta } from './types'
 import { VeSyncAdapter } from './vesync/adapter'
 
 /** All supported integrations and their credential form metadata */
@@ -147,13 +147,21 @@ export function getOAuthConfig(brand: string): OAuthConfig | null {
 }
 
 /** Create an adapter instance from a brand + config stored in DB */
-export function createAdapter(brand: string, config: Record<string, string>, session?: string | null): Result<DeviceAdapter, Error> {
+export function createAdapter(
+	brand: string,
+	config: Record<string, string>,
+	session?: string | null,
+): Result<DeviceAdapter, Error> {
 	switch (brand) {
 		case 'elgato':
+			if (config.ip && !isPrivateIp(config.ip))
+				return err(new Error('Device IP must be a private network address'))
 			return ok(new ElgatoAdapter(config))
 		case 'govee':
 			return ok(new GoveeAdapter(config))
 		case 'hue':
+			if (config.bridgeIp && !isPrivateIp(config.bridgeIp))
+				return err(new Error('Bridge IP must be a private network address'))
 			return ok(new HueAdapter(config))
 		case 'resideo':
 			return ok(new ResideoAdapter(config, session))

@@ -1,13 +1,12 @@
-import { ResultAsync, okAsync } from 'neverthrow'
-
-import type { DeviceAdapter, DeviceState, DiscoveredDevice } from '../types'
+import { okAsync, ResultAsync } from 'neverthrow'
 
 import { toErrorMessage } from '../../lib/error-utils'
 import { log } from '../../lib/logger'
 import { parseJson } from '../../lib/parse-json'
-import { apiToCelsius, celsiusToApi, type TemperatureUnit } from '../../lib/unit-conversions'
+import { apiToCelsius, celsiusToApi, type ResideoTemperatureUnit } from '../../lib/unit-conversions'
 import { HttpError, TokenExpiredError } from '../errors'
 import { getOAuthConfig } from '../registry'
+import type { DeviceAdapter, DeviceState, DiscoveredDevice } from '../types'
 
 const DATA_TIMEOUT = 10_000
 const TOKEN_TIMEOUT = 15_000
@@ -64,7 +63,6 @@ interface TokenResponse {
 type ResideoDeviceClass = 'tcc' | 'lcc' | 'unknown'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
 
 function classifyDevice(deviceModel: string): ResideoDeviceClass {
 	switch (deviceModel) {
@@ -126,15 +124,12 @@ export class ResideoAdapter implements DeviceAdapter {
 	}
 
 	setState(externalId: string, state: Partial<DeviceState>): ResultAsync<void, Error> {
-		return ResultAsync.fromPromise(
-			this.controlDevice(externalId, state),
-			(e) => {
-				if (e instanceof TokenExpiredError) {
-					return new Error(`resideo:auth_error:${e.message}`)
-				}
-				return new Error(`Resideo control error: ${toErrorMessage(e)}`)
-			},
-		)
+		return ResultAsync.fromPromise(this.controlDevice(externalId, state), (e) => {
+			if (e instanceof TokenExpiredError) {
+				return new Error(`resideo:auth_error:${e.message}`)
+			}
+			return new Error(`Resideo control error: ${toErrorMessage(e)}`)
+		})
 	}
 
 	// ─── Private: session management ─────────────────────────────────────────
@@ -210,13 +205,14 @@ export class ResideoAdapter implements DeviceAdapter {
 			const body = await res.text()
 			if (res.status === 400 && body.includes('invalid_grant')) {
 				this._session = null
-				throw new TokenExpiredError()
+				throw new TokenExpiredError('Resideo refresh token invalid -- re-authorization required')
 			}
 			throw new Error(`Token refresh failed: ${res.status} ${body}`)
 		}
 
 		const data = (await res.json()) as TokenResponse
-		const expiresIn = typeof data.expires_in === 'string' ? Number.parseInt(data.expires_in, 10) : data.expires_in
+		const expiresIn =
+			typeof data.expires_in === 'string' ? Number.parseInt(data.expires_in, 10) : data.expires_in
 
 		this._session = {
 			accessToken: data.access_token,
@@ -227,7 +223,8 @@ export class ResideoAdapter implements DeviceAdapter {
 
 	private async withTokenRetry<T>(fn: (session: ResideoSession) => Promise<T>): Promise<T> {
 		await this.ensureValidToken()
-		const session = this._session!
+		const session = this._session
+		if (!session) throw new TokenExpiredError('No session available')
 
 		try {
 			return await fn(session)
@@ -236,7 +233,9 @@ export class ResideoAdapter implements DeviceAdapter {
 
 			if (e instanceof HttpError && e.status === 401) {
 				await this.acquireAndRefresh()
-				return fn(this._session!)
+				const retrySession = this._session
+				if (!retrySession) throw new TokenExpiredError('No session available')
+				return fn(retrySession)
 			}
 
 			throw e
@@ -255,17 +254,30 @@ export class ResideoAdapter implements DeviceAdapter {
 		return `${BASE_URL}/v2/devices/thermostats/${deviceId}?apikey=${this.apiKey()}&locationId=${locationId}`
 	}
 
+	private parseDeviceState(device: ResideoDevice): DeviceState {
+		const units: ResideoTemperatureUnit = device.units === 'Celsius' ? 'Celsius' : 'Fahrenheit'
+		const mode = device.changeableValues?.mode?.toLowerCase() ?? 'off'
+		const targetRaw =
+			mode === 'cool'
+				? (device.changeableValues?.coolSetpoint ?? 0)
+				: (device.changeableValues?.heatSetpoint ?? 0)
+		return {
+			on: mode !== 'off',
+			temperature: apiToCelsius(device.indoorTemperature, units),
+			humidity: device.indoorHumidity ?? undefined,
+			targetTemperature: apiToCelsius(targetRaw, units),
+			mode,
+		}
+	}
+
 	// ─── Private: API calls ──────────────────────────────────────────────────
 
 	private async fetchDevices(): Promise<DiscoveredDevice[]> {
 		return this.withTokenRetry(async (session) => {
-			const res = await fetch(
-				this.locationsUrl(),
-				{
-					headers: { Authorization: `Bearer ${session.accessToken}` },
-					signal: AbortSignal.timeout(DATA_TIMEOUT),
-				},
-			)
+			const res = await fetch(this.locationsUrl(), {
+				headers: { Authorization: `Bearer ${session.accessToken}` },
+				signal: AbortSignal.timeout(DATA_TIMEOUT),
+			})
 
 			if (res.status === 401) throw new HttpError(401)
 			if (!res.ok) throw new Error(`Resideo locations error: ${res.status}`)
@@ -277,24 +289,9 @@ export class ResideoAdapter implements DeviceAdapter {
 				for (const device of location.devices) {
 					if (device.deviceClass !== 'Thermostat') continue
 
-					const units: TemperatureUnit = device.units === 'Celsius' ? 'Celsius' : 'Fahrenheit'
-					const mode = device.changeableValues?.mode?.toLowerCase() ?? 'off'
-
-					// pick the right setpoint based on mode
-					let targetRaw: number
-					if (mode === 'cool') {
-						targetRaw = device.changeableValues?.coolSetpoint ?? 0
-					} else {
-						targetRaw = device.changeableValues?.heatSetpoint ?? 0
-					}
-
-					const state: DeviceState = {
-						on: mode !== 'off',
-						temperature: apiToCelsius(device.indoorTemperature, units),
-						humidity: device.indoorHumidity ?? undefined,
-						targetTemperature: apiToCelsius(targetRaw, units),
-						mode,
-					}
+					const units: ResideoTemperatureUnit =
+						device.units === 'Celsius' ? 'Celsius' : 'Fahrenheit'
+					const state = this.parseDeviceState(device)
 
 					results.push({
 						externalId: `${location.locationID}::${device.deviceID}`,
@@ -320,35 +317,16 @@ export class ResideoAdapter implements DeviceAdapter {
 		return this.withTokenRetry(async (session) => {
 			const { locationId, deviceId } = parseExternalId(externalId)
 
-			const res = await fetch(
-				this.thermostatUrl(deviceId, locationId),
-				{
-					headers: { Authorization: `Bearer ${session.accessToken}` },
-					signal: AbortSignal.timeout(DATA_TIMEOUT),
-				},
-			)
+			const res = await fetch(this.thermostatUrl(deviceId, locationId), {
+				headers: { Authorization: `Bearer ${session.accessToken}` },
+				signal: AbortSignal.timeout(DATA_TIMEOUT),
+			})
 
 			if (res.status === 401) throw new HttpError(401)
 			if (!res.ok) throw new Error(`Resideo device state error: ${res.status}`)
 
 			const device = (await res.json()) as ResideoDevice
-			const units: TemperatureUnit = device.units === 'Celsius' ? 'Celsius' : 'Fahrenheit'
-			const mode = device.changeableValues?.mode?.toLowerCase() ?? 'off'
-
-			let targetRaw: number
-			if (mode === 'cool') {
-				targetRaw = device.changeableValues?.coolSetpoint ?? 0
-			} else {
-				targetRaw = device.changeableValues?.heatSetpoint ?? 0
-			}
-
-			return {
-				on: mode !== 'off',
-				temperature: apiToCelsius(device.indoorTemperature, units),
-				humidity: device.indoorHumidity ?? undefined,
-				targetTemperature: apiToCelsius(targetRaw, units),
-				mode,
-			}
+			return this.parseDeviceState(device)
 		})
 	}
 
@@ -357,19 +335,16 @@ export class ResideoAdapter implements DeviceAdapter {
 			const { locationId, deviceId } = parseExternalId(externalId)
 
 			// GET current state to build the full payload
-			const getRes = await fetch(
-				this.thermostatUrl(deviceId, locationId),
-				{
-					headers: { Authorization: `Bearer ${session.accessToken}` },
-					signal: AbortSignal.timeout(DATA_TIMEOUT),
-				},
-			)
+			const getRes = await fetch(this.thermostatUrl(deviceId, locationId), {
+				headers: { Authorization: `Bearer ${session.accessToken}` },
+				signal: AbortSignal.timeout(DATA_TIMEOUT),
+			})
 
 			if (getRes.status === 401) throw new HttpError(401)
 			if (!getRes.ok) throw new Error(`Resideo GET state error: ${getRes.status}`)
 
 			const device = (await getRes.json()) as ResideoDevice
-			const units: TemperatureUnit = device.units === 'Celsius' ? 'Celsius' : 'Fahrenheit'
+			const units: ResideoTemperatureUnit = device.units === 'Celsius' ? 'Celsius' : 'Fahrenheit'
 			const cv = device.changeableValues
 			const deviceClass = classifyDevice(device.deviceModel)
 
@@ -387,10 +362,16 @@ export class ResideoAdapter implements DeviceAdapter {
 				const effectiveMode = (payload.mode as string).toLowerCase()
 
 				if (effectiveMode === 'cool') {
-					payload.coolSetpoint = Math.max(device.minCoolSetpoint, Math.min(device.maxCoolSetpoint, apiValue))
+					payload.coolSetpoint = Math.max(
+						device.minCoolSetpoint,
+						Math.min(device.maxCoolSetpoint, apiValue),
+					)
 				} else {
 					// heat, auto, or off — set heat setpoint
-					payload.heatSetpoint = Math.max(device.minHeatSetpoint, Math.min(device.maxHeatSetpoint, apiValue))
+					payload.heatSetpoint = Math.max(
+						device.minHeatSetpoint,
+						Math.min(device.maxHeatSetpoint, apiValue),
+					)
 				}
 			}
 
@@ -407,18 +388,15 @@ export class ResideoAdapter implements DeviceAdapter {
 			// TCC: do NOT send thermostatSetpointStatus
 
 			// POST the update
-			const postRes = await fetch(
-				this.thermostatUrl(deviceId, locationId),
-				{
-					method: 'POST',
-					headers: {
-						Authorization: `Bearer ${session.accessToken}`,
-						'Content-Type': 'application/json',
-					},
-					body: JSON.stringify(payload),
-					signal: AbortSignal.timeout(DATA_TIMEOUT),
+			const postRes = await fetch(this.thermostatUrl(deviceId, locationId), {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${session.accessToken}`,
+					'Content-Type': 'application/json',
 				},
-			)
+				body: JSON.stringify(payload),
+				signal: AbortSignal.timeout(DATA_TIMEOUT),
+			})
 
 			if (postRes.status === 401) throw new HttpError(401)
 			if (!postRes.ok) {

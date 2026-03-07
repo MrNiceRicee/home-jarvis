@@ -1,6 +1,5 @@
-import type { Device } from '../../types'
-
 import { cn } from '../../lib/cn'
+import type { Device } from '../../types'
 
 const CYCLE_STYLES: Record<string, string> = {
 	running: 'text-blue-700 bg-blue-50',

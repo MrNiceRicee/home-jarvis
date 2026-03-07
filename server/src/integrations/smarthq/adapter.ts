@@ -1,13 +1,12 @@
-import { ResultAsync, errAsync, okAsync } from 'neverthrow'
-
-import type { DeviceAdapter, DeviceState, DiscoveredDevice } from '../types'
-import type { SmartHQDeviceDetail, SmartHQDeviceListResponse, SmartHQSession } from './types'
+import { errAsync, okAsync, ResultAsync } from 'neverthrow'
 
 import { env } from '../../lib/env'
 import { toErrorMessage } from '../../lib/error-utils'
 import { log } from '../../lib/logger'
 import { parseJson } from '../../lib/parse-json'
+import type { DeviceAdapter, DeviceState, DiscoveredDevice } from '../types'
 import { mapSmartHQDeviceType, parseSmartHQDeviceState } from './parsers'
+import type { SmartHQDeviceDetail, SmartHQDeviceListResponse, SmartHQSession } from './types'
 
 const API_BASE = 'https://client.mysmarthq.com'
 const IAM_BASE = 'https://accounts.brillion.geappliances.com'
@@ -85,7 +84,7 @@ export class SmartHQAdapter implements DeviceAdapter {
 
 	private fetchDeviceDetail(externalId: string): ResultAsync<DeviceState, Error> {
 		return ResultAsync.fromPromise(
-			this.apiFetch<SmartHQDeviceDetail>(`/v2/device/${externalId}`),
+			this.apiFetch<SmartHQDeviceDetail>(`/v2/device/${encodeURIComponent(externalId)}`),
 			(e) => new Error(`SmartHQ device detail failed: ${toErrorMessage(e)}`),
 		).map((detail) => parseSmartHQDeviceState(detail))
 	}
@@ -115,14 +114,16 @@ export class SmartHQAdapter implements DeviceAdapter {
 
 	private acquireAndRefresh(): ResultAsync<void, Error> {
 		if (this.refreshLock) {
-			return ResultAsync.fromPromise(this.refreshLock, (e) => e as Error)
+			return ResultAsync.fromPromise(this.refreshLock, (e) =>
+				e instanceof Error ? e : new Error(toErrorMessage(e)),
+			)
 		}
-
-		const promise = this.doRefresh()
-		this.refreshLock = promise.then(() => {}).catch(() => {})
-		void promise.finally(() => { this.refreshLock = null })
-
-		return ResultAsync.fromPromise(promise, (e) => e as Error)
+		this.refreshLock = this.doRefresh().finally(() => {
+			this.refreshLock = null
+		})
+		return ResultAsync.fromPromise(this.refreshLock, (e) =>
+			e instanceof Error ? e : new Error(toErrorMessage(e)),
+		)
 	}
 
 	private async doRefresh(): Promise<void> {

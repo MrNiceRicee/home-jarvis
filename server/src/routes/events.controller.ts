@@ -1,10 +1,9 @@
 import { eq } from 'drizzle-orm'
 import Elysia, { sse } from 'elysia'
 
-import type { DeviceEvent } from '../integrations/types'
-
 import { db } from '../db'
 import { devices } from '../db/schema'
+import type { DeviceEvent } from '../integrations/types'
 import { eventBus } from '../lib/events'
 import { log } from '../lib/logger'
 import { sanitizeDevice } from '../lib/sanitize'
@@ -34,12 +33,9 @@ export const eventsController = new Elysia({ prefix: '/api' })
 		set.headers['X-Accel-Buffering'] = 'no'
 
 		// Send initial state snapshot immediately (metadata stripped, hidden excluded)
-		const snapshot = db
-			.select()
-			.from(devices)
-			.all()
-			.filter((d) => !d.hidden)
-			.map(sanitizeDevice)
+		const allDevices = db.select().from(devices).all()
+		const hiddenIds = new Set(allDevices.filter((d) => d.hidden).map((d) => d.id))
+		const snapshot = allDevices.filter((d) => !d.hidden).map(sanitizeDevice)
 		yield sse({ data: { type: 'snapshot', devices: snapshot, timestamp: Date.now() } })
 		log.info('sse snapshot sent', { clientId, deviceCount: snapshot.length })
 
@@ -59,15 +55,28 @@ export const eventsController = new Elysia({ prefix: '/api' })
 		}
 
 		const handler = (event: DeviceEvent) => {
-			// skip hidden devices
-			if (event.deviceId) {
-				const device = db.select({ hidden: devices.hidden }).from(devices).where(eq(devices.id, event.deviceId)).get()
-				if (device?.hidden) return
+			// visibility-change events have no state payload — rebuild set entry
+			if (event.deviceId && !event.state) {
+				const device = db
+					.select({ hidden: devices.hidden })
+					.from(devices)
+					.where(eq(devices.id, event.deviceId))
+					.get()
+				if (device?.hidden) {
+					hiddenIds.add(event.deviceId)
+					return
+				}
+				hiddenIds.delete(event.deviceId)
 			}
+			// fast path: skip hidden devices without DB query
+			if (event.deviceId && hiddenIds.has(event.deviceId)) return
 			log.debug('sse event', { clientId, type: event.type, deviceId: event.deviceId })
 			enqueue(event)
 		}
-		const heartbeat = setInterval(() => enqueue({ type: 'heartbeat', timestamp: Date.now() }), 30_000)
+		const heartbeat = setInterval(
+			() => enqueue({ type: 'heartbeat', timestamp: Date.now() }),
+			30_000,
+		)
 		eventBus.on('device:update', handler)
 		eventBus.on('device:new', handler)
 

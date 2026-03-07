@@ -29,7 +29,9 @@ export function StatusLed({ status }: Readonly<{ status: string }>) {
 				)}
 			/>
 			{/* LED dot */}
-			<div className={cn('relative w-3.5 h-3.5 rounded-full', color, 'shadow-[0_0_6px_currentColor]')} />
+			<div
+				className={cn('relative w-3.5 h-3.5 rounded-full', color, 'shadow-[0_0_6px_currentColor]')}
+			/>
 		</div>
 	)
 }

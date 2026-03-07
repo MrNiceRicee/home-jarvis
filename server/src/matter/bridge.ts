@@ -1,16 +1,15 @@
 import '@matter/nodejs' // platform bindings — must be first import
+import { chmodSync, mkdirSync } from 'node:fs'
+import path from 'node:path'
 import { Environment, StorageService, VendorId } from '@matter/main'
 import { AggregatorEndpoint } from '@matter/main/endpoints/aggregator'
 import { Endpoint, ServerNode } from '@matter/main/node'
 import { eq } from 'drizzle-orm'
-import { chmodSync, mkdirSync } from 'node:fs'
-import path from 'node:path'
 
 import type { DB } from '../db'
 import type { Device } from '../db/schema'
-import type { DeviceState } from '../integrations/types'
-
 import { devices } from '../db/schema'
+import type { DeviceState } from '../integrations/types'
 import { env } from '../lib/env'
 import { eventBus } from '../lib/events'
 import { log } from '../lib/logger'
@@ -37,11 +36,13 @@ function extractMatterErrorDetails(error: unknown): string {
 		else rawCauses = []
 		const causes = rawCauses
 		if (causes.length > 0) {
-			return causes.map((c) => {
-				if (!(c instanceof Error)) return String(c)
-				const inner = c.cause instanceof Error ? c.cause.message : ''
-				return inner || c.message
-			}).join('; ')
+			return causes
+				.map((c) => {
+					if (!(c instanceof Error)) return String(c)
+					const inner = c.cause instanceof Error ? c.cause.message : ''
+					return inner || c.message
+				})
+				.join('; ')
 		}
 	}
 	return error instanceof Error ? error.message : String(error)
@@ -63,8 +64,7 @@ type DeviceEntry =
 // ─── Pairing code generation ────────────────────────────────────────────────
 
 const INVALID_PASSCODES = new Set([
-	0, 11111111, 22222222, 33333333, 44444444,
-	55555555, 66666666, 77777777, 88888888, 99999999,
+	0, 11111111, 22222222, 33333333, 44444444, 55555555, 66666666, 77777777, 88888888, 99999999,
 	12345678, 87654321,
 ])
 
@@ -94,8 +94,8 @@ function ensureStorageDir() {
 }
 
 function configureStorage() {
-	const env = Environment.default
-	const storage = env.get(StorageService)
+	const matterEnv = Environment.default
+	const storage = matterEnv.get(StorageService)
 	storage.location = STORAGE_DIR
 }
 
@@ -274,15 +274,17 @@ class MatterBridge {
 	}
 
 	private async addSimpleDevice(device: Device, endpoint: Endpoint) {
-		await this.aggregator!.add(endpoint)
+		if (!this.aggregator) return
+		await this.aggregator.add(endpoint)
 		this.entries.set(device.id, { type: 'simple', root: endpoint })
 		this.setupInboundHandlers(device.id, endpoint)
 		log.info('matter device added', { deviceId: device.id, name: device.name, type: device.type })
 	}
 
 	private async addComposedDevice(device: Device, composed: ComposedEndpoint) {
+		if (!this.aggregator) return
 		if (composed.kind === 'air_purifier') {
-			await this.aggregator!.add(composed.parent)
+			await this.aggregator.add(composed.parent)
 			await composed.parent.add(composed.fanEndpoint)
 			await composed.parent.add(composed.sensorEndpoint)
 
@@ -294,7 +296,7 @@ class MatterBridge {
 			})
 			this.setupInboundHandlers(device.id, composed.fanEndpoint)
 		} else if (composed.kind === 'thermostat') {
-			await this.aggregator!.add(composed.parent)
+			await this.aggregator.add(composed.parent)
 			await composed.parent.add(composed.thermostatEndpoint)
 			if (composed.humidityEndpoint) {
 				await composed.parent.add(composed.humidityEndpoint)
@@ -308,7 +310,7 @@ class MatterBridge {
 			})
 			this.setupInboundHandlers(device.id, composed.thermostatEndpoint)
 		} else if (composed.kind === 'washer' || composed.kind === 'dishwasher') {
-			await this.aggregator!.add(composed.parent)
+			await this.aggregator.add(composed.parent)
 			await composed.parent.add(composed.applianceEndpoint)
 
 			this.entries.set(device.id, {
@@ -318,7 +320,11 @@ class MatterBridge {
 			})
 		}
 
-		log.info('matter composed device added', { deviceId: device.id, name: device.name, type: device.type })
+		log.info('matter composed device added', {
+			deviceId: device.id,
+			name: device.name,
+			type: device.type,
+		})
 	}
 
 	async removeDevice(deviceId: string) {
@@ -371,11 +377,16 @@ class MatterBridge {
 		}
 
 		if (state.colorTemp !== undefined) {
-			await endpoint.setStateOf('colorControl', { colorTemperatureMireds: kelvinToMired(state.colorTemp) })
+			await endpoint.setStateOf('colorControl', {
+				colorTemperatureMireds: kelvinToMired(state.colorTemp),
+			})
 		}
 	}
 
-	private async updateThermostatDevice(entry: DeviceEntry & { type: 'thermostat' }, state: Partial<DeviceState>) {
+	private async updateThermostatDevice(
+		entry: DeviceEntry & { type: 'thermostat' },
+		state: Partial<DeviceState>,
+	) {
 		const thermostatPatch: Record<string, unknown> = {}
 
 		if (state.temperature !== undefined) {
@@ -412,7 +423,10 @@ class MatterBridge {
 		}
 	}
 
-	private async updateAirPurifierDevice(entry: DeviceEntry & { type: 'composed' }, state: Partial<DeviceState>) {
+	private async updateAirPurifierDevice(
+		entry: DeviceEntry & { type: 'composed' },
+		state: Partial<DeviceState>,
+	) {
 		// fan endpoint: power, fan speed, filter life
 		if (state.on !== undefined) {
 			await entry.fan.setStateOf('onOff', { onOff: state.on })

@@ -28,18 +28,15 @@ export function clampPercent(value: number): number {
 	return Math.round(Math.min(100, Math.max(0, value)))
 }
 
-// alias for fan speed clamping (same as clampPercent)
-export const toFanPercent = clampPercent
-
 // ─── fahrenheit / celsius (thermostat integrations) ──────────────────────────
 
-export type TemperatureUnit = 'Fahrenheit' | 'Celsius'
+export type ResideoTemperatureUnit = 'Fahrenheit' | 'Celsius'
 
 // fahrenheit to celsius, 1 decimal place
 // uses * 10 / 10 (not / 0.1 * 0.1) to avoid IEEE 754 artifacts
 export function fToC(f: number): number {
 	if (!Number.isFinite(f)) return 0
-	return Math.round(((f - 32) * 5) / 9 * 10) / 10
+	return Math.round((((f - 32) * 5) / 9) * 10) / 10
 }
 
 // celsius to whole-number fahrenheit (resideo API expects integers for F accounts)
@@ -55,14 +52,14 @@ export function cToHalfC(c: number): number {
 }
 
 // convert API temp to internal celsius representation
-export function apiToCelsius(value: number, unit: TemperatureUnit): number {
+export function apiToCelsius(value: number, unit: ResideoTemperatureUnit): number {
 	if (!Number.isFinite(value)) return 0
 	if (unit === 'Celsius') return Math.round(value * 10) / 10
 	return fToC(value)
 }
 
 // convert internal celsius to API's native unit
-export function celsiusToApi(celsius: number, unit: TemperatureUnit): number {
+export function celsiusToApi(celsius: number, unit: ResideoTemperatureUnit): number {
 	if (!Number.isFinite(celsius)) return 0
 	if (unit === 'Celsius') return cToHalfC(celsius)
 	return cToF(celsius)

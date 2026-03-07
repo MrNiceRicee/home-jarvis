@@ -4,9 +4,19 @@ import type { SmartHQDeviceDetail, SmartHQService } from './types'
 // ─── Device type classification ──────────────────────────────────────────────
 
 export function mapSmartHQDeviceType(deviceType: string): DeviceType | null {
-	if (deviceType.includes('washer') || deviceType.includes('combilaundry') || deviceType.includes('dryer')) return 'washer_dryer'
+	if (
+		deviceType.includes('washer') ||
+		deviceType.includes('combilaundry') ||
+		deviceType.includes('dryer')
+	)
+		return 'washer_dryer'
 	if (deviceType.includes('dishwasher')) return 'dishwasher'
-	if (deviceType.includes('oven') || deviceType.includes('cooktop') || deviceType.includes('microwave')) return 'oven'
+	if (
+		deviceType.includes('oven') ||
+		deviceType.includes('cooktop') ||
+		deviceType.includes('microwave')
+	)
+		return 'oven'
 	if (deviceType.includes('refrigerator')) return 'fridge'
 	return null
 }
@@ -17,7 +27,11 @@ function findService(services: SmartHQService[], typeFragment: string): SmartHQS
 	return services.find((s) => s.serviceType.includes(typeFragment))
 }
 
-function findServiceState<T>(services: SmartHQService[], typeFragment: string, key: string): T | undefined {
+function findServiceState<T>(
+	services: SmartHQService[],
+	typeFragment: string,
+	key: string,
+): T | undefined {
 	const service = findService(services, typeFragment)
 	return service?.state[key] as T | undefined
 }

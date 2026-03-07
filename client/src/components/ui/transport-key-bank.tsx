@@ -16,10 +16,18 @@ interface TransportKeyBankProps {
 	disabled?: boolean
 }
 
-export function TransportKeyBank({ label, options, value, onChange, disabled }: Readonly<TransportKeyBankProps>) {
+export function TransportKeyBank({
+	label,
+	options,
+	value,
+	onChange,
+	disabled,
+}: Readonly<TransportKeyBankProps>) {
 	return (
 		<div>
-			<span className="font-michroma text-2xs uppercase tracking-widest text-stone-400 mb-1.5 block">{label}</span>
+			<span className="font-michroma text-2xs uppercase tracking-widest text-stone-400 mb-1.5 block">
+				{label}
+			</span>
 			<RadioGroup
 				value={value}
 				onChange={onChange}
@@ -28,12 +36,7 @@ export function TransportKeyBank({ label, options, value, onChange, disabled }: 
 				aria-label={label}
 			>
 				{options.map((opt, i) => (
-					<Radio
-						key={opt.key}
-						value={opt.key}
-						className="outline-none"
-						aria-label={opt.label}
-					>
+					<Radio key={opt.key} value={opt.key} className="outline-none" aria-label={opt.label}>
 						{({ isSelected }) => (
 							<TransportKey
 								label={opt.label}
@@ -58,7 +61,14 @@ function getKeyBorderRadius(isFirst: boolean, isLast: boolean): string {
 	return '0'
 }
 
-function TransportKey({ label, ledColor, isActive, disabled, isFirst, isLast }: Readonly<{
+function TransportKey({
+	label,
+	ledColor,
+	isActive,
+	disabled,
+	isFirst,
+	isLast,
+}: Readonly<{
 	label: string
 	ledColor?: string
 	isActive: boolean

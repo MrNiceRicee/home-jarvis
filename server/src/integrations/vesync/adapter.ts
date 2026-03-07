@@ -1,11 +1,10 @@
 import { createHash } from 'crypto'
-import { ResultAsync, errAsync } from 'neverthrow'
-
-import type { DeviceAdapter, DeviceState, DeviceType, DiscoveredDevice } from '../types'
+import { errAsync, ResultAsync } from 'neverthrow'
 
 import { toErrorMessage } from '../../lib/error-utils'
 import { parseJson } from '../../lib/parse-json'
 import { TokenExpiredError } from '../errors'
+import type { DeviceAdapter, DeviceState, DeviceType, DiscoveredDevice } from '../types'
 import { getStatusMethod, mapVeSyncType, parseStateByType } from './parsers'
 
 const BASE_URL = 'https://smartapi.vesync.com'
@@ -97,6 +96,16 @@ function isV2Device(meta: VeSyncDeviceMeta): boolean {
 	return meta.configModule.startsWith('VS_')
 }
 
+function toDeviceMeta(d: VeSyncDevice): VeSyncDeviceMeta {
+	return {
+		cid: d.cid,
+		uuid: d.uuid,
+		configModule: d.configModule,
+		deviceType: d.deviceType,
+		deviceRegion: d.deviceRegion,
+	}
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function md5(input: string): string {
@@ -113,7 +122,8 @@ function traceId(): string {
 }
 
 async function login(email: string, password: string): Promise<VeSyncSession> {
-	const passwordHash = md5(password)
+	// detect pre-hashed password (32-char hex = already md5'd)
+	const passwordHash = /^[a-f0-9]{32}$/.test(password) ? password : md5(password)
 	const tid = terminalId()
 
 	// step 1: get authorize code
@@ -150,28 +160,31 @@ async function login(email: string, password: string): Promise<VeSyncSession> {
 	const { authorizeCode } = step1.result
 
 	// step 2: exchange authorize code for token
-	const step2Res = await fetch(`${BASE_URL}/user/api/accountManage/v1/loginByAuthorizeCode4Vesync`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({
-			acceptLanguage: DEFAULT_LANG,
-			accountID: '',
-			authorizeCode,
-			clientInfo: PHONE_BRAND,
-			clientType: CLIENT_TYPE,
-			clientVersion: `VeSync ${APP_VERSION}`,
-			debugMode: false,
-			emailSubscriptions: false,
-			method: 'loginByAuthorizeCode4Vesync',
-			osInfo: PHONE_OS,
-			terminalId: tid,
-			timeZone: DEFAULT_TZ,
-			token: '',
-			traceId: traceId(),
-			userCountryCode: DEFAULT_REGION,
-		}),
-		signal: AbortSignal.timeout(TIMEOUT),
-	})
+	const step2Res = await fetch(
+		`${BASE_URL}/user/api/accountManage/v1/loginByAuthorizeCode4Vesync`,
+		{
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				acceptLanguage: DEFAULT_LANG,
+				accountID: '',
+				authorizeCode,
+				clientInfo: PHONE_BRAND,
+				clientType: CLIENT_TYPE,
+				clientVersion: `VeSync ${APP_VERSION}`,
+				debugMode: false,
+				emailSubscriptions: false,
+				method: 'loginByAuthorizeCode4Vesync',
+				osInfo: PHONE_OS,
+				terminalId: tid,
+				timeZone: DEFAULT_TZ,
+				token: '',
+				traceId: traceId(),
+				userCountryCode: DEFAULT_REGION,
+			}),
+			signal: AbortSignal.timeout(TIMEOUT),
+		},
+	)
 
 	if (!step2Res.ok) throw new Error(`VeSync auth step 2 failed: ${step2Res.status}`)
 	const step2 = (await step2Res.json()) as VeSyncAuthStep2Response
@@ -243,6 +256,7 @@ export class VeSyncAdapter implements DeviceAdapter {
 	private email: string
 	private password: string
 	private _session: VeSyncSession | null
+	private deviceMetaCache = new Map<string, { meta: VeSyncDeviceMeta; type: DeviceType }>()
 
 	constructor(config: Record<string, string>, session?: string | null) {
 		this.email = config.email ?? ''
@@ -332,14 +346,16 @@ export class VeSyncAdapter implements DeviceAdapter {
 						// treat null as "unknown" — try fetching state to determine if reachable
 						const explicitOnline = d.connectionStatus === 'online'
 						const explicitOffline = d.connectionStatus === 'offline'
-						const meta: VeSyncDeviceMeta = {
-							cid: d.cid, uuid: d.uuid, configModule: d.configModule,
-							deviceType: d.deviceType, deviceRegion: d.deviceRegion,
-						}
+						const meta = toDeviceMeta(d)
+						this.deviceMetaCache.set(d.cid, { meta, type })
 
 						const discovered: DiscoveredDevice = {
-							externalId: d.cid, name: d.deviceName, type,
-							state: {}, online: explicitOnline, metadata: { ...meta },
+							externalId: d.cid,
+							name: d.deviceName,
+							type,
+							state: {},
+							online: explicitOnline,
+							metadata: { ...meta },
 						}
 
 						if (!explicitOffline) {
@@ -367,6 +383,12 @@ export class VeSyncAdapter implements DeviceAdapter {
 
 	private async fetchDeviceState(externalId: string): Promise<DeviceState> {
 		return this.withTokenRetry(async (session) => {
+			const cached = this.deviceMetaCache.get(externalId)
+			if (cached) {
+				return this.fetchDeviceStateWithMeta(cached.meta, cached.type, session)
+			}
+
+			// fallback: device not in cache (added externally), fetch full list
 			const res = await fetch(`${BASE_URL}/cloud/v1/deviceManaged/devices`, {
 				method: 'POST',
 				headers: BYPASS_HEADERS,
@@ -380,13 +402,8 @@ export class VeSyncAdapter implements DeviceAdapter {
 			if (!device) throw new Error(`Device ${externalId} not found`)
 
 			const type = mapVeSyncType(device.deviceType, device.type)
-			const meta: VeSyncDeviceMeta = {
-				cid: device.cid,
-				uuid: device.uuid,
-				configModule: device.configModule,
-				deviceType: device.deviceType,
-				deviceRegion: device.deviceRegion,
-			}
+			const meta = toDeviceMeta(device)
+			this.deviceMetaCache.set(externalId, { meta, type })
 
 			return this.fetchDeviceStateWithMeta(meta, type, session)
 		})
@@ -418,24 +435,29 @@ export class VeSyncAdapter implements DeviceAdapter {
 
 	private async controlDevice(externalId: string, state: Partial<DeviceState>): Promise<void> {
 		await this.withTokenRetry(async (session) => {
-			const res = await fetch(`${BASE_URL}/cloud/v1/deviceManaged/devices`, {
-				method: 'POST',
-				headers: BYPASS_HEADERS,
-				body: buildDeviceListPayload(session),
-				signal: AbortSignal.timeout(TIMEOUT),
-			})
+			let meta: VeSyncDeviceMeta
+			const cached = this.deviceMetaCache.get(externalId)
+			if (cached) {
+				meta = cached.meta
+			} else {
+				// fallback: device not in cache (added externally), fetch full list
+				const res = await fetch(`${BASE_URL}/cloud/v1/deviceManaged/devices`, {
+					method: 'POST',
+					headers: BYPASS_HEADERS,
+					body: buildDeviceListPayload(session),
+					signal: AbortSignal.timeout(TIMEOUT),
+				})
 
-			if (!res.ok) throw new Error(`VeSync device list error: ${res.status}`)
-			const data = (await res.json()) as VeSyncDeviceListResponse
-			const device = data.result?.list?.find((d) => d.cid === externalId)
-			if (!device) throw new Error(`Device ${externalId} not found`)
+				if (!res.ok) throw new Error(`VeSync device list error: ${res.status}`)
+				const data = (await res.json()) as VeSyncDeviceListResponse
+				const device = data.result?.list?.find((d) => d.cid === externalId)
+				if (!device) throw new Error(`Device ${externalId} not found`)
 
-			const meta: VeSyncDeviceMeta = {
-				cid: device.cid,
-				uuid: device.uuid,
-				configModule: device.configModule,
-				deviceType: device.deviceType,
-				deviceRegion: device.deviceRegion,
+				meta = toDeviceMeta(device)
+				this.deviceMetaCache.set(externalId, {
+					meta,
+					type: mapVeSyncType(device.deviceType, device.type),
+				})
 			}
 
 			const v2 = isV2Device(meta)
@@ -458,7 +480,12 @@ export class VeSyncAdapter implements DeviceAdapter {
 	 * fan speed control for air purifiers — handles mode switching
 	 * fanSpeed 0 = auto, 20 = sleep, 40/60/80/100 = manual level 1/2/3/4
 	 */
-	private async setFanSpeed(session: VeSyncSession, meta: VeSyncDeviceMeta, fanSpeed: number, v2 = false): Promise<void> {
+	private async setFanSpeed(
+		session: VeSyncSession,
+		meta: VeSyncDeviceMeta,
+		fanSpeed: number,
+		v2 = false,
+	): Promise<void> {
 		if (fanSpeed === 0) {
 			const modeData = v2 ? { workMode: 'auto' } : { mode: 'auto' }
 			await this.sendBypass(session, meta, 'setPurifierMode', modeData)
@@ -470,7 +497,11 @@ export class VeSyncAdapter implements DeviceAdapter {
 			if (v2) {
 				// V2: set manual mode, then set speed with V2 payload
 				await this.sendBypass(session, meta, 'setPurifierMode', { workMode: 'manual' })
-				await this.sendBypass(session, meta, 'setLevel', { levelIdx: 0, manualSpeedLevel: level, levelType: 'wind' })
+				await this.sendBypass(session, meta, 'setLevel', {
+					levelIdx: 0,
+					manualSpeedLevel: level,
+					levelType: 'wind',
+				})
 			} else {
 				await this.sendBypass(session, meta, 'setPurifierMode', { mode: 'manual' })
 				await this.sendBypass(session, meta, 'setLevel', { level, id: 0, type: 'wind' })
@@ -512,4 +543,3 @@ export class VeSyncAdapter implements DeviceAdapter {
 		}
 	}
 }
-

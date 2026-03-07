@@ -35,7 +35,16 @@ function buildBoxShadow(glow?: string): string {
 	return base.join(', ')
 }
 
-export function ReadoutDisplay({ children, size = 'sm', glow, glowIntensity = 0, scanlineIntensity = 0.04, scanlineTint = 'rgba(255,255,255,0.5)', className, ...rest }: Readonly<ReadoutDisplayProps>) {
+export function ReadoutDisplay({
+	children,
+	size = 'sm',
+	glow,
+	glowIntensity = 0,
+	scanlineIntensity = 0.04,
+	scanlineTint = 'rgba(255,255,255,0.5)',
+	className,
+	...rest
+}: Readonly<ReadoutDisplayProps>) {
 	// constant backlit glow — always visible like an illuminated LCD, intensity scales brightness
 	const baseGlow = 0.15
 	const effectiveIntensity = Math.max(baseGlow, glowIntensity)

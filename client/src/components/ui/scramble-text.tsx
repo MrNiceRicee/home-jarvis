@@ -11,7 +11,12 @@ interface ScrambleTextProps {
 	range?: [number, number]
 }
 
-export function ScrambleText({ value, className, visible = true, range }: Readonly<ScrambleTextProps>) {
+export function ScrambleText({
+	value,
+	className,
+	visible = true,
+	range,
+}: Readonly<ScrambleTextProps>) {
 	const reducedMotion = useReducedMotion()
 
 	const shouldAnimate = visible && !reducedMotion
@@ -33,7 +38,9 @@ export function ScrambleText({ value, className, visible = true, range }: Readon
 				<span className={cn('font-ioskeley', className)} aria-hidden="true">
 					{value}
 				</span>
-				<span className="sr-only" aria-live="polite">{value}</span>
+				<span className="sr-only" aria-live="polite">
+					{value}
+				</span>
 			</>
 		)
 	}
@@ -41,7 +48,9 @@ export function ScrambleText({ value, className, visible = true, range }: Readon
 	return (
 		<>
 			<span ref={ref} className={cn('font-ioskeley', className)} aria-hidden="true" />
-			<span className="sr-only" aria-live="polite">{value}</span>
+			<span className="sr-only" aria-live="polite">
+				{value}
+			</span>
 		</>
 	)
 }

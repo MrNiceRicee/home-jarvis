@@ -3,8 +3,6 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
-import type { DetectedDevice, IntegrationsResponse } from '../types'
-
 import { AdditionalDeviceRow } from '../components/IntegrationForm'
 import { ModulePanel } from '../components/ModulePanel'
 import { ScanLog } from '../components/ScanLog'
@@ -13,6 +11,7 @@ import { useScanStream } from '../hooks/useScanStream'
 import { api } from '../lib/api'
 import { toErrorMessage } from '../lib/error-utils'
 import { useDeviceStore } from '../stores/device-store'
+import type { DetectedDevice, IntegrationsResponse } from '../types'
 
 interface IntegrationSearchParams {
 	oauth?: string
@@ -38,8 +37,7 @@ function extractErrorMessage(value: unknown, fallback: string): string {
 
 async function fetchIntegrations(): Promise<IntegrationsResponse> {
 	const { data, error } = await api.api.integrations.get()
-	if (error)
-		throw new Error(extractErrorMessage(error.value, 'Failed to fetch integrations'))
+	if (error) throw new Error(extractErrorMessage(error.value, 'Failed to fetch integrations'))
 	return data ?? { configured: [], available: [] }
 }
 
@@ -109,8 +107,7 @@ function Integrations() {
 	const addDeviceMutation = useMutation({
 		mutationFn: async ({ brand, ip }: { brand: string; ip: string }) => {
 			const { data, error } = await api.api.devices['add-from-scan'].post({ brand, ip })
-			if (error)
-				throw new Error(extractErrorMessage(error.value, 'Failed to add device'))
+			if (error) throw new Error(extractErrorMessage(error.value, 'Failed to add device'))
 			return data
 		},
 	})
@@ -141,9 +138,7 @@ function Integrations() {
 	}
 
 	const configuredBrands = new Set(data?.configured?.map((i) => i.brand) ?? [])
-	const existingIps = new Set(
-		existingDevices.map((d) => d.externalId.replace(/:\d+$/, '')),
-	)
+	const existingIps = new Set(existingDevices.map((d) => d.externalId.replace(/:\d+$/, '')))
 
 	function isAlreadyAdded(d: DetectedDevice) {
 		const ip = d.details.ip ?? d.details.bridgeIp
@@ -276,14 +271,7 @@ function Integrations() {
 							)
 						}
 						if (connectingBrand === meta.brand) {
-							return (
-								<ModulePanel
-									key={meta.brand}
-									index={idx}
-									state="connecting"
-									meta={meta}
-								/>
-							)
+							return <ModulePanel key={meta.brand} index={idx} state="connecting" meta={meta} />
 						}
 						return (
 							<ModulePanel
@@ -297,7 +285,6 @@ function Integrations() {
 					})}
 				</div>
 			</section>
-
 		</div>
 	)
 }

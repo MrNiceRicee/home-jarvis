@@ -1,6 +1,6 @@
 import type { Icon } from '@phosphor-icons/react'
-
 import {
+	BroadcastIcon,
 	CookingPotIcon,
 	FanIcon,
 	FlowerIcon,
@@ -10,7 +10,6 @@ import {
 	PackageIcon,
 	PlugIcon,
 	RobotIcon,
-	BroadcastIcon,
 	SnowflakeIcon,
 	SpeakerHifiIcon,
 	ThermometerIcon,

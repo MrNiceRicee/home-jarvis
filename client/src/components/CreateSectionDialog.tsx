@@ -42,7 +42,9 @@ export function CreateSectionDialog({ onSubmit }: Readonly<CreateSectionDialogPr
 							close()
 						} catch (err) {
 							const message = err instanceof Error ? err.message : 'Failed to create section'
-							setError(message.includes('409') ? 'A section with this name already exists' : message)
+							setError(
+								message.includes('409') ? 'A section with this name already exists' : message,
+							)
 						} finally {
 							setSubmitting(false)
 						}
@@ -67,7 +69,9 @@ export function CreateSectionDialog({ onSubmit }: Readonly<CreateSectionDialogPr
 								</RaisedButton>
 								<RaisedButton
 									variant="primary"
-									onPress={() => { void handleSubmit() }}
+									onPress={() => {
+										void handleSubmit()
+									}}
 									isDisabled={submitting || !name.trim()}
 								>
 									{submitting ? 'Creating…' : 'Create'}

@@ -1,6 +1,10 @@
 import { cn } from '../../lib/cn'
 
-export function GaugeReadout({ label, value, valueClass }: Readonly<{ label: string; value: string | number; valueClass?: string }>) {
+export function GaugeReadout({
+	label,
+	value,
+	valueClass,
+}: Readonly<{ label: string; value: string | number; valueClass?: string }>) {
 	return (
 		<div
 			className={cn(
@@ -10,7 +14,12 @@ export function GaugeReadout({ label, value, valueClass }: Readonly<{ label: str
 				'shadow-[var(--shadow-inset)]',
 			)}
 		>
-			<p className={cn('font-ioskeley text-lg font-semibold tabular-nums', valueClass ?? 'text-stone-800')}>
+			<p
+				className={cn(
+					'font-ioskeley text-lg font-semibold tabular-nums',
+					valueClass ?? 'text-stone-800',
+				)}
+			>
 				{value}
 			</p>
 			<p className="font-michroma text-[9px] text-stone-400 tracking-[0.2em] mt-0.5 uppercase">

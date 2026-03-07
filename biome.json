@@ -19,9 +19,45 @@
 			"semicolons": "asNeeded"
 		}
 	},
-	"linter": {
-		"enabled": false
+	"assist": {
+		"enabled": true,
+		"actions": {
+			"source": {
+				"organizeImports": {
+					"level": "on",
+					"options": {
+						"groups": [":BUN:", ":NODE:", ":PACKAGE:", ":BLANK_LINE:", ":PATH:"],
+						"identifierOrder": "natural"
+					}
+				}
+			}
+		}
 	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": false,
+			"performance": {
+				"noAccumulatingSpread": "error"
+			},
+			"correctness": {
+				"noConstantMathMinMaxClamp": "error",
+				"noNodejsModules": "error"
+			}
+		}
+	},
+	"overrides": [
+		{
+			"includes": ["server/**", "scripts/**"],
+			"linter": {
+				"rules": {
+					"correctness": {
+						"noNodejsModules": "off"
+					}
+				}
+			}
+		}
+	],
 	"files": {
 		"includes": [
 			"**",

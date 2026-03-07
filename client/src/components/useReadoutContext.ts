@@ -44,5 +44,15 @@ export function useReadoutContext() {
 			setSlot1(`bridge: ${status}`)
 			setSlot2(`${bridged} bridged`)
 		}
-	}, [isDashboard, isIntegrations, isMatter, deviceCount, onlineCount, scanStatus, bridge, setSlot1, setSlot2])
+	}, [
+		isDashboard,
+		isIntegrations,
+		isMatter,
+		deviceCount,
+		onlineCount,
+		scanStatus,
+		bridge,
+		setSlot1,
+		setSlot2,
+	])
 }

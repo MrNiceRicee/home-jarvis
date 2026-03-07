@@ -1,4 +1,4 @@
-import { type ReactNode, forwardRef } from 'react'
+import { forwardRef, type ReactNode } from 'react'
 import { Button as AriaButton, type ButtonProps as AriaButtonProps } from 'react-aria-components'
 import { tv, type VariantProps } from 'tailwind-variants'
 
@@ -79,11 +79,7 @@ interface ButtonProps extends Omit<AriaButtonProps, 'className'> {
 export const RaisedButton = forwardRef<HTMLButtonElement, Readonly<ButtonProps>>(
 	function RaisedButton({ variant, size, className, children, ...props }, ref) {
 		return (
-			<AriaButton
-				ref={ref}
-				className={button({ variant, size, className })}
-				{...props}
-			>
+			<AriaButton ref={ref} className={button({ variant, size, className })} {...props}>
 				{children}
 			</AriaButton>
 		)

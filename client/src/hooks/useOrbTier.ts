@@ -28,9 +28,7 @@ export function useOrbTier(): OrbTier {
 
 	useEffect(() => {
 		// use matchMedia listeners so we only re-render at breakpoints, not every pixel
-		const queries = TIERS.map(({ minWidth }) =>
-			window.matchMedia(`(min-width: ${minWidth}px)`),
-		)
+		const queries = TIERS.map(({ minWidth }) => window.matchMedia(`(min-width: ${minWidth}px)`))
 
 		const handler = () => setTier(getTier())
 		for (const mql of queries) {

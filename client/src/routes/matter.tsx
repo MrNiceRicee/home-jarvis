@@ -182,9 +182,7 @@ function MatterPage() {
 						>
 							<span className="text-2xl">✓</span>
 						</div>
-						<p className="font-ioskeley text-xs text-stone-500 mt-3 tracking-wide">
-							COMMISSIONED
-						</p>
+						<p className="font-ioskeley text-xs text-stone-500 mt-3 tracking-wide">COMMISSIONED</p>
 					</motion.div>
 				)}
 
@@ -270,7 +268,8 @@ function MatterPage() {
 				<div className="mt-6 flex items-center gap-3 px-4 py-2.5 rounded-lg bg-stone-100/60 border border-stone-200/50">
 					<span className="text-xs">ℹ️</span>
 					<p className="font-ioskeley text-2xs text-stone-500 tracking-wide leading-relaxed">
-						MATTER BRIDGE EXPOSES YOUR DEVICES VIA THE MATTER PROTOCOL. COMPATIBLE WITH APPLE HOME, GOOGLE HOME, AND AMAZON ALEXA.
+						MATTER BRIDGE EXPOSES YOUR DEVICES VIA THE MATTER PROTOCOL. COMPATIBLE WITH APPLE HOME,
+						GOOGLE HOME, AND AMAZON ALEXA.
 						{!isPaired && ' SCAN THE QR CODE WITH YOUR SMART HOME APP TO PAIR.'}
 					</p>
 				</div>
@@ -290,19 +289,26 @@ const positionClasses: Record<HudPosition, string> = {
 	'bottom-right': 'bottom-6 right-6 items-end text-right',
 }
 
-function HudReadout({ position, children, rotated, mirrored }: Readonly<{
+function HudReadout({
+	position,
+	children,
+	rotated,
+	mirrored,
+}: Readonly<{
 	position: HudPosition
 	children: React.ReactNode
 	rotated?: boolean
 	mirrored?: boolean
 }>) {
 	return (
-		<div className={cn(
-			'absolute flex gap-1 z-10',
-			rotated ? '[writing-mode:vertical-rl] flex-row' : 'flex-col',
-			mirrored && 'rotate-180',
-			positionClasses[position],
-		)}>
+		<div
+			className={cn(
+				'absolute flex gap-1 z-10',
+				rotated ? '[writing-mode:vertical-rl] flex-row' : 'flex-col',
+				mirrored && 'rotate-180',
+				positionClasses[position],
+			)}
+		>
 			{children}
 		</div>
 	)
@@ -310,7 +316,12 @@ function HudReadout({ position, children, rotated, mirrored }: Readonly<{
 
 // ── sub-components ──────────────────────────────────────────────────────────
 
-function StatusPanel({ status, paired, deviceCount, port }: Readonly<{
+function StatusPanel({
+	status,
+	paired,
+	deviceCount,
+	port,
+}: Readonly<{
 	status: string
 	paired: boolean
 	deviceCount: number
@@ -377,4 +388,3 @@ function QrPanel({ qrDataUrl }: Readonly<{ qrDataUrl?: string }>) {
 		</ConsolePanel>
 	)
 }
-

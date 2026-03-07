@@ -1,10 +1,8 @@
 import { DialogTrigger, Heading } from 'react-aria-components'
 
-import type { IntegrationMeta } from '../types'
-import type { IntegrationsResponse } from '../types'
-
 import { cn } from '../lib/cn'
 import { BRAND_ICON, FALLBACK_ICON } from '../lib/device-constants'
+import type { IntegrationMeta, IntegrationsResponse } from '../types'
 import { IntegrationFormInner } from './IntegrationForm'
 import { RaisedButton } from './ui/button'
 import { RaisedModal } from './ui/modal'
@@ -19,39 +17,50 @@ type ConfiguredIntegration = IntegrationsResponse['configured'][number]
 type ModulePanelBase = { index?: number }
 
 type ModulePanelProps = Readonly<
-	ModulePanelBase & (
-	| {
-		state: 'connected'
-		integration: ConfiguredIntegration
-		deviceCount: number
-		meta: IntegrationMeta
-		onRemove: () => void
-	}
-	| {
-		state: 'available'
-		meta: IntegrationMeta
-		onSubmit: (brand: string, config: Record<string, string>) => Promise<void>
-	}
-	| {
-		state: 'error'
-		meta: IntegrationMeta
-		errorMessage: string
-		onRetry: () => void
-	}
-	| {
-		state: 'connecting'
-		meta: IntegrationMeta
-	}
-)>
+	ModulePanelBase &
+		(
+			| {
+					state: 'connected'
+					integration: ConfiguredIntegration
+					deviceCount: number
+					meta: IntegrationMeta
+					onRemove: () => void
+			  }
+			| {
+					state: 'available'
+					meta: IntegrationMeta
+					onSubmit: (brand: string, config: Record<string, string>) => Promise<void>
+			  }
+			| {
+					state: 'error'
+					meta: IntegrationMeta
+					errorMessage: string
+					onRetry: () => void
+			  }
+			| {
+					state: 'connecting'
+					meta: IntegrationMeta
+			  }
+		)
+>
 
 function BezelLed({ lit, error }: Readonly<{ lit: boolean; error?: boolean }>) {
 	let ledColor: { bg: string; glow: string }
 	if (error) {
-		ledColor = { bg: 'radial-gradient(circle at 35% 30%, #fca5a5, #ef4444 50%, #dc2626 100%)', glow: '0 0 4px rgba(239,68,68,0.5), 0 0 8px rgba(239,68,68,0.2)' }
+		ledColor = {
+			bg: 'radial-gradient(circle at 35% 30%, #fca5a5, #ef4444 50%, #dc2626 100%)',
+			glow: '0 0 4px rgba(239,68,68,0.5), 0 0 8px rgba(239,68,68,0.2)',
+		}
 	} else if (lit) {
-		ledColor = { bg: 'radial-gradient(circle at 35% 30%, #6ee7b7, #34d399 50%, #059669 100%)', glow: '0 0 4px rgba(52,211,153,0.5), 0 0 8px rgba(52,211,153,0.2)' }
+		ledColor = {
+			bg: 'radial-gradient(circle at 35% 30%, #6ee7b7, #34d399 50%, #059669 100%)',
+			glow: '0 0 4px rgba(52,211,153,0.5), 0 0 8px rgba(52,211,153,0.2)',
+		}
 	} else {
-		ledColor = { bg: 'radial-gradient(circle at 35% 30%, #a8a29e, #78716c 50%, #57534e 100%)', glow: 'none' }
+		ledColor = {
+			bg: 'radial-gradient(circle at 35% 30%, #a8a29e, #78716c 50%, #57534e 100%)',
+			glow: 'none',
+		}
 	}
 
 	return (
@@ -95,7 +104,8 @@ export function ModulePanel(props: ModulePanelProps) {
 			style={{
 				background: 'linear-gradient(to bottom, #d6d3cc, #c4c0b8)',
 				border: '1px solid rgba(168, 151, 125, 0.25)',
-				boxShadow: '0 2px 6px rgba(80, 60, 30, 0.08), 0 1px 2px rgba(80, 60, 30, 0.06), inset 0 1px 0 rgba(255,255,255,0.5)',
+				boxShadow:
+					'0 2px 6px rgba(80, 60, 30, 0.08), 0 1px 2px rgba(80, 60, 30, 0.06), inset 0 1px 0 rgba(255,255,255,0.5)',
 			}}
 		>
 			{/* bezel top — LED + brand label on the housing */}
@@ -130,7 +140,7 @@ export function ModulePanel(props: ModulePanelProps) {
 								weight="thin"
 								className={cn(
 									'text-display-text transition-opacity duration-300',
-									(!isPowered && !isError) && 'opacity-30',
+									!isPowered && !isError && 'opacity-30',
 									isError && 'opacity-30',
 								)}
 							/>
@@ -141,24 +151,29 @@ export function ModulePanel(props: ModulePanelProps) {
 										<NumberTicker value={props.deviceCount} />
 									</span>
 									<span className="font-ioskeley text-2xs text-display-text/50 uppercase tracking-wider">
-										<ScrambleText value={props.deviceCount === 0 ? 'NO DEVICES' : 'CONNECTED'} range={[0x2800, 0x28FF]} />
+										<ScrambleText
+											value={props.deviceCount === 0 ? 'NO DEVICES' : 'CONNECTED'}
+											range={[0x2800, 0x28ff]}
+										/>
 									</span>
 								</>
 							)}
 
 							{props.state === 'available' && (
-								<span className="font-ioskeley text-lg tabular-nums text-display-text/20 leading-none">--</span>
+								<span className="font-ioskeley text-lg tabular-nums text-display-text/20 leading-none">
+									--
+								</span>
 							)}
 
 							{props.state === 'error' && (
 								<span className="font-ioskeley text-2xs text-red-400 uppercase tracking-wider">
-									<ScrambleText value="ERROR" range={[0x2800, 0x28FF]} />
+									<ScrambleText value="ERROR" range={[0x2800, 0x28ff]} />
 								</span>
 							)}
 
 							{props.state === 'connecting' && (
 								<span className="font-ioskeley text-2xs text-display-text/50 uppercase tracking-wider animate-pulse">
-									<ScrambleText value="CONNECTING..." range={[0x2800, 0x28FF]} />
+									<ScrambleText value="CONNECTING..." range={[0x2800, 0x28ff]} />
 								</span>
 							)}
 						</div>
@@ -175,9 +190,7 @@ export function ModulePanel(props: ModulePanelProps) {
 							{props.state === 'available' && (
 								<AvailableActions meta={props.meta} onSubmit={props.onSubmit} />
 							)}
-							{props.state === 'error' && (
-								<TerminalButton label="RETRY" onPress={props.onRetry} />
-							)}
+							{props.state === 'error' && <TerminalButton label="RETRY" onPress={props.onRetry} />}
 						</div>
 					</div>
 				</ReadoutDisplay>
@@ -189,46 +202,58 @@ export function ModulePanel(props: ModulePanelProps) {
 	)
 }
 
-function ConnectedActions({ meta, deviceCount, onRemove }: Readonly<{
+function ConnectedActions({
+	meta,
+	deviceCount,
+	onRemove,
+}: Readonly<{
 	meta: IntegrationMeta
 	deviceCount: number
 	onRemove: () => void
 }>) {
 	return (
 		<DialogTrigger>
-				<TerminalButton label="REMOVE" variant="destructive" onPress={() => {}} />
-				<RaisedModal className="max-w-sm">
-					{({ close }) => (
-						<>
-							<Heading slot="title" className="font-michroma text-2xs text-stone-800 tracking-[0.15em] uppercase mb-2" style={{ textShadow: '0 -1px 0 rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.4)' }}>
-								Remove {meta.displayName}?
-							</Heading>
-							<p className="font-ioskeley text-xs text-stone-600 mb-5">
-								{deviceCount} device{deviceCount !== 1 ? 's' : ''} will be removed. Matter accessories will be unexposed.
-							</p>
-							<div className="flex gap-2 justify-end">
-								<RaisedButton variant="raised" size="md" onPress={close}>
-									Cancel
-								</RaisedButton>
-								<RaisedButton
-									variant="danger"
-									size="md"
-									onPress={() => {
-										onRemove()
-										close()
-									}}
-								>
-									Remove
-								</RaisedButton>
-							</div>
-						</>
-					)}
-				</RaisedModal>
-			</DialogTrigger>
+			<TerminalButton label="REMOVE" variant="destructive" onPress={() => {}} />
+			<RaisedModal className="max-w-sm">
+				{({ close }) => (
+					<>
+						<Heading
+							slot="title"
+							className="font-michroma text-2xs text-stone-800 tracking-[0.15em] uppercase mb-2"
+							style={{ textShadow: '0 -1px 0 rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.4)' }}
+						>
+							Remove {meta.displayName}?
+						</Heading>
+						<p className="font-ioskeley text-xs text-stone-600 mb-5">
+							{deviceCount} device{deviceCount !== 1 ? 's' : ''} will be removed. Matter accessories
+							will be unexposed.
+						</p>
+						<div className="flex gap-2 justify-end">
+							<RaisedButton variant="raised" size="md" onPress={close}>
+								Cancel
+							</RaisedButton>
+							<RaisedButton
+								variant="danger"
+								size="md"
+								onPress={() => {
+									onRemove()
+									close()
+								}}
+							>
+								Remove
+							</RaisedButton>
+						</div>
+					</>
+				)}
+			</RaisedModal>
+		</DialogTrigger>
 	)
 }
 
-function AvailableActions({ meta, onSubmit }: Readonly<{
+function AvailableActions({
+	meta,
+	onSubmit,
+}: Readonly<{
 	meta: IntegrationMeta
 	onSubmit: (brand: string, config: Record<string, string>) => Promise<void>
 }>) {

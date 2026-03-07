@@ -1,6 +1,9 @@
 import { cn } from '../../lib/cn'
 
-export function ConsolePanel({ children, className }: Readonly<{ children: React.ReactNode; className?: string }>) {
+export function ConsolePanel({
+	children,
+	className,
+}: Readonly<{ children: React.ReactNode; className?: string }>) {
 	return (
 		<div
 			className={cn(

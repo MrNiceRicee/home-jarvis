@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 
-import type { DetectedDevice, ScanEvent } from '../types'
-
 import { useScanStore } from '../stores/scan-store'
+import type { DetectedDevice, ScanEvent } from '../types'
 
 export function useScanStream() {
 	const esRef = useRef<EventSource | null>(null)

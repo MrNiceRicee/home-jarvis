@@ -1,9 +1,15 @@
 import { useState } from 'react'
-import { Button, Label, Slider, SliderOutput, SliderThumb, SliderTrack } from 'react-aria-components'
-
-import type { Device, DeviceState } from '../types'
+import {
+	Button,
+	Label,
+	Slider,
+	SliderOutput,
+	SliderThumb,
+	SliderTrack,
+} from 'react-aria-components'
 
 import { CCT_SWATCHES, COLOR_PRESETS, SCENES, tempToColor } from '../lib/color-utils'
+import type { Device, DeviceState } from '../types'
 
 interface LightMultiSelectBarProps {
 	selectedIds: Set<string>
@@ -36,7 +42,8 @@ export function LightMultiSelectBar({
 			style={{
 				background: 'linear-gradient(to bottom, rgba(255,255,255,0.92), rgba(255,255,255,0.85))',
 				backdropFilter: 'blur(16px) saturate(1.5)',
-				boxShadow: '0 4px 24px rgba(0,0,0,0.1), 0 1px 4px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)',
+				boxShadow:
+					'0 4px 24px rgba(0,0,0,0.1), 0 1px 4px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)',
 				border: '1px solid rgba(255,255,255,0.6)',
 			}}
 		>
@@ -138,8 +145,7 @@ export function LightMultiSelectBar({
 								onClick={() => applyToAll({ colorTemp: k })}
 								style={{
 									background: tempToColor(k),
-									boxShadow:
-										'0 2px 6px rgba(0,0,0,0.25), inset 0 1px 2px rgba(255,255,255,0.4)',
+									boxShadow: '0 2px 6px rgba(0,0,0,0.25), inset 0 1px 2px rgba(255,255,255,0.4)',
 								}}
 								className="w-6 h-6 rounded-full ring-1 ring-white/40 cursor-pointer hover:scale-110 transition-transform"
 								aria-label={`${k}K`}
@@ -161,8 +167,7 @@ export function LightMultiSelectBar({
 								onClick={() => applyToAll({ color: preset.value, on: true })}
 								style={{
 									background: `rgb(${preset.value.r} ${preset.value.g} ${preset.value.b})`,
-									boxShadow:
-										'0 2px 6px rgba(0,0,0,0.25), inset 0 1px 2px rgba(255,255,255,0.4)',
+									boxShadow: '0 2px 6px rgba(0,0,0,0.25), inset 0 1px 2px rgba(255,255,255,0.4)',
 								}}
 								className="w-6 h-6 rounded-full ring-1 ring-white/40 cursor-pointer hover:scale-110 transition-transform"
 								aria-label={preset.label}

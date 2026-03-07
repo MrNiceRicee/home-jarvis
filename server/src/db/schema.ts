@@ -4,8 +4,12 @@ export const sections = sqliteTable('sections', {
 	id: text('id').primaryKey(),
 	name: text('name').notNull().unique(),
 	position: integer('position').notNull().default(0),
-	createdAt: integer('created_at').notNull().$defaultFn(() => Date.now()),
-	updatedAt: integer('updated_at').notNull().$defaultFn(() => Date.now()),
+	createdAt: integer('created_at')
+		.notNull()
+		.$defaultFn(() => Date.now()),
+	updatedAt: integer('updated_at')
+		.notNull()
+		.$defaultFn(() => Date.now()),
 })
 
 export const integrations = sqliteTable('integrations', {
@@ -37,7 +41,9 @@ export const devices = sqliteTable(
 		hidden: integer('hidden', { mode: 'boolean' }).notNull().default(false),
 		matterEnabled: integer('matter_enabled', { mode: 'boolean' }).notNull().default(false),
 		matterEndpointId: text('matter_endpoint_id'),
-		sectionId: text('section_id').notNull().references(() => sections.id, { onDelete: 'restrict' }),
+		sectionId: text('section_id')
+			.notNull()
+			.references(() => sections.id, { onDelete: 'restrict' }),
 		position: integer('position').notNull(),
 		lastSeen: integer('last_seen'),
 		createdAt: integer('created_at').notNull(),

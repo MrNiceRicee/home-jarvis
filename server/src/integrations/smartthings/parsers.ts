@@ -1,7 +1,6 @@
+import { fToC } from '../../lib/unit-conversions'
 import type { DeviceState, DeviceType } from '../types'
 import type { SmartThingsComponentStatus, SmartThingsDeviceStatus } from './types'
-
-import { fToC } from '../../lib/unit-conversions'
 
 // capabilities that identify device type
 const TV_CAPS = ['audioVolume', 'mediaPlayback', 'tvChannel', 'mediaInputSource']
@@ -27,20 +26,33 @@ export function mapSmartThingsType(capabilityIds: string[]): DeviceType | null {
 }
 
 /** extract all capability IDs across all components */
-export function flatCapabilityIds(components: Array<{ capabilities: Array<{ id: string }> }>): string[] {
+export function flatCapabilityIds(
+	components: Array<{ capabilities: Array<{ id: string }> }>,
+): string[] {
 	return components.flatMap((c) => c.capabilities.map((cap) => cap.id))
 }
 
 // helper to safely read an attribute value from a component status
-function attr<T>(component: SmartThingsComponentStatus | undefined, capability: string, attribute: string): T | undefined {
+function attr<T>(
+	component: SmartThingsComponentStatus | undefined,
+	capability: string,
+	attribute: string,
+): T | undefined {
 	return component?.[capability]?.[attribute]?.value as T | undefined
 }
 
-function attrUnit(component: SmartThingsComponentStatus | undefined, capability: string, attribute: string): string | undefined {
+function attrUnit(
+	component: SmartThingsComponentStatus | undefined,
+	capability: string,
+	attribute: string,
+): string | undefined {
 	return component?.[capability]?.[attribute]?.unit
 }
 
-export function parseSmartThingsState(status: SmartThingsDeviceStatus, type: DeviceType): DeviceState {
+export function parseSmartThingsState(
+	status: SmartThingsDeviceStatus,
+	type: DeviceType,
+): DeviceState {
 	const main = status.components.main
 	const state: DeviceState = {}
 
@@ -154,8 +166,9 @@ function parseAirPurifierState(main: SmartThingsComponentStatus | undefined, sta
 	const fanSpeed = attr<number>(main, 'fanSpeed', 'fanSpeed')
 	if (typeof fanSpeed === 'number') state.fanSpeed = fanSpeed
 
-	const pm25 = attr<number>(main, 'dustSensor', 'fineDustLevel')
-		?? attr<number>(main, 'airQualitySensor', 'airQuality')
+	const pm25 =
+		attr<number>(main, 'dustSensor', 'fineDustLevel') ??
+		attr<number>(main, 'airQualitySensor', 'airQuality')
 	if (typeof pm25 === 'number') state.pm25 = pm25
 }
 
@@ -173,12 +186,25 @@ function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: n
 	let g = 0
 	let b = 0
 
-	if (hNorm < 60) { r = c; g = x }
-	else if (hNorm < 120) { r = x; g = c }
-	else if (hNorm < 180) { g = c; b = x }
-	else if (hNorm < 240) { g = x; b = c }
-	else if (hNorm < 300) { r = x; b = c }
-	else { r = c; b = x }
+	if (hNorm < 60) {
+		r = c
+		g = x
+	} else if (hNorm < 120) {
+		r = x
+		g = c
+	} else if (hNorm < 180) {
+		g = c
+		b = x
+	} else if (hNorm < 240) {
+		g = x
+		b = c
+	} else if (hNorm < 300) {
+		r = x
+		b = c
+	} else {
+		r = c
+		b = x
+	}
 
 	return {
 		r: Math.round((r + m) * 255),

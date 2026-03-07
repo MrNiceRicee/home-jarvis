@@ -1,11 +1,10 @@
 import { useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 
-import type { SSEEvent } from '../types'
-
 import { useConnectionStore } from '../stores/connection-store'
 import { useDeviceStore } from '../stores/device-store'
 import { useReadoutStore } from '../stores/readout-store'
+import type { SSEEvent } from '../types'
 
 export function useDeviceStream() {
 	const esRef = useRef<EventSource | null>(null)

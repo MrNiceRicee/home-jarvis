@@ -1,4 +1,10 @@
-import { Input as AriaInput, Label, TextField, FieldError, type TextFieldProps } from 'react-aria-components'
+import {
+	Input as AriaInput,
+	FieldError,
+	Label,
+	TextField,
+	type TextFieldProps,
+} from 'react-aria-components'
 
 import { cn } from '../../lib/cn'
 
@@ -10,10 +16,19 @@ interface RaisedInputProps extends Omit<TextFieldProps, 'className'> {
 	className?: string
 }
 
-export function RaisedInput({ label, type = 'text', placeholder, hint, className = '', ...props }: Readonly<RaisedInputProps>) {
+export function RaisedInput({
+	label,
+	type = 'text',
+	placeholder,
+	hint,
+	className = '',
+	...props
+}: Readonly<RaisedInputProps>) {
 	return (
 		<TextField className={cn('flex flex-col gap-1.5', className)} {...props}>
-			<Label className="font-michroma text-2xs text-stone-700 tracking-[0.1em] uppercase">{label}</Label>
+			<Label className="font-michroma text-2xs text-stone-700 tracking-[0.1em] uppercase">
+				{label}
+			</Label>
 			<AriaInput
 				type={type}
 				placeholder={placeholder}

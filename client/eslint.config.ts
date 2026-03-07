@@ -1,7 +1,7 @@
+import { defineConfig, globalIgnores } from 'eslint/config'
 import boundaries from 'eslint-plugin-boundaries'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
-import { defineConfig, globalIgnores } from 'eslint/config'
 import globals from 'globals'
 
 import { baseConfig } from '../eslint.config.base.ts'
@@ -47,9 +47,10 @@ export default defineConfig([
 		settings: {
 			'boundaries/elements': [
 				{ type: 'routes', pattern: 'src/routes/**/*' },
-				{ type: 'components', pattern: 'src/components/*' },
+				{ type: 'components', pattern: 'src/components/**/*' },
 				{ type: 'hooks', pattern: 'src/hooks/*' },
 				{ type: 'lib', pattern: 'src/lib/*' },
+				{ type: 'stores', pattern: 'src/stores/*' },
 			],
 			// Enforce that types flow from the server workspace package,
 			// never by reaching into server/src directly.
@@ -63,9 +64,9 @@ export default defineConfig([
 					default: 'disallow',
 					rules: [
 						// Routes may use everything
-						{ from: 'routes', allow: ['components', 'hooks', 'lib'] },
-						// Components may use hooks and lib
-						{ from: 'components', allow: ['hooks', 'lib'] },
+						{ from: 'routes', allow: ['components', 'hooks', 'lib', 'stores'] },
+						// Components may use hooks, lib, and stores
+						{ from: 'components', allow: ['hooks', 'lib', 'stores'] },
 						// Hooks may only use lib
 						{ from: 'hooks', allow: ['lib'] },
 						// Lib is a leaf (workspace imports like home-jarvis-server are external, not elements)

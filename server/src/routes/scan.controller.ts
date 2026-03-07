@@ -1,8 +1,7 @@
 import Elysia, { sse } from 'elysia'
 
+import { runStreamingScan, SCANNABLE_BRANDS } from '../discovery/local-scanner'
 import type { ScanEvent } from '../integrations/types'
-
-import { SCANNABLE_BRANDS, runStreamingScan } from '../discovery/local-scanner'
 import { log } from '../lib/logger'
 
 type QueueItem = ScanEvent
@@ -50,7 +49,9 @@ export const scanController = new Elysia({ prefix: '/api' })
 				if (item.type === 'scan:done') return
 				continue
 			}
-			await new Promise<void>((resolve) => { notify = resolve })
+			await new Promise<void>((resolve) => {
+				notify = resolve
+			})
 		}
 	})
 
@@ -62,10 +63,9 @@ export const scanController = new Elysia({ prefix: '/api' })
 			return { error: `Unknown brand: ${brand}. Scannable: ${SCANNABLE_BRANDS.join(', ')}` }
 		}
 		log.info('scan:brand', { brand })
-		const devices = await runStreamingScan(
-			{ onDevice: () => {}, onBrandComplete: () => {} },
-			[brand],
-		)
+		const devices = await runStreamingScan({ onDevice: () => {}, onBrandComplete: () => {} }, [
+			brand,
+		])
 		log.info('scan:brand done', { brand, count: devices.length })
 		return devices
 	})

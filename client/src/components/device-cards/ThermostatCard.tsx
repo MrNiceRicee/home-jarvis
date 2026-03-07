@@ -1,10 +1,9 @@
 import { useCallback, useRef, useState } from 'react'
 
-import type { Device, DeviceState } from '../../types'
-
 import { cn } from '../../lib/cn'
 import { displayTemp, roundToStep, stepperDelta, type TemperatureUnit } from '../../lib/temperature'
 import { usePreferencesStore } from '../../stores/preferences-store'
+import type { Device, DeviceState } from '../../types'
 import { PanelButton } from '../ui/panel-button'
 import { TransportKeyBank } from '../ui/transport-key-bank'
 import { TwoPositionToggle } from '../ui/two-position-toggle'
@@ -156,7 +155,13 @@ function ThermostatCompact({
 		<div
 			className="flex items-stretch gap-2.5"
 			role="status"
-			aria-label={buildPanelLabel(state.temperature, state.humidity, unit, hasTarget ? activeTarget : undefined, isOffline ? 'OFFLINE' : MODE_LABELS[activeMode])}
+			aria-label={buildPanelLabel(
+				state.temperature,
+				state.humidity,
+				unit,
+				hasTarget ? activeTarget : undefined,
+				isOffline ? 'OFFLINE' : MODE_LABELS[activeMode],
+			)}
 		>
 			<MercuryColumn temp={state.temperature} unit={unit} mode={activeMode} isOffline={isOffline} />
 
@@ -229,12 +234,7 @@ function ThermostatFull({
 	return (
 		<div className="flex gap-3">
 			{/* mercury column — spans full dialog height */}
-			<MercuryColumn
-				temp={state.temperature}
-				unit={unit}
-				mode={activeMode}
-				isOffline={isOffline}
-			/>
+			<MercuryColumn temp={state.temperature} unit={unit} mode={activeMode} isOffline={isOffline} />
 
 			{/* controls stack */}
 			<div className="flex-1 min-w-0 space-y-3">
@@ -355,7 +355,10 @@ function MercuryColumn({
 					style={{
 						height: `${Math.max(8, fill * 100)}%`,
 						background: `linear-gradient(to top, ${fillColor}, color-mix(in srgb, ${fillColor} 70%, white))`,
-						boxShadow: fillGlow !== 'none' ? `0 0 6px ${fillGlow}, inset 0 1px 2px rgba(255,255,255,0.2)` : 'none',
+						boxShadow:
+							fillGlow !== 'none'
+								? `0 0 6px ${fillGlow}, inset 0 1px 2px rgba(255,255,255,0.2)`
+								: 'none',
 					}}
 				/>
 			</div>
@@ -440,8 +443,7 @@ function ReadoutPanel({
 				style={{
 					background: showGlow ? modeColor : 'rgba(255,255,255,0.06)',
 					boxShadow: showGlow ? `0 0 6px ${modeGlow}, 0 0 2px ${modeGlow}` : 'none',
-					maskImage:
-						'linear-gradient(to right, transparent, white 20%, white 80%, transparent)',
+					maskImage: 'linear-gradient(to right, transparent, white 20%, white 80%, transparent)',
 					WebkitMaskImage:
 						'linear-gradient(to right, transparent, white 20%, white 80%, transparent)',
 				}}
@@ -454,9 +456,7 @@ function ReadoutPanel({
 						className="w-1.5 h-1.5 rounded-full shrink-0"
 						style={{
 							background: modeColor,
-							boxShadow: showGlow
-								? `0 0 4px ${modeGlow}, 0 0 8px ${modeGlow}`
-								: 'none',
+							boxShadow: showGlow ? `0 0 4px ${modeGlow}, 0 0 8px ${modeGlow}` : 'none',
 						}}
 					/>
 					<span

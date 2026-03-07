@@ -125,7 +125,10 @@ export function getStatusMethod(deviceType: DeviceType): string {
 	}
 }
 
-export function parseStateByType(deviceType: DeviceType, result: Record<string, unknown>): DeviceState {
+export function parseStateByType(
+	deviceType: DeviceType,
+	result: Record<string, unknown>,
+): DeviceState {
 	switch (deviceType) {
 		case 'air_purifier':
 			return parseAirPurifierState(result)
@@ -143,9 +146,17 @@ export function mapVeSyncType(deviceType: string, type: string): DeviceType {
 	const t = type.toLowerCase()
 
 	// `type` is the VeSync category (e.g. "wifi-air"), `deviceType` is the model (e.g. "LAP-C302S-WUSB")
-	if (t.includes('wifi-air') || dt.startsWith('lap') || dt.startsWith('core') || dt.startsWith('lav') || dt.startsWith('vital')) return 'air_purifier'
+	if (
+		t.includes('wifi-air') ||
+		dt.startsWith('lap') ||
+		dt.startsWith('core') ||
+		dt.startsWith('lav') ||
+		dt.startsWith('vital')
+	)
+		return 'air_purifier'
 	if (t.includes('wifi-switch') || dt.startsWith('esw')) return 'switch'
-	if (t.includes('wifi-humid') || dt.startsWith('luh') || dt.startsWith('oasis')) return 'air_purifier'
+	if (t.includes('wifi-humid') || dt.startsWith('luh') || dt.startsWith('oasis'))
+		return 'air_purifier'
 	if (dt.startsWith('esl') || dt.startsWith('xyd')) return 'light'
 	return 'switch'
 }

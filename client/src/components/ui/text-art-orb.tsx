@@ -11,9 +11,7 @@ const PIXEL_BIT = [
 ]
 
 // 256-entry lookup: codepoint offset → braille character
-const BRAILLE_CHARS = Array.from({ length: 256 }, (_, i) =>
-	String.fromCodePoint(0x2800 + i),
-)
+const BRAILLE_CHARS = Array.from({ length: 256 }, (_, i) => String.fromCodePoint(0x2800 + i))
 
 // bayer 4x4 ordered dither matrix (normalized 0..1)
 const BAYER_4x4 = [
@@ -31,16 +29,16 @@ const PIXEL_ASPECT = 1.0
 
 // each row is a 5-bit bitmask, MSB = leftmost pixel
 const DIGIT_FONT: number[][] = [
-	[0x0E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E], // 0
-	[0x04, 0x0C, 0x04, 0x04, 0x04, 0x04, 0x0E], // 1
-	[0x0E, 0x11, 0x01, 0x0E, 0x10, 0x10, 0x1F], // 2
-	[0x0E, 0x11, 0x01, 0x06, 0x01, 0x11, 0x0E], // 3
-	[0x11, 0x11, 0x11, 0x1F, 0x01, 0x01, 0x01], // 4
-	[0x1F, 0x10, 0x10, 0x1E, 0x01, 0x01, 0x1E], // 5
-	[0x0E, 0x10, 0x10, 0x1E, 0x11, 0x11, 0x0E], // 6
-	[0x1F, 0x01, 0x02, 0x04, 0x04, 0x04, 0x04], // 7
-	[0x0E, 0x11, 0x11, 0x0E, 0x11, 0x11, 0x0E], // 8
-	[0x0E, 0x11, 0x11, 0x0F, 0x01, 0x01, 0x0E], // 9
+	[0x0e, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0e], // 0
+	[0x04, 0x0c, 0x04, 0x04, 0x04, 0x04, 0x0e], // 1
+	[0x0e, 0x11, 0x01, 0x0e, 0x10, 0x10, 0x1f], // 2
+	[0x0e, 0x11, 0x01, 0x06, 0x01, 0x11, 0x0e], // 3
+	[0x11, 0x11, 0x11, 0x1f, 0x01, 0x01, 0x01], // 4
+	[0x1f, 0x10, 0x10, 0x1e, 0x01, 0x01, 0x1e], // 5
+	[0x0e, 0x10, 0x10, 0x1e, 0x11, 0x11, 0x0e], // 6
+	[0x1f, 0x01, 0x02, 0x04, 0x04, 0x04, 0x04], // 7
+	[0x0e, 0x11, 0x11, 0x0e, 0x11, 0x11, 0x0e], // 8
+	[0x0e, 0x11, 0x11, 0x0f, 0x01, 0x01, 0x0e], // 9
 ]
 
 const DIGIT_W = 5
@@ -60,16 +58,12 @@ function sphereDensity(dist2: number, dist: number, wavePhase: number): number {
 	return density
 }
 
-function spikeAt(
-	dist: number, angle: number, spikePhase: number,
-): number {
+function spikeAt(dist: number, angle: number, spikePhase: number): number {
 	const distBeyond = dist - 1.0
 	if (distBeyond > SPIKE_MAX_LENGTH) return 0
 
 	for (let i = 0; i < SPIKE_COUNT; i++) {
-		const spikeAngle =
-			(i / SPIKE_COUNT) * Math.PI * 2 +
-			Math.sin(spikePhase * 0.7 + i * 1.7) * 0.6
+		const spikeAngle = (i / SPIKE_COUNT) * Math.PI * 2 + Math.sin(spikePhase * 0.7 + i * 1.7) * 0.6
 		const spikeLength =
 			SPIKE_MAX_LENGTH * (0.3 + 0.7 * Math.max(0, Math.sin(spikePhase * 0.3 + i * 2.1)))
 		const spikeWidth = 0.22 + Math.sin(spikePhase * 0.5 + i) * 0.08
@@ -109,9 +103,10 @@ function renderFrame(
 			const dist = Math.sqrt(dist2)
 			const threshold = BAYER_4x4[py % 4][px % 4]
 
-			const density = dist2 <= 1.0
-				? sphereDensity(dist2, dist, wavePhase)
-				: spikeAt(dist, Math.atan2(ny, nx), spikePhase)
+			const density =
+				dist2 <= 1.0
+					? sphereDensity(dist2, dist, wavePhase)
+					: spikeAt(dist, Math.atan2(ny, nx), spikePhase)
 
 			fb[py * width + px] = density > threshold ? 1 : 0
 		}
@@ -125,10 +120,7 @@ function renderFrame(
 // render each font pixel as DIGIT_SCALE x DIGIT_SCALE framebuffer pixels
 const DIGIT_SCALE = 2
 
-function clearBlock(
-	fb: Uint8Array, width: number, height: number,
-	bx: number, by: number,
-) {
+function clearBlock(fb: Uint8Array, width: number, height: number, bx: number, by: number) {
 	for (let sy = 0; sy < DIGIT_SCALE; sy++) {
 		for (let sx = 0; sx < DIGIT_SCALE; sx++) {
 			const px = bx + sx
@@ -141,8 +133,12 @@ function clearBlock(
 }
 
 function stampDigit(
-	fb: Uint8Array, width: number, height: number,
-	bitmap: number[], offsetX: number, startY: number,
+	fb: Uint8Array,
+	width: number,
+	height: number,
+	bitmap: number[],
+	offsetX: number,
+	startY: number,
 ) {
 	for (let row = 0; row < DIGIT_H; row++) {
 		for (let col = 0; col < DIGIT_W; col++) {
@@ -153,9 +149,7 @@ function stampDigit(
 	}
 }
 
-function applyDigitMask(
-	fb: Uint8Array, width: number, height: number, value: number,
-) {
+function applyDigitMask(fb: Uint8Array, width: number, height: number, value: number) {
 	const digits = String(value)
 	const scaledW = DIGIT_W * DIGIT_SCALE
 	const scaledH = DIGIT_H * DIGIT_SCALE
@@ -167,15 +161,18 @@ function applyDigitMask(
 	for (let d = 0; d < digits.length; d++) {
 		const charCode = digits.charCodeAt(d) - 48
 		if (charCode < 0 || charCode > 9) continue
-		stampDigit(fb, width, height, DIGIT_FONT[charCode], startX + d * (scaledW + scaledSpacing), startY)
+		stampDigit(
+			fb,
+			width,
+			height,
+			DIGIT_FONT[charCode],
+			startX + d * (scaledW + scaledSpacing),
+			startY,
+		)
 	}
 }
 
-function encodeToBraille(
-	fb: Uint8Array,
-	cols: number,
-	rows: number,
-): string[] {
+function encodeToBraille(fb: Uint8Array, cols: number, rows: number): string[] {
 	const fbWidth = cols * 2
 	const lines: string[] = []
 
@@ -208,9 +205,9 @@ const CHAR_WIDTH = FONT_SIZE * 0.6
 
 // animation speeds (per 200ms tick)
 const WAVE_SPEED = 0.15
-const BREATH_SPEED = 0.04     // ~8s full cycle
-const BREATH_AMOUNT = 0.06    // 6% radius oscillation
-const SPIKE_SPEED = 0.08      // slow spike drift
+const BREATH_SPEED = 0.04 // ~8s full cycle
+const BREATH_AMOUNT = 0.06 // 6% radius oscillation
+const SPIKE_SPEED = 0.08 // slow spike drift
 
 type TextArtOrbProps = Readonly<{
 	orbColor: string
@@ -267,8 +264,13 @@ export function TextArtOrb({
 			const spikePhase = time.current * SPIKE_SPEED
 
 			renderFrame(
-				framebuffer.current, fbWidth, fbHeight,
-				wavePhase, breathScale, spikePhase, deviceCount,
+				framebuffer.current,
+				fbWidth,
+				fbHeight,
+				wavePhase,
+				breathScale,
+				spikePhase,
+				deviceCount,
 			)
 			const lines = encodeToBraille(framebuffer.current, cols, rows)
 
@@ -304,7 +306,9 @@ export function TextArtOrb({
 			{staticLines.map((line, i) => (
 				<text
 					key={`${cols}-${rows}-${i}`}
-					ref={(el) => { rowRefs.current[i] = el }}
+					ref={(el) => {
+						rowRefs.current[i] = el
+					}}
 					x={cx - textWidth / 2}
 					y={startY + i * LINE_HEIGHT}
 					textLength={textWidth}
