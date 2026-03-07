@@ -7,6 +7,7 @@ import { GoveeAdapter } from './govee/adapter'
 import { HueAdapter } from './hue/adapter'
 import { ResideoAdapter } from './resideo/adapter'
 import { SmartHQAdapter } from './smarthq/adapter'
+import { SmartThingsAdapter } from './smartthings/adapter'
 import { VeSyncAdapter } from './vesync/adapter'
 
 /** All supported integrations and their credential form metadata */
@@ -159,6 +160,8 @@ export function createAdapter(brand: string, config: Record<string, string>, ses
 			return ok(new VeSyncAdapter(config, session))
 		case 'ge':
 			return ok(new SmartHQAdapter(config, session))
+		case 'smartthings':
+			return ok(new SmartThingsAdapter(config))
 		default:
 			return err(new Error(`Adapter not yet implemented for brand: ${brand}`))
 	}
