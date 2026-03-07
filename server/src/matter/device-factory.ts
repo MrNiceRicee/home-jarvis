@@ -13,6 +13,7 @@ import { Thermostat } from '@matter/main/clusters/thermostat'
 import { AirPurifierDevice } from '@matter/main/devices/air-purifier'
 import { AirQualitySensorDevice } from '@matter/main/devices/air-quality-sensor'
 import { ExtendedColorLightDevice } from '@matter/main/devices/extended-color-light'
+import { HumiditySensorDevice } from '@matter/main/devices/humidity-sensor'
 import { OnOffLightDevice } from '@matter/main/devices/on-off-light'
 import { OnOffPlugInUnitDevice } from '@matter/main/devices/on-off-plug-in-unit'
 import { ThermostatDevice } from '@matter/main/devices/thermostat'
@@ -136,11 +137,21 @@ const BridgedAirQualitySensor = AirQualitySensorDevice.with(
 	Pm25ConcentrationMeasurementServer.with(ConcentrationMeasurement.Feature.NumericMeasurement),
 )
 
-export interface ComposedEndpoint {
+export interface AirPurifierComposed {
+	kind: 'air_purifier'
 	parent: Endpoint
 	fanEndpoint: Endpoint
 	sensorEndpoint: Endpoint
 }
+
+export interface ThermostatComposed {
+	kind: 'thermostat'
+	parent: Endpoint
+	thermostatEndpoint: Endpoint
+	humidityEndpoint: Endpoint | null
+}
+
+export type ComposedEndpoint = AirPurifierComposed | ThermostatComposed
 
 function createAirPurifier(device: Device, state: DeviceState): ComposedEndpoint {
 	const fanMode = toFanMode(state.mode, state.on)
@@ -190,30 +201,63 @@ function createAirPurifier(device: Device, state: DeviceState): ComposedEndpoint
 		},
 	})
 
-	return { parent, fanEndpoint, sensorEndpoint }
+	return { kind: 'air_purifier' as const, parent, fanEndpoint, sensorEndpoint }
 }
 
-// ─── Thermostat ──────────────────────────────────────────────────────────────
+// ─── Thermostat (composed: thermostat + humidity sensor) ─────────────────────
 
-const BridgedThermostat = ThermostatDevice.with(
-	BridgedDeviceBasicInformationServer,
+const BridgedThermostatEndpoint = ThermostatDevice.with(
 	ThermostatServer.with(Thermostat.Feature.Heating, Thermostat.Feature.Cooling),
 )
 
-function createThermostat(device: Device, state: DeviceState): Endpoint {
-	return new Endpoint(BridgedThermostat, {
+// default deadband: 2.5°C in matter's 100ths-of-degree format
+const DEADBAND = 250
+
+function thermostatSetpoints(targetCelsius: number | undefined, mode?: string) {
+	const target = targetCelsius ? toMatterTemp(targetCelsius) : 2100
+	// when in cool mode, set heat setpoint below target; otherwise set cool setpoint above
+	if (mode === 'cool') {
+		return { occupiedHeatingSetpoint: target - DEADBAND, occupiedCoolingSetpoint: target }
+	}
+	return { occupiedHeatingSetpoint: target, occupiedCoolingSetpoint: target + DEADBAND }
+}
+
+function createThermostat(device: Device, state: DeviceState): ThermostatComposed {
+	const { occupiedHeatingSetpoint, occupiedCoolingSetpoint } = thermostatSetpoints(state.targetTemperature, state.mode)
+
+	const parent = new Endpoint(BridgedNodeEndpoint, {
 		id: device.id,
 		bridgedDeviceBasicInformation: {
 			nodeLabel: device.name,
 			reachable: device.online,
 		},
+	})
+
+	const thermostatEndpoint = new Endpoint(BridgedThermostatEndpoint, {
+		id: `${device.id}-thermo`,
 		thermostat: {
 			systemMode: toThermostatSystemMode(state.mode),
+			controlSequenceOfOperation: Thermostat.ControlSequenceOfOperation.CoolingAndHeating,
 			localTemperature: state.temperature ? toMatterTemp(state.temperature) : 2100,
-			occupiedHeatingSetpoint: state.targetTemperature ? toMatterTemp(state.targetTemperature) : 2100,
-			occupiedCoolingSetpoint: state.targetTemperature ? toMatterTemp(state.targetTemperature) : 2600,
+			occupiedHeatingSetpoint,
+			occupiedCoolingSetpoint,
 		},
 	})
+
+	// humidity sensor — only if the device reports humidity
+	let humidityEndpoint: Endpoint | null = null
+	if (state.humidity !== undefined) {
+		humidityEndpoint = new Endpoint(HumiditySensorDevice, {
+			id: `${device.id}-rh`,
+			relativeHumidityMeasurement: {
+				measuredValue: state.humidity * 100,
+				minMeasuredValue: 0,
+				maxMeasuredValue: 10000,
+			},
+		})
+	}
+
+	return { kind: 'thermostat', parent, thermostatEndpoint, humidityEndpoint }
 }
 
 // ─── Plug ────────────────────────────────────────────────────────────────────
@@ -255,7 +299,7 @@ export function createMatterEndpoint(device: Device, state: DeviceState): Result
 			})
 
 		case 'thermostat':
-			return ok({ composed: false, endpoint: createThermostat(device, state) })
+			return ok({ composed: true, composed_device: createThermostat(device, state) })
 
 		case 'vacuum':
 			return ok({ composed: false, endpoint: createOnOffPlugIn(device, state) })

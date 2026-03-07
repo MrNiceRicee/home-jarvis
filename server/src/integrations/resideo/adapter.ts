@@ -302,6 +302,7 @@ export class ResideoAdapter implements DeviceAdapter {
 					}
 
 					const state: DeviceState = {
+						on: mode !== 'off',
 						temperature: apiToCelsius(device.indoorTemperature, units),
 						humidity: device.indoorHumidity ?? undefined,
 						targetTemperature: apiToCelsius(targetRaw, units),
@@ -355,6 +356,7 @@ export class ResideoAdapter implements DeviceAdapter {
 			}
 
 			return {
+				on: mode !== 'off',
 				temperature: apiToCelsius(device.indoorTemperature, units),
 				humidity: device.indoorHumidity ?? undefined,
 				targetTemperature: apiToCelsius(targetRaw, units),

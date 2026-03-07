@@ -61,7 +61,7 @@ interface VeSyncDevice {
 	type: string
 	configModule: string
 	deviceRegion: string
-	connectionStatus: string
+	connectionStatus: string | null
 }
 
 interface VeSyncDeviceListResponse {
@@ -88,6 +88,11 @@ interface VeSyncDeviceMeta {
 	configModule: string
 	deviceType: string
 	deviceRegion: string
+}
+
+/** V2 devices (Vital 100S/200S, Everest) use VS_ prefix in configModule and camelCase API */
+function isV2Device(meta: VeSyncDeviceMeta): boolean {
+	return meta.configModule.startsWith('VS_')
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -321,7 +326,10 @@ export class VeSyncAdapter implements DeviceAdapter {
 				const settled = await Promise.allSettled(
 					batch.map(async (d) => {
 						const type = mapVeSyncType(d.deviceType, d.type)
-						const online = d.connectionStatus === 'online'
+						// newer VeSync devices (VS_ prefix configModule) return connectionStatus: null
+						// treat null as "unknown" — try fetching state to determine if reachable
+						const explicitOnline = d.connectionStatus === 'online'
+						const explicitOffline = d.connectionStatus === 'offline'
 						const meta: VeSyncDeviceMeta = {
 							cid: d.cid, uuid: d.uuid, configModule: d.configModule,
 							deviceType: d.deviceType, deviceRegion: d.deviceRegion,
@@ -329,14 +337,16 @@ export class VeSyncAdapter implements DeviceAdapter {
 
 						const discovered: DiscoveredDevice = {
 							externalId: d.cid, name: d.deviceName, type,
-							state: {}, online, metadata: { ...meta },
+							state: {}, online: explicitOnline, metadata: { ...meta },
 						}
 
-						if (online) {
+						if (!explicitOffline) {
 							try {
 								discovered.state = await this.fetchDeviceStateWithMeta(meta, type, session)
+								discovered.online = true
 							} catch {
-								// state fetch failed — keep empty state
+								// state fetch failed — only mark offline if status was unknown
+								if (!explicitOnline) discovered.online = false
 							}
 						}
 
@@ -426,11 +436,15 @@ export class VeSyncAdapter implements DeviceAdapter {
 				deviceRegion: device.deviceRegion,
 			}
 
+			const v2 = isV2Device(meta)
 			if (state.on !== undefined) {
-				await this.sendBypass(session, meta, 'setSwitch', { enabled: state.on, id: 0 })
+				const data = v2
+					? { powerSwitch: state.on ? 1 : 0, switchIdx: 0 }
+					: { enabled: state.on, id: 0 }
+				await this.sendBypass(session, meta, 'setSwitch', data)
 			}
 			if (state.fanSpeed !== undefined) {
-				await this.setFanSpeed(session, meta, state.fanSpeed)
+				await this.setFanSpeed(session, meta, state.fanSpeed, v2)
 			}
 			if (state.brightness !== undefined) {
 				await this.sendBypass(session, meta, 'setLightStatus', { brightness: state.brightness })
@@ -440,20 +454,25 @@ export class VeSyncAdapter implements DeviceAdapter {
 
 	/**
 	 * fan speed control for air purifiers — handles mode switching
-	 * fanSpeed 0 = auto, 20 = sleep, 40/60/80 = manual level 1/2/3
+	 * fanSpeed 0 = auto, 20 = sleep, 40/60/80/100 = manual level 1/2/3/4
 	 */
-	private async setFanSpeed(session: VeSyncSession, meta: VeSyncDeviceMeta, fanSpeed: number): Promise<void> {
+	private async setFanSpeed(session: VeSyncSession, meta: VeSyncDeviceMeta, fanSpeed: number, v2 = false): Promise<void> {
 		if (fanSpeed === 0) {
-			// auto mode
-			await this.sendBypass(session, meta, 'setPurifierMode', { mode: 'auto' })
+			const modeData = v2 ? { workMode: 'auto' } : { mode: 'auto' }
+			await this.sendBypass(session, meta, 'setPurifierMode', modeData)
 		} else if (fanSpeed === 20) {
-			// sleep mode
-			await this.sendBypass(session, meta, 'setPurifierMode', { mode: 'sleep' })
+			const modeData = v2 ? { workMode: 'sleep' } : { mode: 'sleep' }
+			await this.sendBypass(session, meta, 'setPurifierMode', modeData)
 		} else {
-			// manual mode — switch to manual first, then set level
 			const level = Math.max(1, Math.min(4, Math.round(fanSpeed / 20) - 1))
-			await this.sendBypass(session, meta, 'setPurifierMode', { mode: 'manual' })
-			await this.sendBypass(session, meta, 'setLevel', { level, id: 0, type: 'wind' })
+			if (v2) {
+				// V2: set manual mode, then set speed with V2 payload
+				await this.sendBypass(session, meta, 'setPurifierMode', { workMode: 'manual' })
+				await this.sendBypass(session, meta, 'setLevel', { levelIdx: 0, manualSpeedLevel: level, levelType: 'wind' })
+			} else {
+				await this.sendBypass(session, meta, 'setPurifierMode', { mode: 'manual' })
+				await this.sendBypass(session, meta, 'setLevel', { level, id: 0, type: 'wind' })
+			}
 		}
 	}
 

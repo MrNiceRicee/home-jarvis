@@ -23,7 +23,22 @@ import {
 	toMatterLevel,
 	toMatterTemp,
 } from '../lib/unit-conversions'
-import { createMatterEndpoint } from './device-factory'
+import { type ComposedEndpoint, createMatterEndpoint } from './device-factory'
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function extractMatterErrorDetails(error: unknown): string {
+	const causes = (error as { causes?: Error[] })?.causes
+		?? (error as { errors?: Error[] })?.errors
+		?? []
+	if (causes.length > 0) {
+		return causes.map((c: Error) => {
+			const inner = c.cause instanceof Error ? c.cause.message : ''
+			return inner || c.message
+		}).join('; ')
+	}
+	return error instanceof Error ? error.message : String(error)
+}
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -35,6 +50,7 @@ type InboundCommandHandler = (deviceId: string, state: Partial<DeviceState>) => 
 type DeviceEntry =
 	| { type: 'simple'; root: Endpoint }
 	| { type: 'composed'; root: Endpoint; fan: Endpoint; sensor: Endpoint }
+	| { type: 'thermostat'; root: Endpoint; thermostat: Endpoint; humidity: Endpoint | null }
 
 // ─── Pairing code generation ────────────────────────────────────────────────
 
@@ -235,50 +251,57 @@ class MatterBridge {
 			return
 		}
 
-		const endpointResult = result.value
-
 		try {
+			const endpointResult = result.value
 			if (endpointResult.composed) {
-				const { parent, fanEndpoint, sensorEndpoint } = endpointResult.composed_device
-
-				await this.aggregator.add(parent)
-				await parent.add(fanEndpoint)
-				await parent.add(sensorEndpoint)
-
-				this.entries.set(device.id, {
-					type: 'composed',
-					root: parent,
-					fan: fanEndpoint,
-					sensor: sensorEndpoint,
-				})
-
-				// inbound handlers go on the fan endpoint (controllable)
-				this.setupInboundHandlers(device.id, fanEndpoint)
-
-				log.info('matter composed device added', {
-					deviceId: device.id,
-					name: device.name,
-					type: device.type,
-				})
+				await this.addComposedDevice(device, endpointResult.composed_device)
 			} else {
-				const { endpoint } = endpointResult
-
-				await this.aggregator.add(endpoint)
-				this.entries.set(device.id, { type: 'simple', root: endpoint })
-				this.setupInboundHandlers(device.id, endpoint)
-
-				log.info('matter device added', {
-					deviceId: device.id,
-					name: device.name,
-					type: device.type,
-				})
+				await this.addSimpleDevice(device, endpointResult.endpoint)
 			}
 		} catch (error) {
-			log.error('matter device add failed', {
-				deviceId: device.id,
-				error: error instanceof Error ? error.message : String(error),
-			})
+			const msg = extractMatterErrorDetails(error)
+			log.error('matter device add failed', { deviceId: device.id, error: msg })
+			throw new Error(`Matter bridge error: ${msg}`, { cause: error })
 		}
+	}
+
+	private async addSimpleDevice(device: Device, endpoint: Endpoint) {
+		await this.aggregator!.add(endpoint)
+		this.entries.set(device.id, { type: 'simple', root: endpoint })
+		this.setupInboundHandlers(device.id, endpoint)
+		log.info('matter device added', { deviceId: device.id, name: device.name, type: device.type })
+	}
+
+	private async addComposedDevice(device: Device, composed: ComposedEndpoint) {
+		if (composed.kind === 'air_purifier') {
+			await this.aggregator!.add(composed.parent)
+			await composed.parent.add(composed.fanEndpoint)
+			await composed.parent.add(composed.sensorEndpoint)
+
+			this.entries.set(device.id, {
+				type: 'composed',
+				root: composed.parent,
+				fan: composed.fanEndpoint,
+				sensor: composed.sensorEndpoint,
+			})
+			this.setupInboundHandlers(device.id, composed.fanEndpoint)
+		} else {
+			await this.aggregator!.add(composed.parent)
+			await composed.parent.add(composed.thermostatEndpoint)
+			if (composed.humidityEndpoint) {
+				await composed.parent.add(composed.humidityEndpoint)
+			}
+
+			this.entries.set(device.id, {
+				type: 'thermostat',
+				root: composed.parent,
+				thermostat: composed.thermostatEndpoint,
+				humidity: composed.humidityEndpoint,
+			})
+			this.setupInboundHandlers(device.id, composed.thermostatEndpoint)
+		}
+
+		log.info('matter composed device added', { deviceId: device.id, name: device.name, type: device.type })
 	}
 
 	async removeDevice(deviceId: string) {
@@ -305,7 +328,9 @@ class MatterBridge {
 
 		try {
 			if (entry.type === 'composed') {
-				await this.updateComposedDevice(entry, state)
+				await this.updateAirPurifierDevice(entry, state)
+			} else if (entry.type === 'thermostat') {
+				await this.updateThermostatDevice(entry, state)
 			} else {
 				await this.updateSimpleDevice(entry.root, state)
 			}
@@ -329,21 +354,46 @@ class MatterBridge {
 		if (state.colorTemp !== undefined) {
 			await endpoint.setStateOf('colorControl', { colorTemperatureMireds: kelvinToMired(state.colorTemp) })
 		}
+	}
 
-		if (state.temperature !== undefined || state.targetTemperature !== undefined) {
-			const thermostatPatch: Record<string, unknown> = {}
-			if (state.temperature !== undefined) {
-				thermostatPatch.localTemperature = toMatterTemp(state.temperature)
+	private async updateThermostatDevice(entry: DeviceEntry & { type: 'thermostat' }, state: Partial<DeviceState>) {
+		const thermostatPatch: Record<string, unknown> = {}
+
+		if (state.temperature !== undefined) {
+			thermostatPatch.localTemperature = toMatterTemp(state.temperature)
+		}
+
+		if (state.targetTemperature !== undefined) {
+			// maintain deadband between setpoints
+			const target = toMatterTemp(state.targetTemperature)
+			const mode = state.mode
+			if (mode === 'cool') {
+				thermostatPatch.occupiedCoolingSetpoint = target
+				thermostatPatch.occupiedHeatingSetpoint = target - 250
+			} else {
+				thermostatPatch.occupiedHeatingSetpoint = target
+				thermostatPatch.occupiedCoolingSetpoint = target + 250
 			}
-			if (state.targetTemperature !== undefined) {
-				thermostatPatch.occupiedHeatingSetpoint = toMatterTemp(state.targetTemperature)
-				thermostatPatch.occupiedCoolingSetpoint = toMatterTemp(state.targetTemperature)
-			}
-			await endpoint.setStateOf('thermostat', thermostatPatch)
+		}
+
+		if (state.mode !== undefined) {
+			const modeMap: Record<string, number> = { off: 0, auto: 1, cool: 3, heat: 4 }
+			thermostatPatch.systemMode = modeMap[state.mode] ?? 1
+		}
+
+		if (Object.keys(thermostatPatch).length > 0) {
+			await entry.thermostat.setStateOf('thermostat', thermostatPatch)
+		}
+
+		// humidity sensor
+		if (state.humidity !== undefined && entry.humidity) {
+			await entry.humidity.setStateOf('relativeHumidityMeasurement', {
+				measuredValue: state.humidity * 100,
+			})
 		}
 	}
 
-	private async updateComposedDevice(entry: DeviceEntry & { type: 'composed' }, state: Partial<DeviceState>) {
+	private async updateAirPurifierDevice(entry: DeviceEntry & { type: 'composed' }, state: Partial<DeviceState>) {
 		// fan endpoint: power, fan speed, filter life
 		if (state.on !== undefined) {
 			await entry.fan.setStateOf('onOff', { onOff: state.on })
@@ -422,6 +472,31 @@ class MatterBridge {
 				if (typeof value !== 'number') return
 				log.debug('matter inbound: fanSpeed', { deviceId, fanSpeed: value })
 				this.handleInboundCommand(deviceId, { fanSpeed: value })
+			})
+		}
+
+		// thermostat cluster
+		if (endpoint.maybeStateOf('thermostat')) {
+			const events = endpoint.eventsOf('thermostat')
+			events.systemMode$Changed?.on((value: unknown) => {
+				if (typeof value !== 'number') return
+				const modeMap: Record<number, string> = { 0: 'off', 1: 'auto', 3: 'cool', 4: 'heat' }
+				const mode = modeMap[value]
+				if (!mode) return
+				log.debug('matter inbound: thermostat mode', { deviceId, mode })
+				this.handleInboundCommand(deviceId, { mode })
+			})
+			events.occupiedHeatingSetpoint$Changed?.on((value: unknown) => {
+				if (typeof value !== 'number') return
+				const targetTemperature = value / 100
+				log.debug('matter inbound: heating setpoint', { deviceId, targetTemperature })
+				this.handleInboundCommand(deviceId, { targetTemperature })
+			})
+			events.occupiedCoolingSetpoint$Changed?.on((value: unknown) => {
+				if (typeof value !== 'number') return
+				const targetTemperature = value / 100
+				log.debug('matter inbound: cooling setpoint', { deviceId, targetTemperature })
+				this.handleInboundCommand(deviceId, { targetTemperature })
 			})
 		}
 	}
