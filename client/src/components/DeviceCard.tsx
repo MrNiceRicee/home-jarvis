@@ -187,19 +187,17 @@ function CardShell({
 
 			<CardFooter>
 				<div className="px-3 py-2 flex items-center justify-between">
-					{hasPower ? (
-						<PowerButton
-							isOn={device.state.on ?? false}
-							isDisabled={!device.online}
-							isToggling={powerToggling}
-							onToggle={() => {
-								if (!onStateChange) return
-								setPowerToggling(true)
-								void onStateChange(device.id, { on: !(device.state.on ?? false) })
-									.finally(() => setPowerToggling(false))
-							}}
-						/>
-					) : <div />}
+					<FooterLeft
+						device={device}
+						hasPower={hasPower}
+						powerToggling={powerToggling}
+						onToggle={() => {
+							if (!onStateChange) return
+							setPowerToggling(true)
+							void onStateChange(device.id, { on: !(device.state.on ?? false) })
+								.finally(() => setPowerToggling(false))
+						}}
+					/>
 
 					{isNativeMatter ? (
 						<TooltipTrigger delay={200}>
@@ -263,6 +261,12 @@ function statusBarColors(device: Device): { barColor: string; glowColor: string 
 		return { barColor, glowColor: mode !== 'off' ? barColor : undefined }
 	}
 
+	if (device.type === 'fridge') {
+		const doorOpen = state.extras?.doorOpen === true
+		const barColor = doorOpen ? '#f87171' : '#34d399'
+		return { barColor, glowColor: barColor }
+	}
+
 	if (isOn) return { barColor: '#34d399', glowColor: '#34d399' }
 	return { barColor: '#d6d3cd', glowColor: undefined }
 }
@@ -274,6 +278,47 @@ function lightBarColor(state: DeviceState): string {
 		return `rgb(${r} ${g} ${b})`
 	}
 	return '#fbbf24'
+}
+
+// footer left — power button, door LED, or empty
+function FooterLeft({ device, hasPower, powerToggling, onToggle }: Readonly<{
+	device: Device
+	hasPower: boolean
+	powerToggling: boolean
+	onToggle: () => void
+}>) {
+	if (hasPower) {
+		return (
+			<PowerButton
+				isOn={device.state.on ?? false}
+				isDisabled={!device.online}
+				isToggling={powerToggling}
+				onToggle={onToggle}
+			/>
+		)
+	}
+	if (device.type === 'fridge') {
+		return <DoorStatusLed doorOpen={device.state.extras?.doorOpen === true} />
+	}
+	return <div />
+}
+
+// door status LED — fridge footer
+function DoorStatusLed({ doorOpen }: Readonly<{ doorOpen: boolean }>) {
+	return (
+		<div className="flex items-center gap-2">
+			<div
+				className="w-2 h-2 rounded-full transition-all duration-500"
+				style={doorOpen
+					? { background: '#f87171', boxShadow: '0 0 6px rgba(248,113,113,0.6), 0 0 2px rgba(248,113,113,0.4)' }
+					: { background: '#34d399', boxShadow: '0 0 6px rgba(52,211,153,0.4), 0 0 2px rgba(52,211,153,0.3)' }
+				}
+			/>
+			<span className="font-michroma text-[8px] uppercase tracking-widest text-stone-400">
+				{doorOpen ? 'DOOR OPEN' : 'SEALED'}
+			</span>
+		</div>
+	)
 }
 
 // top-edge status strip — shows connectivity + light state at a glance

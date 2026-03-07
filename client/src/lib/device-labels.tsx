@@ -33,9 +33,9 @@ export function DeviceBody({ device, variant = 'compact', onStateChange, onAccen
 			return <ApplianceCard device={device} />
 		case 'tv':
 		case 'media_player':
-			return <MediaCard device={device} onStateChange={onStateChange} />
+			return <MediaCard device={device} variant={variant} onStateChange={onStateChange} />
 		case 'fridge':
-			return <FridgeCard device={device} />
+			return <FridgeCard device={device} variant={variant} />
 		case 'sensor':
 			return <SensorCard device={device} />
 		default:

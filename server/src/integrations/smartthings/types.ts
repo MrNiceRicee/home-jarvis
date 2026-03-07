@@ -41,3 +41,9 @@ export type SmartThingsComponentStatus = Record<string, SmartThingsCapabilitySta
 export interface SmartThingsDeviceStatus {
 	components: Record<string, SmartThingsComponentStatus>
 }
+
+export interface SmartThingsDeviceHealth {
+	deviceId: string
+	state: 'ONLINE' | 'OFFLINE' | 'UNKNOWN'
+	lastUpdatedDate?: string
+}

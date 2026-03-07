@@ -1,7 +1,7 @@
 import { ResultAsync, err, errAsync, ok, okAsync } from 'neverthrow'
 
 import type { DeviceAdapter, DeviceState, DeviceType, DiscoveredDevice } from '../types'
-import type { SmartThingsDevice, SmartThingsDeviceListResponse, SmartThingsDeviceStatus } from './types'
+import type { SmartThingsDevice, SmartThingsDeviceHealth, SmartThingsDeviceListResponse, SmartThingsDeviceStatus } from './types'
 
 import { log } from '../../lib/logger'
 import { flatCapabilityIds, mapSmartThingsType, parseSmartThingsState } from './parsers'
@@ -58,9 +58,17 @@ export class SmartThingsAdapter implements DeviceAdapter {
 		const { deviceId, deviceType } = parseExternalId(externalId)
 
 		return ResultAsync.fromPromise(
-			this.apiFetch<SmartThingsDeviceStatus>(`/devices/${deviceId}/status`),
+			Promise.all([
+				this.apiFetch<SmartThingsDeviceStatus>(`/devices/${deviceId}/status`),
+				this.apiFetch<SmartThingsDeviceHealth>(`/devices/${deviceId}/health`).catch(() => null),
+			]),
 			(e) => new Error(`SmartThings status failed: ${(e as Error).message}`),
-		).map((status) => parseSmartThingsState(status, deviceType))
+		).map(([status, health]) => {
+			const state = parseSmartThingsState(status, deviceType)
+			// samsung TVs report stale switch:"on" when powered off — health is the real signal
+			if (health?.state === 'OFFLINE') state.on = false
+			return state
+		})
 	}
 
 	setState(externalId: string, state: Partial<DeviceState>): ResultAsync<void, Error> {
@@ -129,8 +137,15 @@ export class SmartThingsAdapter implements DeviceAdapter {
 					}
 
 					try {
-						const status = await this.apiFetch<SmartThingsDeviceStatus>(`/devices/${d.deviceId}/status`)
+						const [status, health] = await Promise.all([
+							this.apiFetch<SmartThingsDeviceStatus>(`/devices/${d.deviceId}/status`),
+							this.apiFetch<SmartThingsDeviceHealth>(`/devices/${d.deviceId}/health`).catch(() => null),
+						])
 						base.state = parseSmartThingsState(status, type)
+						if (health?.state === 'OFFLINE') {
+							base.online = false
+							base.state.on = false
+						}
 					} catch (e) {
 						log.warn('smartthings: state fetch failed for device', { deviceId: d.deviceId, error: (e as Error).message })
 					}
