@@ -7,6 +7,7 @@ import type { DeviceState } from '../integrations/types'
 
 import { devices, integrations } from '../db/schema'
 import { INTEGRATION_META, createAdapter } from '../integrations/registry'
+import { smartHQStream } from '../integrations/smarthq/stream'
 import { eventBus } from '../lib/events'
 import { log } from '../lib/logger'
 import { nextPosition } from '../lib/next-position'
@@ -25,7 +26,7 @@ const DEFAULTS: Record<string, PollConfig> = {
 	govee: { stateIntervalMs: 120_000, discoverIntervalMs: 5 * 60_000 },
 	vesync: { stateIntervalMs: 30_000, discoverIntervalMs: 5 * 60_000 },
 	lg: { stateIntervalMs: 60_000, discoverIntervalMs: 5 * 60_000 },
-	ge: { stateIntervalMs: 60_000, discoverIntervalMs: 5 * 60_000 },
+	ge: { stateIntervalMs: 0, discoverIntervalMs: 15 * 60_000 },
 	aqara: { stateIntervalMs: 30_000, discoverIntervalMs: 5 * 60_000 },
 	smartthings: { stateIntervalMs: 60_000, discoverIntervalMs: 5 * 60_000 },
 	resideo: { stateIntervalMs: 5 * 60_000, discoverIntervalMs: 15 * 60_000 },
@@ -59,6 +60,13 @@ export function startPolling(db: DB, integration: Integration) {
 	const config = parseJson<Record<string, string>>(integration.config).unwrapOr({})
 
 	stopPolling(integrationId)
+
+	// SmartHQ uses WebSocket stream instead of polling
+	if (brand === 'ge') {
+		void smartHQStream.start(db, integration.id, integration.session)
+		runDiscovery(db, integrationId, brand, config, integration.session ?? null).catch(() => {})
+		return
+	}
 
 	// mutable session state — updated after each adapter operation
 	let session = integration.session ?? null
@@ -105,6 +113,7 @@ export function startPolling(db: DB, integration: Integration) {
 
 /** Stop all timers for an integration */
 export function stopPolling(integrationId: string) {
+	smartHQStream.stop()
 	let stopped = 0
 	for (const key of [`${integrationId}:discover`, `${integrationId}:state`]) {
 		const t = timers.get(key)

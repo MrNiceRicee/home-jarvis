@@ -110,7 +110,7 @@ export interface DeviceEvent {
 	state?: DeviceState
 	online?: boolean
 	timestamp: number
-	source?: 'dashboard' | 'poller' | 'matter' | 'scan'
+	source?: 'dashboard' | 'poller' | 'matter' | 'scan' | 'stream'
 	device?: SanitizedDevice
 }
 

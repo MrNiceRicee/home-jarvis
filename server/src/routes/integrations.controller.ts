@@ -217,6 +217,12 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 		url.searchParams.set('redirect_uri', callbackUri)
 		url.searchParams.set('state', state)
 
+		if (oauth.extraAuthorizeParams) {
+			for (const [key, value] of Object.entries(oauth.extraAuthorizeParams)) {
+				url.searchParams.set(key, value)
+			}
+		}
+
 		log.info('oauth start', { brand })
 		return redirect(url.toString())
 	})
@@ -268,21 +274,32 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 
 		// exchange code for tokens
 		const callbackUri = `http://localhost:3001/api/integrations/${brand}/oauth/callback`
-		const basicAuth = Buffer.from(`${oauth.clientId}:${oauth.clientSecret}`).toString('base64')
 
 		let tokenRes: Response
 		try {
+			const useBodyAuth = oauth.tokenAuthMethod === 'body'
+			const headers: Record<string, string> = {
+				'Content-Type': 'application/x-www-form-urlencoded',
+			}
+			if (!useBodyAuth) {
+				const credentials = `${oauth.clientId}:${oauth.clientSecret}`
+				headers.Authorization = `Basic ${Buffer.from(credentials).toString('base64')}`
+			}
+
+			const params: Record<string, string> = {
+				grant_type: 'authorization_code',
+				code,
+				redirect_uri: callbackUri,
+			}
+			if (useBodyAuth) {
+				params.client_id = oauth.clientId
+				params.client_secret = oauth.clientSecret
+			}
+
 			tokenRes = await fetch(oauth.tokenUrl, {
 				method: 'POST',
-				headers: {
-					Authorization: `Basic ${basicAuth}`,
-					'Content-Type': 'application/x-www-form-urlencoded',
-				},
-				body: new URLSearchParams({
-					grant_type: 'authorization_code',
-					code,
-					redirect_uri: callbackUri,
-				}),
+				headers,
+				body: new URLSearchParams(params),
 				signal: AbortSignal.timeout(TOKEN_TIMEOUT),
 			})
 		} catch (e) {

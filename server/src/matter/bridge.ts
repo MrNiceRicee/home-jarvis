@@ -51,6 +51,7 @@ type DeviceEntry =
 	| { type: 'simple'; root: Endpoint }
 	| { type: 'composed'; root: Endpoint; fan: Endpoint; sensor: Endpoint }
 	| { type: 'thermostat'; root: Endpoint; thermostat: Endpoint; humidity: Endpoint | null }
+	| { type: 'appliance'; root: Endpoint; appliance: Endpoint }
 
 // ─── Pairing code generation ────────────────────────────────────────────────
 
@@ -285,7 +286,7 @@ class MatterBridge {
 				sensor: composed.sensorEndpoint,
 			})
 			this.setupInboundHandlers(device.id, composed.fanEndpoint)
-		} else {
+		} else if (composed.kind === 'thermostat') {
 			await this.aggregator!.add(composed.parent)
 			await composed.parent.add(composed.thermostatEndpoint)
 			if (composed.humidityEndpoint) {
@@ -299,6 +300,15 @@ class MatterBridge {
 				humidity: composed.humidityEndpoint,
 			})
 			this.setupInboundHandlers(device.id, composed.thermostatEndpoint)
+		} else if (composed.kind === 'washer' || composed.kind === 'dishwasher') {
+			await this.aggregator!.add(composed.parent)
+			await composed.parent.add(composed.applianceEndpoint)
+
+			this.entries.set(device.id, {
+				type: 'appliance',
+				root: composed.parent,
+				appliance: composed.applianceEndpoint,
+			})
 		}
 
 		log.info('matter composed device added', { deviceId: device.id, name: device.name, type: device.type })
@@ -331,6 +341,8 @@ class MatterBridge {
 				await this.updateAirPurifierDevice(entry, state)
 			} else if (entry.type === 'thermostat') {
 				await this.updateThermostatDevice(entry, state)
+			} else if (entry.type === 'appliance') {
+				await this.updateApplianceDevice(entry.appliance, state)
 			} else {
 				await this.updateSimpleDevice(entry.root, state)
 			}
@@ -423,6 +435,21 @@ class MatterBridge {
 			await entry.sensor.setStateOf('pm25ConcentrationMeasurement', {
 				measuredValue: state.pm25,
 			})
+		}
+	}
+
+	private async updateApplianceDevice(endpoint: Endpoint, state: Partial<DeviceState>) {
+		if (state.on !== undefined) {
+			await endpoint.setStateOf('onOff', { onOff: state.on })
+		}
+
+		if (state.cycleStatus !== undefined) {
+			const opState = state.cycleStatus === 'running'
+				? 1 // Running
+				: state.cycleStatus === 'paused'
+					? 2 // Paused
+					: 0 // Stopped
+			await endpoint.setStateOf('operationalState', { operationalState: opState })
 		}
 	}
 

@@ -3,17 +3,21 @@ import { BridgedDeviceBasicInformationServer } from '@matter/main/behaviors/brid
 import { FanControlServer } from '@matter/main/behaviors/fan-control'
 import { HepaFilterMonitoringServer } from '@matter/main/behaviors/hepa-filter-monitoring'
 import { OnOffServer } from '@matter/main/behaviors/on-off'
+import { OperationalStateServer } from '@matter/main/behaviors/operational-state'
 import { Pm25ConcentrationMeasurementServer } from '@matter/main/behaviors/pm25-concentration-measurement'
 import { ThermostatServer } from '@matter/main/behaviors/thermostat'
 import { AirQuality } from '@matter/main/clusters/air-quality'
 import { ConcentrationMeasurement } from '@matter/main/clusters/concentration-measurement'
 import { FanControl } from '@matter/main/clusters/fan-control'
+import { OperationalState } from '@matter/main/clusters/operational-state'
 import { ResourceMonitoring } from '@matter/main/clusters/resource-monitoring'
 import { Thermostat } from '@matter/main/clusters/thermostat'
 import { AirPurifierDevice } from '@matter/main/devices/air-purifier'
 import { AirQualitySensorDevice } from '@matter/main/devices/air-quality-sensor'
+import { DishwasherDevice } from '@matter/main/devices/dishwasher'
 import { ExtendedColorLightDevice } from '@matter/main/devices/extended-color-light'
 import { HumiditySensorDevice } from '@matter/main/devices/humidity-sensor'
+import { LaundryWasherDevice } from '@matter/main/devices/laundry-washer'
 import { OnOffLightDevice } from '@matter/main/devices/on-off-light'
 import { OnOffPlugInUnitDevice } from '@matter/main/devices/on-off-plug-in-unit'
 import { ThermostatDevice } from '@matter/main/devices/thermostat'
@@ -64,6 +68,19 @@ function toFanMode(mode?: string, on?: boolean): number {
 			return 1 // Low
 		default:
 			return 3 // High
+	}
+}
+
+function toOperationalState(cycleStatus?: string): number {
+	switch (cycleStatus) {
+		case 'running':
+			return OperationalState.OperationalStateEnum.Running
+		case 'paused':
+			return OperationalState.OperationalStateEnum.Paused
+		case 'done':
+		case 'idle':
+		default:
+			return OperationalState.OperationalStateEnum.Stopped
 	}
 }
 
@@ -151,7 +168,7 @@ export interface ThermostatComposed {
 	humidityEndpoint: Endpoint | null
 }
 
-export type ComposedEndpoint = AirPurifierComposed | ThermostatComposed
+export type ComposedEndpoint = AirPurifierComposed | ThermostatComposed | WasherComposed | DishwasherComposed
 
 function createAirPurifier(device: Device, state: DeviceState): ComposedEndpoint {
 	const fanMode = toFanMode(state.mode, state.on)
@@ -260,6 +277,82 @@ function createThermostat(device: Device, state: DeviceState): ThermostatCompose
 	return { kind: 'thermostat', parent, thermostatEndpoint, humidityEndpoint }
 }
 
+// ─── Laundry Washer ──────────────────────────────────────────────────────────
+
+const BridgedLaundryWasher = LaundryWasherDevice.with(
+	OperationalStateServer,
+	OnOffServer,
+)
+
+export interface WasherComposed {
+	kind: 'washer'
+	parent: Endpoint
+	applianceEndpoint: Endpoint
+}
+
+function createLaundryWasher(device: Device, state: DeviceState): WasherComposed {
+	const parent = new Endpoint(BridgedNodeEndpoint, {
+		id: device.id,
+		bridgedDeviceBasicInformation: {
+			nodeLabel: device.name,
+			reachable: device.online,
+		},
+	})
+
+	const applianceEndpoint = new Endpoint(BridgedLaundryWasher, {
+		id: `${device.id}-washer`,
+		onOff: { onOff: state.on ?? false },
+		operationalState: {
+			operationalState: toOperationalState(state.cycleStatus),
+			operationalStateList: [
+				{ operationalStateId: OperationalState.OperationalStateEnum.Stopped, operationalStateLabel: 'Idle' },
+				{ operationalStateId: OperationalState.OperationalStateEnum.Running, operationalStateLabel: 'Running' },
+				{ operationalStateId: OperationalState.OperationalStateEnum.Paused, operationalStateLabel: 'Paused' },
+			],
+		},
+	})
+
+	return { kind: 'washer', parent, applianceEndpoint }
+}
+
+// ─── Dishwasher ──────────────────────────────────────────────────────────────
+
+const BridgedDishwasher = DishwasherDevice.with(
+	OperationalStateServer,
+	OnOffServer,
+)
+
+export interface DishwasherComposed {
+	kind: 'dishwasher'
+	parent: Endpoint
+	applianceEndpoint: Endpoint
+}
+
+function createDishwasher(device: Device, state: DeviceState): DishwasherComposed {
+	const parent = new Endpoint(BridgedNodeEndpoint, {
+		id: device.id,
+		bridgedDeviceBasicInformation: {
+			nodeLabel: device.name,
+			reachable: device.online,
+		},
+	})
+
+	const applianceEndpoint = new Endpoint(BridgedDishwasher, {
+		id: `${device.id}-dw`,
+		onOff: { onOff: state.on ?? false },
+		operationalState: {
+			operationalState: toOperationalState(state.cycleStatus),
+			operationalStateList: [
+				{ operationalStateId: OperationalState.OperationalStateEnum.Stopped, operationalStateLabel: 'Idle' },
+				{ operationalStateId: OperationalState.OperationalStateEnum.Running, operationalStateLabel: 'Running' },
+				{ operationalStateId: OperationalState.OperationalStateEnum.Paused, operationalStateLabel: 'Paused' },
+			],
+		},
+	})
+
+	return { kind: 'dishwasher', parent, applianceEndpoint }
+}
+
 // ─── Plug ────────────────────────────────────────────────────────────────────
 
 function createOnOffPlugIn(device: Device, state: DeviceState): Endpoint {
@@ -300,6 +393,30 @@ export function createMatterEndpoint(device: Device, state: DeviceState): Result
 
 		case 'thermostat':
 			return ok({ composed: true, composed_device: createThermostat(device, state) })
+
+		case 'washer_dryer':
+			return ok({
+				composed: true,
+				composed_device: createLaundryWasher(device, state),
+			})
+
+		case 'dishwasher':
+			return ok({
+				composed: true,
+				composed_device: createDishwasher(device, state),
+			})
+
+		case 'oven':
+			return ok({
+				composed: false,
+				endpoint: new Endpoint(BridgedNodeEndpoint, {
+					id: device.id,
+					bridgedDeviceBasicInformation: {
+						nodeLabel: device.name,
+						reachable: device.online,
+					},
+				}),
+			})
 
 		case 'vacuum':
 			return ok({ composed: false, endpoint: createOnOffPlugIn(device, state) })

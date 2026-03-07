@@ -6,6 +6,7 @@ import { ElgatoAdapter } from './elgato/adapter'
 import { GoveeAdapter } from './govee/adapter'
 import { HueAdapter } from './hue/adapter'
 import { ResideoAdapter } from './resideo/adapter'
+import { SmartHQAdapter } from './smarthq/adapter'
 import { VeSyncAdapter } from './vesync/adapter'
 
 /** All supported integrations and their credential form metadata */
@@ -60,11 +61,9 @@ export const INTEGRATION_META: Record<string, IntegrationMeta> = {
 	},
 	ge: {
 		brand: 'ge',
-		displayName: 'GE Cync / SmartHQ',
-		fields: [
-			{ key: 'email', label: 'GE Account Email', type: 'text', placeholder: 'you@example.com' },
-			{ key: 'password', label: 'Password', type: 'password', placeholder: '' },
-		],
+		displayName: 'GE SmartHQ',
+		fields: [],
+		oauthFlow: true,
 	},
 	aqara: {
 		brand: 'aqara',
@@ -110,6 +109,8 @@ export interface OAuthConfig {
 	tokenUrl: string
 	clientId: string
 	clientSecret: string
+	tokenAuthMethod?: 'basic' | 'body'
+	extraAuthorizeParams?: Record<string, string>
 }
 
 export function getOAuthConfig(brand: string): OAuthConfig | null {
@@ -123,6 +124,19 @@ export function getOAuthConfig(brand: string): OAuthConfig | null {
 				tokenUrl: 'https://api.honeywellhome.com/oauth2/token',
 				clientId,
 				clientSecret,
+			}
+		}
+		case 'ge': {
+			const clientId = process.env.SMARTHQ_CLIENT_ID
+			const clientSecret = process.env.SMARTHQ_CLIENT_SECRET
+			if (!clientId || !clientSecret) return null
+			return {
+				authorizeUrl: 'https://accounts.brillion.geappliances.com/oauth2/auth',
+				tokenUrl: 'https://accounts.brillion.geappliances.com/oauth2/token',
+				clientId,
+				clientSecret,
+				tokenAuthMethod: 'body',
+				extraAuthorizeParams: { access_type: 'offline' },
 			}
 		}
 		default:
@@ -143,6 +157,8 @@ export function createAdapter(brand: string, config: Record<string, string>, ses
 			return ok(new ResideoAdapter(config, session))
 		case 'vesync':
 			return ok(new VeSyncAdapter(config, session))
+		case 'ge':
+			return ok(new SmartHQAdapter(config, session))
 		default:
 			return err(new Error(`Adapter not yet implemented for brand: ${brand}`))
 	}
