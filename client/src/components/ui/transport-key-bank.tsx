@@ -51,6 +51,13 @@ export function TransportKeyBank({ label, options, value, onChange, disabled }: 
 	)
 }
 
+function getKeyBorderRadius(isFirst: boolean, isLast: boolean): string {
+	if (isFirst && isLast) return '3px'
+	if (isFirst) return '3px 0 0 3px'
+	if (isLast) return '0 3px 3px 0'
+	return '0'
+}
+
 function TransportKey({ label, ledColor, isActive, disabled, isFirst, isLast }: Readonly<{
 	label: string
 	ledColor?: string
@@ -75,13 +82,7 @@ function TransportKey({ label, ledColor, isActive, disabled, isFirst, isLast }: 
 				boxShadow: isActive
 					? 'inset 0 2px 4px rgba(0,0,0,0.15), inset 0 1px 2px rgba(0,0,0,0.1)'
 					: '0 1px 2px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.6)',
-				borderRadius: isFirst && isLast
-					? '3px'
-					: isFirst
-						? '3px 0 0 3px'
-						: isLast
-							? '0 3px 3px 0'
-							: '0',
+				borderRadius: getKeyBorderRadius(isFirst, isLast),
 			}}
 		>
 			{/* led edge — top edge illumination when active */}

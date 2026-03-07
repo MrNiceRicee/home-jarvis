@@ -11,6 +11,7 @@ import { ScanLog } from '../components/ScanLog'
 import { ConsolePanelLabel } from '../components/ui/console-panel'
 import { useScanStream } from '../hooks/useScanStream'
 import { api } from '../lib/api'
+import { toErrorMessage } from '../lib/error-utils'
 import { useDeviceStore } from '../stores/device-store'
 
 interface IntegrationSearchParams {
@@ -29,12 +30,9 @@ export const Route = createFileRoute('/integrations')({
 })
 
 function extractErrorMessage(value: unknown, fallback: string): string {
-	if (typeof value === 'object' && value !== null && 'message' in value) {
-		return (value as { message: string }).message
-	}
-	if (typeof value === 'object' && value !== null && 'error' in value) {
-		return (value as { error: string }).error
-	}
+	if (typeof value !== 'object' || value === null) return fallback
+	if ('message' in value && typeof value.message === 'string') return value.message
+	if ('error' in value && typeof value.error === 'string') return value.error
 	return fallback
 }
 
@@ -180,7 +178,7 @@ function Integrations() {
 			setFailedBrand(null)
 		} catch (e) {
 			setConnectingBrand(null)
-			setFailedBrand({ brand, message: (e as Error).message })
+			setFailedBrand({ brand, message: toErrorMessage(e) })
 		}
 	}
 

@@ -5,6 +5,7 @@ import type { DeviceState } from '../types'
 import type { SmartHQSession, SmartHQWebSocketEndpoint } from './types'
 
 import { devices, integrations } from '../../db/schema'
+import { toErrorMessage } from '../../lib/error-utils'
 import { eventBus } from '../../lib/events'
 import { log } from '../../lib/logger'
 import { parseJson } from '../../lib/parse-json'
@@ -70,7 +71,11 @@ class SmartHQStream {
 		const session = this.adapter.session
 		if (!session) return
 
-		const parsed = JSON.parse(session) as SmartHQSession
+		const parsed = parseJson<SmartHQSession>(session).match(
+			(s) => s,
+			() => null,
+		)
+		if (!parsed) return
 
 		try {
 			const res = await fetch('https://client.mysmarthq.com/v2/pubsub', {
@@ -94,7 +99,7 @@ class SmartHQStream {
 			}
 			log.info('smarthq pubsub subscribed')
 		} catch (e) {
-			log.error('smarthq pubsub subscribe error', { error: (e as Error).message })
+			log.error('smarthq pubsub subscribe error', { error: toErrorMessage(e) })
 		}
 	}
 
@@ -109,7 +114,15 @@ class SmartHQStream {
 				return
 			}
 
-			const parsed = JSON.parse(session) as SmartHQSession
+			const parsed = parseJson<SmartHQSession>(session).match(
+				(s) => s,
+				() => null,
+			)
+			if (!parsed) {
+				log.warn('smarthq websocket: invalid session JSON')
+				this.scheduleReconnect()
+				return
+			}
 
 			const res = await fetch('https://client.mysmarthq.com/v2/websocket', {
 				headers: { Authorization: `Bearer ${parsed.accessToken}` },
@@ -153,7 +166,7 @@ class SmartHQStream {
 				log.error('smarthq websocket error', { error: String(event) })
 			}
 		} catch (e) {
-			log.error('smarthq websocket connect failed', { error: (e as Error).message })
+			log.error('smarthq websocket connect failed', { error: toErrorMessage(e) })
 			this.scheduleReconnect()
 		}
 	}
@@ -161,13 +174,12 @@ class SmartHQStream {
 	private handleMessage(raw: string) {
 		if (!this.db) return
 
-		let msg: Record<string, unknown>
-		try {
-			msg = JSON.parse(raw) as Record<string, unknown>
-		} catch (e) {
-			log.error('smarthq stream: invalid JSON', { error: (e as Error).message })
+		const result = parseJson<Record<string, unknown>>(raw)
+		if (result.isErr()) {
+			log.error('smarthq stream: invalid JSON', { error: result.error.message })
 			return
 		}
+		const msg = result.value
 
 		const deviceId = msg.deviceId as string | undefined
 		if (!deviceId) return
@@ -244,7 +256,7 @@ class SmartHQStream {
 				source: 'stream',
 			})
 		} catch (e) {
-			log.error('smarthq state refresh error', { error: (e as Error).message })
+			log.error('smarthq state refresh error', { error: toErrorMessage(e) })
 		}
 	}
 

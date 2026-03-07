@@ -2,7 +2,9 @@ import { ResultAsync, err, errAsync, ok } from 'neverthrow'
 
 import type { DeviceAdapter, DeviceState, DiscoveredDevice } from '../types'
 
+import { toErrorMessage } from '../../lib/error-utils'
 import { kelvinToMired, miredToKelvin } from '../../lib/unit-conversions'
+import { isPrivateIp } from '../../lib/validate-ip'
 
 interface ElgatoLight {
 	on: number // 0 | 1
@@ -39,10 +41,11 @@ export class ElgatoAdapter implements DeviceAdapter {
 	validateCredentials(config: Record<string, string>): ResultAsync<void, Error> {
 		const ip = config.ip
 		if (!ip) return errAsync(new Error('IP address is required'))
+		if (!isPrivateIp(ip)) return errAsync(new Error('Device IP must be a private network address'))
 
 		return ResultAsync.fromPromise(
 			fetch(`http://${ip}:9123/elgato/accessory-info`, { signal: AbortSignal.timeout(5000) }),
-			(e) => new Error(`Device unreachable: ${(e as Error).message}`),
+			(e) => new Error(`Device unreachable: ${toErrorMessage(e)}`),
 		).andThen((res) => {
 			if (!res.ok) return err(new Error(`Device returned ${res.status}`))
 			return ok(undefined)
@@ -55,7 +58,7 @@ export class ElgatoAdapter implements DeviceAdapter {
 				fetch(`${this.baseUrl}/lights`, { signal: AbortSignal.timeout(5000) }),
 				fetch(`${this.baseUrl}/accessory-info`, { signal: AbortSignal.timeout(5000) }),
 			]),
-			(e) => new Error(`Network error: ${(e as Error).message}`),
+			(e) => new Error(`Network error: ${toErrorMessage(e)}`),
 		).andThen(([lightsRes, infoRes]) => {
 			if (!lightsRes.ok) return err(new Error(`Elgato lights error: ${lightsRes.status}`))
 			return ResultAsync.fromPromise(
@@ -89,7 +92,7 @@ export class ElgatoAdapter implements DeviceAdapter {
 		const url = this.deviceUrl(ip)
 		return ResultAsync.fromPromise(
 			fetch(`${url}/lights`, { signal: AbortSignal.timeout(5000) }),
-			(e) => new Error(`Network error: ${(e as Error).message}`),
+			(e) => new Error(`Network error: ${toErrorMessage(e)}`),
 		).andThen((res) =>
 			ResultAsync.fromPromise(
 				res.json() as Promise<ElgatoLightsResponse>,
@@ -112,7 +115,7 @@ export class ElgatoAdapter implements DeviceAdapter {
 		// GET current state first so we can fill in missing fields before PUT
 		return ResultAsync.fromPromise(
 			fetch(`${url}/lights`, { signal: AbortSignal.timeout(5000) }),
-			(e) => new Error(`Network error: ${(e as Error).message}`),
+			(e) => new Error(`Network error: ${toErrorMessage(e)}`),
 		).andThen((res) =>
 			ResultAsync.fromPromise(
 				res.json() as Promise<ElgatoLightsResponse>,
@@ -138,7 +141,7 @@ export class ElgatoAdapter implements DeviceAdapter {
 					body: JSON.stringify({ numberOfLights: 1, lights: [updated] }),
 					signal: AbortSignal.timeout(5000),
 				}),
-				(e) => new Error(`Failed to set state: ${(e as Error).message}`),
+				(e) => new Error(`Failed to set state: ${toErrorMessage(e)}`),
 			).map(() => undefined)
 		})
 	}
@@ -147,8 +150,11 @@ export class ElgatoAdapter implements DeviceAdapter {
 	private parseExternalId(externalId: string): { ip: string; index: number } {
 		const colonIdx = externalId.lastIndexOf(':')
 		if (colonIdx < 0) return { ip: this.ip, index: 0 }
+		const ip = externalId.slice(0, colonIdx)
+		// prevent SSRF — only allow private IPs extracted from externalId
+		if (!isPrivateIp(ip)) return { ip: this.ip, index: 0 }
 		return {
-			ip: externalId.slice(0, colonIdx),
+			ip,
 			index: parseInt(externalId.slice(colonIdx + 1), 10),
 		}
 	}

@@ -3,6 +3,7 @@ import { ResultAsync, ok } from 'neverthrow'
 import * as dgram from 'node:dgram'
 
 import { discoverHueBridges } from '../integrations/hue/adapter'
+import { toErrorMessage } from '../lib/error-utils'
 import { log } from '../lib/logger'
 
 export interface DetectedDevice {
@@ -34,7 +35,7 @@ function scanHueCloud(): ResultAsync<DetectedDevice[], Error> {
 				() => [],
 			),
 		),
-		(e) => new Error(`Hue cloud discovery failed: ${(e as Error).message}`),
+		(e) => new Error(`Hue cloud discovery failed: ${toErrorMessage(e)}`),
 	)
 }
 
@@ -67,7 +68,7 @@ function scanHueMdns(timeoutMs = 3000): ResultAsync<DetectedDevice[], Error> {
 				resolve(found)
 			}, timeoutMs)
 		}),
-		(e) => new Error(`Hue mDNS scan failed: ${(e as Error).message}`),
+		(e) => new Error(`Hue mDNS scan failed: ${toErrorMessage(e)}`),
 	)
 }
 
@@ -85,7 +86,7 @@ function scanHue(): ResultAsync<DetectedDevice[], Error> {
 				return true
 			})
 		}),
-		(e) => new Error(`Hue scan failed: ${(e as Error).message}`),
+		(e) => new Error(`Hue scan failed: ${toErrorMessage(e)}`),
 	)
 }
 
@@ -149,7 +150,7 @@ function scanGovee(timeoutMs = 3000): ResultAsync<DetectedDevice[], Error> {
 				resolve(found)
 			}, timeoutMs)
 		}),
-		(e) => new Error(`Govee scan failed: ${(e as Error).message}`),
+		(e) => new Error(`Govee scan failed: ${toErrorMessage(e)}`),
 	)
 }
 
@@ -194,7 +195,7 @@ function scanMdns(
 				resolve(found)
 			}, timeoutMs)
 		}),
-		(e) => new Error(`${brand} mDNS scan failed: ${(e as Error).message}`),
+		(e) => new Error(`${brand} mDNS scan failed: ${toErrorMessage(e)}`),
 	)
 }
 

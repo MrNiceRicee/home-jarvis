@@ -2,6 +2,8 @@ import { ResultAsync, err, errAsync, ok } from 'neverthrow'
 
 import type { DeviceAdapter, DeviceState, DeviceType, DiscoveredDevice } from '../types'
 
+import { toErrorMessage } from '../../lib/error-utils'
+
 const BASE_URL = 'https://openapi.api.govee.com'
 const TIMEOUT = 10_000
 
@@ -134,7 +136,7 @@ export class GoveeAdapter implements DeviceAdapter {
 				headers: { 'Govee-API-Key': key },
 				signal: AbortSignal.timeout(TIMEOUT),
 			}),
-			(e) => new Error(`Govee API unreachable: ${(e as Error).message}`),
+			(e) => new Error(`Govee API unreachable: ${toErrorMessage(e)}`),
 		).andThen((res) => {
 			if (res.status === 401) return err(new Error('Invalid API key'))
 			if (!res.ok) return err(new Error(`Govee API returned ${res.status}`))
@@ -147,7 +149,7 @@ export class GoveeAdapter implements DeviceAdapter {
 			// fetch state for each device with bounded concurrency
 			return ResultAsync.fromPromise(
 				this.fetchStatesForDevices(devices),
-				(e) => new Error(`State fetch failed: ${(e as Error).message}`),
+				(e) => new Error(`State fetch failed: ${toErrorMessage(e)}`),
 			)
 		})
 	}
@@ -165,7 +167,7 @@ export class GoveeAdapter implements DeviceAdapter {
 				}),
 				signal: AbortSignal.timeout(TIMEOUT),
 			}),
-			(e) => new Error(`Network error: ${(e as Error).message}`),
+			(e) => new Error(`Network error: ${toErrorMessage(e)}`),
 		).andThen((res) => {
 			if (res.status === 429) return err(new Error('Govee rate limit exceeded — retry next cycle'))
 			if (!res.ok) return err(new Error(`Govee state error: ${res.status}`))
@@ -198,7 +200,7 @@ export class GoveeAdapter implements DeviceAdapter {
 						}),
 						signal: AbortSignal.timeout(TIMEOUT),
 					}),
-					(e) => new Error(`Control error: ${(e as Error).message}`),
+					(e) => new Error(`Control error: ${toErrorMessage(e)}`),
 				).andThen((res) => {
 					if (res.status === 429) return err(new Error('Govee rate limit exceeded'))
 					if (!res.ok) return err(new Error(`Govee control error: ${res.status}`))
@@ -217,7 +219,7 @@ export class GoveeAdapter implements DeviceAdapter {
 				headers: this.headers(),
 				signal: AbortSignal.timeout(TIMEOUT),
 			}),
-			(e) => new Error(`Network error: ${(e as Error).message}`),
+			(e) => new Error(`Network error: ${toErrorMessage(e)}`),
 		).andThen((res) => {
 			if (res.status === 429) return err(new Error('Govee rate limit exceeded'))
 			if (!res.ok) return err(new Error(`Govee API error: ${res.status}`))

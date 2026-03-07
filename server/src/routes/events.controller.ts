@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm'
 import Elysia, { sse } from 'elysia'
 
 import type { DeviceEvent } from '../integrations/types'
@@ -10,6 +11,8 @@ import { sanitizeDevice } from '../lib/sanitize'
 
 type HeartbeatEvent = { type: 'heartbeat'; timestamp: number }
 type QueueItem = DeviceEvent | HeartbeatEvent
+
+const MAX_QUEUE = 500
 
 export const eventsController = new Elysia({ prefix: '/api' })
 
@@ -44,12 +47,23 @@ export const eventsController = new Elysia({ prefix: '/api' })
 		const queue: QueueItem[] = []
 		let notify: (() => void) | null = null
 		const enqueue = (item: QueueItem) => {
+			// backpressure: drop oldest events when queue is full
+			if (queue.length >= MAX_QUEUE) {
+				const dropped = queue.length - MAX_QUEUE + 1
+				queue.splice(0, dropped)
+				log.warn('sse queue overflow, dropped oldest events', { clientId, dropped })
+			}
 			queue.push(item)
 			notify?.()
 			notify = null
 		}
 
 		const handler = (event: DeviceEvent) => {
+			// skip hidden devices
+			if (event.deviceId) {
+				const device = db.select({ hidden: devices.hidden }).from(devices).where(eq(devices.id, event.deviceId)).get()
+				if (device?.hidden) return
+			}
 			log.debug('sse event', { clientId, type: event.type, deviceId: event.deviceId })
 			enqueue(event)
 		}

@@ -1,7 +1,9 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-export type TemperatureUnit = 'C' | 'F'
+import type { TemperatureUnit } from '../lib/temperature'
+
+export type { TemperatureUnit }
 
 interface PreferencesState {
 	temperatureUnit: TemperatureUnit

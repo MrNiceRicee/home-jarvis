@@ -1,8 +1,24 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 
 import { Button as AriaButton, type ButtonProps as AriaButtonProps } from 'react-aria-components'
 
 import { cn } from '../../lib/cn'
+
+function getLedStyle(led: 'on' | 'off' | 'pulse', ledColor: string): CSSProperties | undefined {
+	if (led === 'on' || led === 'pulse') {
+		return {
+			backgroundColor: ledColor,
+			boxShadow: `0 0 4px ${ledColor}, 0 0 8px color-mix(in srgb, ${ledColor} 40%, transparent)`,
+		}
+	}
+	if (led === 'off' && ledColor) {
+		return {
+			backgroundColor: `color-mix(in srgb, ${ledColor} 60%, #78716c)`,
+			boxShadow: `0 0 2px color-mix(in srgb, ${ledColor} 30%, transparent)`,
+		}
+	}
+	return undefined
+}
 
 interface PanelButtonProps extends Omit<AriaButtonProps, 'className' | 'children'> {
 	led?: 'on' | 'off' | 'pulse'
@@ -41,13 +57,7 @@ export function PanelButton({ led, ledColor = 'rgb(52,211,153)', size = 'md', la
 							led === 'pulse' && 'animate-pulse',
 							led === 'off' && !ledColor && 'bg-stone-400/30',
 						)}
-						style={led === 'on' || led === 'pulse' ? {
-							backgroundColor: ledColor,
-							boxShadow: `0 0 4px ${ledColor}, 0 0 8px color-mix(in srgb, ${ledColor} 40%, transparent)`,
-						} : led === 'off' && ledColor ? {
-							backgroundColor: `color-mix(in srgb, ${ledColor} 60%, #78716c)`,
-							boxShadow: `0 0 2px color-mix(in srgb, ${ledColor} 30%, transparent)`,
-						} : undefined}
+						style={getLedStyle(led, ledColor)}
 					/>
 				)}
 				{children}

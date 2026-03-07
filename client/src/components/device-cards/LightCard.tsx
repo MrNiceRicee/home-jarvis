@@ -113,11 +113,14 @@ export function LightCard({ device, variant = 'compact', onAccentChange, onState
 	}
 
 	// sync sliders when SSE pushes new state
+	// eslint-disable-next-line react-hooks/set-state-in-effect -- sse state sync
 	useEffect(() => { setBrightness(state.brightness ?? 100) }, [state.brightness])
+	// eslint-disable-next-line react-hooks/set-state-in-effect -- sse state sync
 	useEffect(() => { setColorTemp(state.colorTemp ?? 4000) }, [state.colorTemp])
 	useEffect(() => {
 		if (!state.color) return
 		const { r, g, b } = state.color
+		// eslint-disable-next-line react-hooks/set-state-in-effect -- sse state sync
 		try { setPickerColor(parseColor(`rgb(${r}, ${g}, ${b})`)) } catch { /* ignore */ }
 	}, [state.color])
 

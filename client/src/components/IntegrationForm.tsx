@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import {
-	DialogTrigger,
 	Form,
 	Heading,
 } from 'react-aria-components'
@@ -8,162 +7,10 @@ import {
 import type { IntegrationMeta, CredentialField, DetectedDevice } from '../types'
 
 import { api } from '../lib/api'
-import { cn } from '../lib/cn'
-import { BRAND_ICON, FALLBACK_ICON } from '../lib/device-constants'
+import { toErrorMessage } from '../lib/error-utils'
 import { RaisedButton } from './ui/button'
-import { TerminalButton } from './ui/terminal-button'
-
-function BrandIcon({ brand }: Readonly<{ brand: string }>) {
-	const Icon = BRAND_ICON[brand] ?? FALLBACK_ICON
-	return <Icon size={24} weight="thin" className="text-stone-500 shrink-0" />
-}
-import { Card } from './ui/card'
 import { RaisedInput } from './ui/input'
-import { RaisedModal } from './ui/modal'
-
-
-// brands that support local network scanning
-const SCANNABLE_BRANDS = new Set(['hue', 'aqara', 'elgato'])
-
-function formatDeviceCount(count: number) {
-	const plural = count !== 1 ? 's' : ''
-	return `${count} device${plural} found on network`
-}
-
-interface IntegrationFormProps {
-	meta: IntegrationMeta
-	isConfigured: boolean
-	onSubmit: (brand: string, config: Record<string, string>) => Promise<void>
-	onRemove: (brand: string) => Promise<void>
-}
-
-export function IntegrationCard({ meta, isConfigured, onSubmit, onRemove }: Readonly<IntegrationFormProps>) {
-	const [scanResult, setScanResult] = useState<{ count: number; error?: string } | null>(null)
-	const [scanning, setScanning] = useState(false)
-
-	async function handleBrandScan() {
-		setScanning(true)
-		setScanResult(null)
-		try {
-			const { data, error } = await api.api.scan({ brand: meta.brand }).get()
-			if (error) {
-				setScanResult({ count: 0, error: (error.value as { error?: string })?.error ?? 'Scan failed' })
-			} else {
-				const devices = Array.isArray(data) ? data : []
-				setScanResult({ count: devices.length })
-			}
-		} catch {
-			setScanResult({ count: 0, error: 'Scan failed' })
-		} finally {
-			setScanning(false)
-		}
-	}
-
-	const canScan = isConfigured && SCANNABLE_BRANDS.has(meta.brand)
-
-	return (
-		<Card className={isConfigured ? '!border-emerald-200' : ''}>
-			<div className="p-4 flex items-center justify-between gap-3">
-				<div className="flex items-center gap-3 min-w-0">
-					<BrandIcon brand={meta.brand} />
-					<div className="min-w-0">
-						<p className="text-sm font-semibold text-stone-900">{meta.displayName}</p>
-						<p className="text-xs text-stone-400 mt-0.5">
-							{isConfigured ? '✓ Connected' : 'Not connected'}
-						</p>
-					</div>
-				</div>
-				<div className="flex items-center gap-2 shrink-0">
-					{canScan && (
-						<RaisedButton
-							variant="ghost"
-							size="sm"
-							onPress={handleBrandScan}
-							isDisabled={scanning}
-						>
-							{scanning ? 'Scanning...' : 'Scan'}
-						</RaisedButton>
-					)}
-					{isConfigured && (
-						<DialogTrigger>
-							<RaisedButton variant="ghost" size="sm" className="text-red-500 hover:text-red-700 hover:bg-red-50">
-								Remove
-							</RaisedButton>
-							<RaisedModal className="max-w-sm">
-								{({ close }) => (
-									<>
-										<Heading
-											slot="title"
-											className="text-base font-semibold text-stone-900 mb-2"
-										>
-											Remove {meta.displayName}?
-										</Heading>
-										<p className="text-sm text-stone-500 mb-5">
-											All devices from this integration will be removed from the portal. Matter
-											accessories will be unexposed.
-										</p>
-										<div className="flex gap-2 justify-end">
-											<RaisedButton variant="raised" size="md" onPress={close}>
-												Cancel
-											</RaisedButton>
-											<RaisedButton
-												variant="danger"
-												size="md"
-												onPress={async () => {
-													await onRemove(meta.brand)
-													close()
-												}}
-											>
-												Remove
-											</RaisedButton>
-										</div>
-									</>
-								)}
-							</RaisedModal>
-						</DialogTrigger>
-					)}
-					{meta.discoveryOnly ? (
-						!isConfigured && (
-							<RaisedButton
-								variant="primary"
-								size="sm"
-								onPress={() => void onSubmit(meta.brand, {})}
-							>
-								Connect
-							</RaisedButton>
-						)
-					) : (
-						<DialogTrigger>
-							<RaisedButton variant="primary" size="sm">
-								{isConfigured ? 'Edit' : 'Connect'}
-							</RaisedButton>
-							<RaisedModal>
-								{({ close }) => (
-									<IntegrationFormInner
-										meta={meta}
-										onSubmit={async (config) => {
-											await onSubmit(meta.brand, config)
-											close()
-										}}
-										onCancel={close}
-									/>
-								)}
-							</RaisedModal>
-						</DialogTrigger>
-					)}
-				</div>
-			</div>
-			{/* inline scan result */}
-			{scanResult && (
-				<div className={cn('px-4 pb-3 text-xs', scanResult.error ? 'text-red-600' : 'text-emerald-700')}>
-					{scanResult.error
-						? `Scan error: ${scanResult.error}`
-						: formatDeviceCount(scanResult.count)}
-				</div>
-			)}
-		</Card>
-	)
-}
+import { TerminalButton } from './ui/terminal-button'
 
 // ─── Additional Device row (terminal-style for mission control aesthetic) ─────
 
@@ -199,58 +46,6 @@ export function AdditionalDeviceRow({
 					<TerminalButton label="ADD" onPress={onAdd} isDisabled={isAdding} />
 				)}
 			</span>
-		</div>
-	)
-}
-
-// ─── Quick Connect card (for auto-detected devices) ───────────────────────────
-
-interface QuickConnectProps {
-	detected: DetectedDevice
-	meta: IntegrationMeta
-	onSubmit: (brand: string, config: Record<string, string>) => Promise<void>
-}
-
-export function QuickConnectCard({ detected, meta, onSubmit }: Readonly<QuickConnectProps>) {
-	const VIA_LABEL: Record<DetectedDevice['via'], string> = {
-		upnp: 'found via local network',
-		mdns: 'found via mDNS',
-		udp: 'found via LAN',
-	}
-
-	return (
-		<div
-			className="rounded-xl border border-amber-200/80 p-4 flex items-center justify-between gap-3"
-			style={{
-				background: 'linear-gradient(to bottom, rgba(255,251,235,0.9), rgba(254,243,199,0.5))',
-				boxShadow: '0 1px 3px rgba(217,119,6,0.06), 0 4px 12px rgba(217,119,6,0.04), inset 0 1px 0 rgba(255,255,255,0.7)',
-			}}
-		>
-			<div className="flex items-center gap-3 min-w-0">
-				<BrandIcon brand={detected.brand} />
-				<div className="min-w-0">
-					<p className="text-sm font-semibold text-stone-900">{detected.label}</p>
-					<p className="text-xs text-amber-700 mt-0.5">{VIA_LABEL[detected.via]}</p>
-				</div>
-			</div>
-			<DialogTrigger>
-				<RaisedButton variant="amber" size="sm" className="shrink-0">
-					Quick Connect
-				</RaisedButton>
-				<RaisedModal>
-					{({ close }) => (
-						<IntegrationFormInner
-							meta={meta}
-							prefill={detected.details}
-							onSubmit={async (config) => {
-								await onSubmit(meta.brand, config)
-								close()
-							}}
-							onCancel={close}
-						/>
-					)}
-				</RaisedModal>
-			</DialogTrigger>
 		</div>
 	)
 }
@@ -295,10 +90,18 @@ export function IntegrationFormInner({ meta, prefill, onSubmit, onCancel }: Read
 			const { data, error } = await api.api.integrations.hue.link.post({
 				bridgeIp: values.bridgeIp,
 			})
-			if (error) throw new Error((error.value as { error?: string })?.error ?? 'Link failed')
-			setValues((v) => ({ ...v, apiKey: (data as { apiKey: string }).apiKey }))
+			if (error) {
+				const val = error.value
+				const msg = typeof val === 'object' && val != null && 'error' in val && typeof val.error === 'string'
+					? val.error
+					: 'Link failed'
+				throw new Error(msg)
+			}
+			if (data && typeof data === 'object' && 'apiKey' in data && typeof data.apiKey === 'string') {
+				setValues((v) => ({ ...v, apiKey: data.apiKey }))
+			}
 		} catch (e) {
-			setHueLinkError((e as Error).message)
+			setHueLinkError(toErrorMessage(e))
 		} finally {
 			setLinkingHue(false)
 		}
@@ -311,7 +114,7 @@ export function IntegrationFormInner({ meta, prefill, onSubmit, onCancel }: Read
 		try {
 			await onSubmit(values)
 		} catch (e) {
-			setError((e as Error).message)
+			setError(toErrorMessage(e))
 			setLoading(false)
 		}
 	}

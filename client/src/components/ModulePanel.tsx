@@ -45,11 +45,14 @@ type ModulePanelProps = Readonly<
 )>
 
 function BezelLed({ lit, error }: Readonly<{ lit: boolean; error?: boolean }>) {
-	const ledColor = error
-		? { bg: 'radial-gradient(circle at 35% 30%, #fca5a5, #ef4444 50%, #dc2626 100%)', glow: '0 0 4px rgba(239,68,68,0.5), 0 0 8px rgba(239,68,68,0.2)' }
-		: lit
-			? { bg: 'radial-gradient(circle at 35% 30%, #6ee7b7, #34d399 50%, #059669 100%)', glow: '0 0 4px rgba(52,211,153,0.5), 0 0 8px rgba(52,211,153,0.2)' }
-			: { bg: 'radial-gradient(circle at 35% 30%, #a8a29e, #78716c 50%, #57534e 100%)', glow: 'none' }
+	let ledColor: { bg: string; glow: string }
+	if (error) {
+		ledColor = { bg: 'radial-gradient(circle at 35% 30%, #fca5a5, #ef4444 50%, #dc2626 100%)', glow: '0 0 4px rgba(239,68,68,0.5), 0 0 8px rgba(239,68,68,0.2)' }
+	} else if (lit) {
+		ledColor = { bg: 'radial-gradient(circle at 35% 30%, #6ee7b7, #34d399 50%, #059669 100%)', glow: '0 0 4px rgba(52,211,153,0.5), 0 0 8px rgba(52,211,153,0.2)' }
+	} else {
+		ledColor = { bg: 'radial-gradient(circle at 35% 30%, #a8a29e, #78716c 50%, #57534e 100%)', glow: 'none' }
+	}
 
 	return (
 		<div

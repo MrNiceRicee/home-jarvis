@@ -11,6 +11,7 @@ import type { Device } from '../db/schema'
 import type { DeviceState } from '../integrations/types'
 
 import { devices } from '../db/schema'
+import { env } from '../lib/env'
 import { eventBus } from '../lib/events'
 import { log } from '../lib/logger'
 import { parseJson } from '../lib/parse-json'
@@ -28,14 +29,20 @@ import { type ComposedEndpoint, createMatterEndpoint } from './device-factory'
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function extractMatterErrorDetails(error: unknown): string {
-	const causes = (error as { causes?: Error[] })?.causes
-		?? (error as { errors?: Error[] })?.errors
-		?? []
-	if (causes.length > 0) {
-		return causes.map((c: Error) => {
-			const inner = c.cause instanceof Error ? c.cause.message : ''
-			return inner || c.message
-		}).join('; ')
+	if (typeof error === 'object' && error !== null) {
+		const obj = error as Record<string, unknown>
+		let rawCauses: unknown[]
+		if (Array.isArray(obj.causes)) rawCauses = obj.causes
+		else if (Array.isArray(obj.errors)) rawCauses = obj.errors
+		else rawCauses = []
+		const causes = rawCauses
+		if (causes.length > 0) {
+			return causes.map((c) => {
+				if (!(c instanceof Error)) return String(c)
+				const inner = c.cause instanceof Error ? c.cause.message : ''
+				return inner || c.message
+			}).join('; ')
+		}
 	}
 	return error instanceof Error ? error.message : String(error)
 }
@@ -142,7 +149,7 @@ class MatterBridge {
 
 			const passcode = generatePasscode()
 			const discriminator = generateDiscriminator()
-			log.info('matter bridge pairing credentials', { passcode, discriminator })
+			log.info('matter bridge pairing credentials', { discriminator })
 
 			this.node = await ServerNode.create({
 				id: 'jarvis-bridge',
@@ -158,8 +165,8 @@ class MatterBridge {
 				basicInformation: {
 					vendorName: 'home-jarvis',
 					productName: 'Jarvis Matter Bridge',
-					vendorId: VendorId(0xfff1),
-					productId: 0x8000,
+					vendorId: VendorId(env.MATTER_VENDOR_ID),
+					productId: env.MATTER_PRODUCT_ID,
 				},
 			})
 
@@ -255,7 +262,7 @@ class MatterBridge {
 		try {
 			const endpointResult = result.value
 			if (endpointResult.composed) {
-				await this.addComposedDevice(device, endpointResult.composed_device)
+				await this.addComposedDevice(device, endpointResult.composedDevice)
 			} else {
 				await this.addSimpleDevice(device, endpointResult.endpoint)
 			}
@@ -444,11 +451,10 @@ class MatterBridge {
 		}
 
 		if (state.cycleStatus !== undefined) {
-			const opState = state.cycleStatus === 'running'
-				? 1 // Running
-				: state.cycleStatus === 'paused'
-					? 2 // Paused
-					: 0 // Stopped
+			let opState: number
+			if (state.cycleStatus === 'running') opState = 1
+			else if (state.cycleStatus === 'paused') opState = 2
+			else opState = 0
 			await endpoint.setStateOf('operationalState', { operationalState: opState })
 		}
 	}

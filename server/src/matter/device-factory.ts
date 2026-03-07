@@ -375,7 +375,7 @@ function createOnOffPlugIn(device: Device, state: DeviceState): Endpoint {
 
 export type EndpointResult =
 	| { composed: false; endpoint: Endpoint }
-	| { composed: true; composed_device: ComposedEndpoint }
+	| { composed: true; composedDevice: ComposedEndpoint }
 
 export function createMatterEndpoint(device: Device, state: DeviceState): Result<EndpointResult, FactoryError> {
 	switch (device.type) {
@@ -388,22 +388,22 @@ export function createMatterEndpoint(device: Device, state: DeviceState): Result
 		case 'air_purifier':
 			return ok({
 				composed: true,
-				composed_device: createAirPurifier(device, state),
+				composedDevice: createAirPurifier(device, state),
 			})
 
 		case 'thermostat':
-			return ok({ composed: true, composed_device: createThermostat(device, state) })
+			return ok({ composed: true, composedDevice: createThermostat(device, state) })
 
 		case 'washer_dryer':
 			return ok({
 				composed: true,
-				composed_device: createLaundryWasher(device, state),
+				composedDevice: createLaundryWasher(device, state),
 			})
 
 		case 'dishwasher':
 			return ok({
 				composed: true,
-				composed_device: createDishwasher(device, state),
+				composedDevice: createDishwasher(device, state),
 			})
 
 		case 'oven':

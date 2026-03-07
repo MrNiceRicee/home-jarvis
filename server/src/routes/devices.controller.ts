@@ -6,6 +6,7 @@ import type { DeviceState } from '../integrations/types'
 
 import { db } from '../db'
 import { devices, integrations, sections } from '../db/schema'
+import { adapterSession, runDiscovery } from '../discovery/cloud-poller'
 import { INTEGRATION_META, createAdapter } from '../integrations/registry'
 import { eventBus } from '../lib/events'
 import { log } from '../lib/logger'
@@ -16,6 +17,7 @@ import { isPrivateIp } from '../lib/validate-ip'
 import { matterBridge } from '../matter/bridge'
 
 let discoveryInFlight = false
+const confirmTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
 export const devicesController = new Elysia({ prefix: '/api/devices' })
 	.decorate('db', db)
@@ -30,7 +32,7 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 		}))
 	})
 
-	/** Trigger manual discovery for all enabled integrations */
+	/** Trigger manual discovery for all enabled integrations (upserts devices + emits SSE) */
 	.post('/discover', async ({ db }) => {
 		if (discoveryInFlight) {
 			log.warn('discover skipped', { reason: 'already in progress' })
@@ -41,26 +43,20 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 
 		log.info('discover started', { integrationCount: enabled.length, brands: enabled.map((i) => i.brand) })
 
-		// Kick off discovery in background — don't await
+		// run discovery in background — upserts devices into DB and emits SSE events
 		discoveryInFlight = true
-		Promise.all(
+		void Promise.allSettled(
 			enabled.map(async (integration) => {
 				const config = parseJson<Record<string, string>>(integration.config).unwrapOr({})
-				const adapterResult = createAdapter(integration.brand, config, integration.session)
-				if (adapterResult.isErr()) {
-					log.warn('discover adapter unavailable', { brand: integration.brand })
-					return
-				}
-				const result = await adapterResult.value.discover()
-				if (result.isErr()) {
-					log.error('discover failed', { brand: integration.brand, error: result.error.message })
-				} else {
-					log.info('discover succeeded', { brand: integration.brand, deviceCount: result.value.length })
-				}
+				await runDiscovery(db, integration.id, integration.brand, config, integration.session ?? null)
 			}),
 		)
-			.catch((err: unknown) => {
-				log.error('discover unexpected error', { error: err instanceof Error ? err.message : String(err) })
+			.then((results) => {
+				for (const r of results) {
+					if (r.status === 'rejected') {
+						log.error('discover integration error', { error: r.reason instanceof Error ? r.reason.message : String(r.reason) })
+					}
+				}
 			})
 			.finally(() => {
 				discoveryInFlight = false
@@ -215,14 +211,29 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 				source: 'dashboard',
 			})
 
+			// persist session if adapter refreshed tokens during setState
+			const adapter = adapterResult.value
+			const updatedSession = adapterSession(adapter)
+			if (updatedSession && updatedSession !== integration.session) {
+				db.update(integrations)
+					.set({ session: updatedSession, updatedAt: now })
+					.where(eq(integrations.id, integration.id))
+					.run()
+			}
+
 			log.info('setState ok', { deviceId: params.id, deviceName: device.name, brand: device.brand })
 
 			// delayed re-poll: fetch confirmed state from the device after the cloud propagates
-			const adapter = adapterResult.value
 			const deviceId = params.id
 			const externalId = device.externalId
 			const brand = device.brand
-			setTimeout(async () => {
+
+			// clear any existing confirm timer for this device
+			const existing = confirmTimers.get(deviceId)
+			if (existing) clearTimeout(existing)
+
+			const timer = setTimeout(async () => {
+				confirmTimers.delete(deviceId)
 				try {
 					const confirmed = await adapter.getState(externalId)
 					if (confirmed.isErr()) return
@@ -243,6 +254,7 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 					log.debug('post-setState confirm', { deviceId, brand })
 				} catch { /* ignore re-poll failures — poller will catch up */ }
 			}, 5000)
+			confirmTimers.set(deviceId, timer)
 
 			return { ...device, state: newState }
 		},
@@ -368,27 +380,25 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 	.patch(
 		'/positions',
 		({ db, body }) => {
-			const items = body as Array<{ id: string; sectionId: string; position: number }>
-
-			if (items.length > 200) {
+			if (body.length > 200) {
 				return status(400, { error: 'Batch size exceeds limit of 200' })
 			}
 
 			// validate no duplicate device IDs
-			const ids = items.map((i) => i.id)
+			const ids = body.map((i) => i.id)
 			if (new Set(ids).size !== ids.length) {
 				return status(400, { error: 'Duplicate device IDs in batch' })
 			}
 
 			// validate all positions are non-negative integers
-			for (const item of items) {
+			for (const item of body) {
 				if (item.position < 0 || !Number.isInteger(item.position)) {
 					return status(400, { error: `Invalid position for device ${item.id}` })
 				}
 			}
 
 			// validate all sectionIds and deviceIds exist
-			const sectionIds = [...new Set(items.map((i) => i.sectionId))]
+			const sectionIds = [...new Set(body.map((i) => i.sectionId))]
 			const existingSections = db.select().from(sections).where(inArray(sections.id, sectionIds)).all()
 			if (existingSections.length !== sectionIds.length) {
 				return status(400, { error: 'One or more section IDs are invalid' })
@@ -401,7 +411,7 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 
 			const now = Date.now()
 			db.transaction((tx) => {
-				for (const item of items) {
+				for (const item of body) {
 					tx.update(devices)
 						.set({ sectionId: item.sectionId, position: item.position, updatedAt: now })
 						.where(eq(devices.id, item.id))
@@ -409,7 +419,7 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 				}
 			})
 
-			log.info('batch positions updated', { count: items.length })
+			log.info('batch positions updated', { count: body.length })
 			return { ok: true }
 		},
 		{

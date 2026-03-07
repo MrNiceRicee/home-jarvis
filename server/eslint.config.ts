@@ -34,6 +34,7 @@ export default defineConfig([
 				{ type: 'routes', pattern: 'src/routes/*' },
 				{ type: 'integrations', pattern: 'src/integrations/**/*' },
 				{ type: 'discovery', pattern: 'src/discovery/*' },
+				{ type: 'matter', pattern: 'src/matter/*' },
 				{ type: 'db', pattern: 'src/db/*' },
 				{ type: 'lib', pattern: 'src/lib/*' },
 			],
@@ -44,12 +45,14 @@ export default defineConfig([
 				{
 					default: 'disallow',
 					rules: [
-						// Routes may use integrations and lib
-						{ from: 'routes', allow: ['integrations', 'lib'] },
+						// Routes may use integrations, discovery, and lib
+						{ from: 'routes', allow: ['integrations', 'discovery', 'matter', 'db', 'lib'] },
 						// Integrations may use db and lib
 						{ from: 'integrations', allow: ['db', 'lib'] },
-						// Discovery is standalone (only lib)
-						{ from: 'discovery', allow: ['lib'] },
+						// Discovery uses integrations, db, and lib
+						{ from: 'discovery', allow: ['integrations', 'db', 'lib'] },
+						// Matter uses integrations and lib
+						{ from: 'matter', allow: ['integrations', 'db', 'lib'] },
 						// Leaves have no internal imports
 						{ from: 'db', allow: [] },
 						{ from: 'lib', allow: [] },

@@ -1,11 +1,14 @@
 import { cn } from '../../lib/cn'
 
+function getStatusColor(status: string): string {
+	if (status === 'running') return 'bg-emerald-400 shadow-emerald-400/50'
+	if (status === 'starting') return 'bg-amber-400 shadow-amber-400/50 animate-pulse'
+	if (status === 'error') return 'bg-red-400 shadow-red-400/50'
+	return 'bg-stone-300 shadow-stone-300/30'
+}
+
 export function StatusLed({ status }: Readonly<{ status: string }>) {
-	const color =
-		status === 'running' ? 'bg-emerald-400 shadow-emerald-400/50'
-		: status === 'starting' ? 'bg-amber-400 shadow-amber-400/50 animate-pulse'
-		: status === 'error' ? 'bg-red-400 shadow-red-400/50'
-		: 'bg-stone-300 shadow-stone-300/30'
+	const color = getStatusColor(status)
 
 	return (
 		<div className="relative flex items-center justify-center w-10 h-10">

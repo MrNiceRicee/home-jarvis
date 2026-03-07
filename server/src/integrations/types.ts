@@ -16,6 +16,30 @@ export type DeviceType =
 	| 'tv'
 	| 'media_player'
 
+export const DEVICE_TYPES = new Set<DeviceType>([
+	'light', 'switch', 'thermostat', 'air_purifier', 'sensor', 'vacuum',
+	'washer_dryer', 'dishwasher', 'oven', 'fridge', 'tv', 'media_player',
+])
+
+export function isDeviceType(s: string): s is DeviceType {
+	return DEVICE_TYPES.has(s as DeviceType)
+}
+
+export type TemperatureUnit = 'C' | 'F'
+
+export function isTemperatureUnit(s: string): s is TemperatureUnit {
+	return s === 'C' || s === 'F'
+}
+
+export type ThermostatMode = 'heat' | 'cool' | 'auto' | 'off'
+
+export function isThermostatMode(s: string): s is ThermostatMode {
+	return s === 'heat' || s === 'cool' || s === 'auto' || s === 'off'
+}
+
+export type VacuumStatus = 'cleaning' | 'docked' | 'returning' | 'paused' | 'error'
+export type CycleStatus = 'running' | 'paused' | 'done' | 'idle'
+
 export interface DeviceState {
 	on?: boolean
 	brightness?: number // 0–100
@@ -26,10 +50,10 @@ export interface DeviceState {
 	fanSpeed?: number // 0–100 (air purifiers)
 	airQuality?: number // 0–5 (AQI category)
 	targetTemperature?: number
-	mode?: string // thermostat mode: 'heat' | 'cool' | 'auto' | 'off'
+	mode?: string
 
 	// Vacuum
-	status?: string // 'cleaning' | 'docked' | 'returning' | 'paused' | 'error'
+	status?: string
 	battery?: number // 0–100
 
 	// Media / TV
@@ -38,7 +62,7 @@ export interface DeviceState {
 	track?: string // currently playing track name
 
 	// Appliances (washer, dishwasher, oven)
-	cycleStatus?: string // 'running' | 'paused' | 'done' | 'idle'
+	cycleStatus?: CycleStatus
 	timeRemaining?: number // minutes
 	doorLocked?: boolean
 

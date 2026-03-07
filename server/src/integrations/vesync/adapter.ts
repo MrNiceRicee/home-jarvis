@@ -3,7 +3,9 @@ import { ResultAsync, errAsync } from 'neverthrow'
 
 import type { DeviceAdapter, DeviceState, DeviceType, DiscoveredDevice } from '../types'
 
+import { toErrorMessage } from '../../lib/error-utils'
 import { parseJson } from '../../lib/parse-json'
+import { TokenExpiredError } from '../errors'
 import { getStatusMethod, mapVeSyncType, parseStateByType } from './parsers'
 
 const BASE_URL = 'https://smartapi.vesync.com'
@@ -261,28 +263,28 @@ export class VeSyncAdapter implements DeviceAdapter {
 
 		return ResultAsync.fromPromise(
 			login(email, password),
-			(e) => new Error(`VeSync login failed: ${(e as Error).message}`),
+			(e) => new Error(`VeSync login failed: ${toErrorMessage(e)}`),
 		).map(() => undefined)
 	}
 
 	discover(): ResultAsync<DiscoveredDevice[], Error> {
 		return ResultAsync.fromPromise(
 			this.fetchDevices(),
-			(e) => new Error(`VeSync discovery failed: ${(e as Error).message}`),
+			(e) => new Error(`VeSync discovery failed: ${toErrorMessage(e)}`),
 		)
 	}
 
 	getState(externalId: string): ResultAsync<DeviceState, Error> {
 		return ResultAsync.fromPromise(
 			this.fetchDeviceState(externalId),
-			(e) => new Error(`VeSync state error: ${(e as Error).message}`),
+			(e) => new Error(`VeSync state error: ${toErrorMessage(e)}`),
 		)
 	}
 
 	setState(externalId: string, state: Partial<DeviceState>): ResultAsync<void, Error> {
 		return ResultAsync.fromPromise(
 			this.controlDevice(externalId, state),
-			(e) => new Error(`VeSync control error: ${(e as Error).message}`),
+			(e) => new Error(`VeSync control error: ${toErrorMessage(e)}`),
 		)
 	}
 
@@ -511,9 +513,3 @@ export class VeSyncAdapter implements DeviceAdapter {
 	}
 }
 
-class TokenExpiredError extends Error {
-	constructor() {
-		super('VeSync token expired')
-		this.name = 'TokenExpiredError'
-	}
-}

@@ -3,7 +3,9 @@ import { ResultAsync, err, errAsync, ok, okAsync } from 'neverthrow'
 import type { DeviceAdapter, DeviceState, DeviceType, DiscoveredDevice } from '../types'
 import type { SmartThingsDevice, SmartThingsDeviceHealth, SmartThingsDeviceListResponse, SmartThingsDeviceStatus } from './types'
 
+import { toErrorMessage } from '../../lib/error-utils'
 import { log } from '../../lib/logger'
+import { isDeviceType } from '../types'
 import { flatCapabilityIds, mapSmartThingsType, parseSmartThingsState } from './parsers'
 
 const API_BASE = 'https://api.smartthings.com/v1'
@@ -36,7 +38,7 @@ export class SmartThingsAdapter implements DeviceAdapter {
 				headers: { Authorization: `Bearer ${pat}` },
 				signal: AbortSignal.timeout(TIMEOUT),
 			}),
-			(e) => new Error(`SmartThings unreachable: ${(e as Error).message}`),
+			(e) => new Error(`SmartThings unreachable: ${toErrorMessage(e)}`),
 		).andThen((res) => {
 			if (res.status === 401 || res.status === 403) return err(new Error('Invalid or expired Personal Access Token'))
 			if (!res.ok) return err(new Error(`SmartThings API returned ${res.status}`))
@@ -48,7 +50,7 @@ export class SmartThingsAdapter implements DeviceAdapter {
 		return this.fetchAllDevices().andThen((devices) =>
 			ResultAsync.fromPromise(
 				this.fetchStatesForDevices(devices),
-				(e) => new Error(`State fetch failed: ${(e as Error).message}`),
+				(e) => new Error(`State fetch failed: ${toErrorMessage(e)}`),
 			),
 		)
 	}
@@ -62,7 +64,7 @@ export class SmartThingsAdapter implements DeviceAdapter {
 				this.apiFetch<SmartThingsDeviceStatus>(`/devices/${deviceId}/status`),
 				this.apiFetch<SmartThingsDeviceHealth>(`/devices/${deviceId}/health`).catch(() => null),
 			]),
-			(e) => new Error(`SmartThings status failed: ${(e as Error).message}`),
+			(e) => new Error(`SmartThings status failed: ${toErrorMessage(e)}`),
 		).map(([status, health]) => {
 			const state = parseSmartThingsState(status, deviceType)
 			// samsung TVs report stale switch:"on" when powered off — health is the real signal
@@ -81,7 +83,7 @@ export class SmartThingsAdapter implements DeviceAdapter {
 				method: 'POST',
 				body: JSON.stringify({ commands }),
 			}),
-			(e) => new Error(`SmartThings command failed: ${(e as Error).message}`),
+			(e) => new Error(`SmartThings command failed: ${toErrorMessage(e)}`),
 		).map(() => undefined)
 	}
 
@@ -90,7 +92,7 @@ export class SmartThingsAdapter implements DeviceAdapter {
 	private fetchAllDevices(): ResultAsync<SmartThingsDevice[], Error> {
 		return ResultAsync.fromPromise(
 			this.paginateDevices(),
-			(e) => new Error(`Device list failed: ${(e as Error).message}`),
+			(e) => new Error(`Device list failed: ${toErrorMessage(e)}`),
 		)
 	}
 
@@ -147,7 +149,7 @@ export class SmartThingsAdapter implements DeviceAdapter {
 							base.state.on = false
 						}
 					} catch (e) {
-						log.warn('smartthings: state fetch failed for device', { deviceId: d.deviceId, error: (e as Error).message })
+						log.warn('smartthings: state fetch failed for device', { deviceId: d.deviceId, error: toErrorMessage(e) })
 					}
 
 					return base
@@ -190,10 +192,9 @@ function buildExternalId(deviceId: string, type: DeviceType): string {
 
 function parseExternalId(externalId: string): { deviceId: string; deviceType: DeviceType } {
 	const idx = externalId.indexOf('::')
-	return {
-		deviceId: externalId.slice(0, idx),
-		deviceType: externalId.slice(idx + 2) as DeviceType,
-	}
+	const raw = externalId.slice(idx + 2)
+	if (!isDeviceType(raw)) throw new Error(`Unknown device type in externalId: ${raw}`)
+	return { deviceId: externalId.slice(0, idx), deviceType: raw }
 }
 
 // ── Command builders ─────────────────────────────────────────────────────────

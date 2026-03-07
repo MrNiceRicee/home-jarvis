@@ -75,7 +75,7 @@ function MatterPage() {
 
 		if (isPaired && viewRef.current === 'unpaired') {
 			viewRef.current = 'commissioned'
-			setView('commissioned')
+			setView('commissioned') // eslint-disable-line react-hooks/set-state-in-effect -- sse pairing state sync
 			useReadoutStore.getState().pushNotification('bridge: paired')
 			// timer starts from onAnimationComplete — not here
 		} else if (!isPaired && viewRef.current !== 'unpaired') {

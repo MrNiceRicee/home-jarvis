@@ -39,9 +39,10 @@ const GRACE_PERIOD_MS = 60_000
 const timers = new Map<string, ReturnType<typeof setInterval>>()
 
 /** read session from an adapter instance (only cloud adapters expose this) */
-function adapterSession(adapter: unknown): string | null {
+export function adapterSession(adapter: unknown): string | null {
 	if (adapter && typeof adapter === 'object' && 'session' in adapter) {
-		return (adapter as { session: string | null }).session
+		const { session } = adapter as Record<string, unknown>
+		return typeof session === 'string' ? session : null
 	}
 	return null
 }
@@ -59,7 +60,7 @@ export function startPolling(db: DB, integration: Integration) {
 	const { id: integrationId, brand } = integration
 	const config = parseJson<Record<string, string>>(integration.config).unwrapOr({})
 
-	stopPolling(integrationId)
+	stopPolling(integrationId, brand)
 
 	// SmartHQ uses WebSocket stream instead of polling
 	if (brand === 'ge') {
@@ -112,8 +113,8 @@ export function startPolling(db: DB, integration: Integration) {
 }
 
 /** Stop all timers for an integration */
-export function stopPolling(integrationId: string) {
-	smartHQStream.stop()
+export function stopPolling(integrationId: string, brand: string) {
+	if (brand === 'ge') smartHQStream.stop()
 	let stopped = 0
 	for (const key of [`${integrationId}:discover`, `${integrationId}:state`]) {
 		const t = timers.get(key)
@@ -206,7 +207,7 @@ function markAbsentDevicesOffline(db: DB, integrationId: string, brand: string, 
 	}
 }
 
-/** Lightweight state poll — update existing devices only, no upsert/offline logic. Returns updated session. */
+/** Lightweight state poll — fetch per-device state only, no upsert/offline logic. Returns updated session. */
 async function runStatePoll(
 	db: DB,
 	integrationId: string,
@@ -218,57 +219,73 @@ async function runStatePoll(
 	if (adapterResult.isErr()) return session
 
 	const adapter = adapterResult.value
-	const discoveredResult = await adapter.discover()
 
-	// persist session after adapter operation
-	const updatedSession = adapterSession(adapter) ?? session
+	// query existing DB devices for this integration
+	const deviceRows = db.select().from(devices).where(eq(devices.integrationId, integrationId)).all()
+	if (deviceRows.length === 0) return session
 
-	if (discoveredResult.isErr()) {
-		log.debug('poller state poll failed', { brand, error: discoveredResult.error.message })
-		persistSession(db, integrationId, updatedSession, discoveredResult.error.message)
-		return updatedSession
+	const now = Date.now()
+	let hasAuthError = false
+
+	// bounded concurrency — poll each device individually
+	for (let i = 0; i < deviceRows.length; i += CONCURRENCY) {
+		const batch = deviceRows.slice(i, i + CONCURRENCY)
+		const results = await Promise.allSettled(
+			batch.map(async (existing) => {
+				const stateResult = await adapter.getState(existing.externalId)
+				if (stateResult.isErr()) {
+					hasAuthError = true
+					return
+				}
+				const state = stateResult.value
+				const newStateStr = JSON.stringify(state)
+				const stateChanged = newStateStr !== (existing.state ?? '{}')
+				// getState succeeded, device is online
+				const onlineChanged = !existing.online
+
+				if (!stateChanged && !onlineChanged) {
+					db.update(devices).set({ lastSeen: now }).where(eq(devices.id, existing.id)).run()
+					return
+				}
+
+				const updates: Record<string, unknown> = { lastSeen: now, updatedAt: now }
+				if (stateChanged) updates.state = newStateStr
+				if (onlineChanged) updates.online = true
+
+				db.update(devices).set(updates).where(eq(devices.id, existing.id)).run()
+
+				eventBus.publish({
+					type: 'device:update',
+					deviceId: existing.id,
+					brand,
+					state,
+					online: true,
+					timestamp: now,
+					source: 'poller',
+				})
+			}),
+		)
+
+		for (const r of results) {
+			if (r.status === 'rejected') {
+				log.debug('poller state poll device error', { brand, error: r.reason instanceof Error ? r.reason.message : String(r.reason) })
+			}
+		}
 	}
 
-	persistSession(db, integrationId, updatedSession, null)
-
-	const discovered = discoveredResult.value
-	const now = Date.now()
-
-	for (const d of discovered) {
-		const existing = db.select().from(devices).where(eq(devices.externalId, d.externalId)).get()
-		if (!existing) continue
-
-		const newStateStr = JSON.stringify(d.state)
-		const stateChanged = newStateStr !== (existing.state ?? '{}')
-		const onlineChanged = d.online !== existing.online
-
-		if (!stateChanged && !onlineChanged) {
-			db.update(devices).set({ lastSeen: now }).where(eq(devices.id, existing.id)).run()
-			continue
-		}
-
-		const updates: Record<string, unknown> = { lastSeen: now, updatedAt: now }
-		if (stateChanged) updates.state = newStateStr
-		if (onlineChanged) updates.online = d.online
-
-		db.update(devices).set(updates).where(eq(devices.id, existing.id)).run()
-
-		eventBus.publish({
-			type: 'device:update',
-			deviceId: existing.id,
-			brand,
-			state: d.state,
-			online: d.online,
-			timestamp: now,
-			source: 'poller',
-		})
+	// persist session after adapter operations
+	const updatedSession = adapterSession(adapter) ?? session
+	if (hasAuthError) {
+		persistSession(db, integrationId, updatedSession, 'state poll failed for one or more devices')
+	} else {
+		persistSession(db, integrationId, updatedSession, null)
 	}
 
 	return updatedSession
 }
 
 /** Run device discovery + upsert results into DB. Returns updated session. */
-async function runDiscovery(
+export async function runDiscovery(
 	db: DB,
 	integrationId: string,
 	brand: string,

@@ -1,6 +1,8 @@
 import type { DeviceState, DeviceType } from '../types'
 import type { SmartThingsComponentStatus, SmartThingsDeviceStatus } from './types'
 
+import { fToC } from '../../lib/unit-conversions'
+
 // capabilities that identify device type
 const TV_CAPS = ['audioVolume', 'mediaPlayback', 'tvChannel', 'mediaInputSource']
 const FRIDGE_CAPS = ['refrigeration', 'custom.fridgeMode']
@@ -86,20 +88,20 @@ function parseFridgeState(status: SmartThingsDeviceStatus, state: DeviceState) {
 	const coolTemp = attr<number>(cooler, 'temperatureMeasurement', 'temperature')
 	if (typeof coolTemp === 'number') {
 		const unit = attrUnit(cooler, 'temperatureMeasurement', 'temperature')
-		state.temperature = unit === 'F' ? fahrenheitToCelsius(coolTemp) : coolTemp
+		state.temperature = unit === 'F' ? fToC(coolTemp) : coolTemp
 	}
 
 	const coolTarget = attr<number>(cooler, 'thermostatCoolingSetpoint', 'coolingSetpoint')
 	if (typeof coolTarget === 'number') {
 		const unit = attrUnit(cooler, 'thermostatCoolingSetpoint', 'coolingSetpoint')
-		state.targetCoolTemp = unit === 'F' ? fahrenheitToCelsius(coolTarget) : coolTarget
+		state.targetCoolTemp = unit === 'F' ? fToC(coolTarget) : coolTarget
 	}
 
 	if (freezer) {
 		const freezeTemp = attr<number>(freezer, 'temperatureMeasurement', 'temperature')
 		if (typeof freezeTemp === 'number') {
 			const unit = attrUnit(freezer, 'temperatureMeasurement', 'temperature')
-			state.targetFreezeTemp = unit === 'F' ? fahrenheitToCelsius(freezeTemp) : freezeTemp
+			state.targetFreezeTemp = unit === 'F' ? fToC(freezeTemp) : freezeTemp
 		}
 	}
 
@@ -112,7 +114,7 @@ function parseThermostatState(main: SmartThingsComponentStatus | undefined, stat
 	const temp = attr<number>(main, 'temperatureMeasurement', 'temperature')
 	if (typeof temp === 'number') {
 		const unit = attrUnit(main, 'temperatureMeasurement', 'temperature')
-		state.temperature = unit === 'F' ? fahrenheitToCelsius(temp) : temp
+		state.temperature = unit === 'F' ? fToC(temp) : temp
 	}
 
 	const mode = attr<string>(main, 'thermostatMode', 'thermostatMode')
@@ -121,13 +123,13 @@ function parseThermostatState(main: SmartThingsComponentStatus | undefined, stat
 	const heatTarget = attr<number>(main, 'thermostatHeatingSetpoint', 'heatingSetpoint')
 	if (typeof heatTarget === 'number') {
 		const unit = attrUnit(main, 'thermostatHeatingSetpoint', 'heatingSetpoint')
-		state.targetTemperature = unit === 'F' ? fahrenheitToCelsius(heatTarget) : heatTarget
+		state.targetTemperature = unit === 'F' ? fToC(heatTarget) : heatTarget
 	}
 
 	const coolTarget = attr<number>(main, 'thermostatCoolingSetpoint', 'coolingSetpoint')
 	if (typeof coolTarget === 'number' && state.targetTemperature === undefined) {
 		const unit = attrUnit(main, 'thermostatCoolingSetpoint', 'coolingSetpoint')
-		state.targetTemperature = unit === 'F' ? fahrenheitToCelsius(coolTarget) : coolTarget
+		state.targetTemperature = unit === 'F' ? fToC(coolTarget) : coolTarget
 	}
 
 	const humidity = attr<number>(main, 'relativeHumidityMeasurement', 'humidity')
@@ -155,11 +157,6 @@ function parseAirPurifierState(main: SmartThingsComponentStatus | undefined, sta
 	const pm25 = attr<number>(main, 'dustSensor', 'fineDustLevel')
 		?? attr<number>(main, 'airQualitySensor', 'airQuality')
 	if (typeof pm25 === 'number') state.pm25 = pm25
-}
-
-// unit conversions
-function fahrenheitToCelsius(f: number): number {
-	return Math.round((f - 32) * (5 / 9) * 10) / 10
 }
 
 function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {

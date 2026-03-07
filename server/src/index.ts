@@ -4,9 +4,10 @@ import { Elysia } from 'elysia'
 
 import { db } from './db'
 import { devices, integrations, sections } from './db/schema'
-import { startAllPolling } from './discovery/cloud-poller'
+import { adapterSession, startAllPolling } from './discovery/cloud-poller'
 import { clientAssets, hasClientAssets } from './generated/client-manifest'
 import { createAdapter } from './integrations/registry'
+import { env } from './lib/env'
 import { eventBus } from './lib/events'
 import { log } from './lib/logger'
 import { parseJson } from './lib/parse-json'
@@ -18,10 +19,8 @@ import { matterController } from './routes/matter.controller'
 import { scanController } from './routes/scan.controller'
 import { sectionsController } from './routes/sections.controller'
 
-const PORT = Number(process.env.PORT ?? 3001)
-
 const app = new Elysia()
-	.use(cors({ origin: ['http://localhost:5173', 'http://localhost:3001'] }))
+	.use(cors({ origin: env.CORS_ORIGINS }))
 	// ── Request / response logging ──────────────────────────────────────────
 	.onRequest((ctx) => {
 		log.info('request', {
@@ -67,7 +66,7 @@ const app = new Elysia()
 			},
 		})
 	})
-	.listen(PORT)
+	.listen(env.PORT)
 
 // seed default "Home" section if no sections exist
 const now = Date.now()
@@ -98,9 +97,20 @@ matterBridge.onCommand((deviceId, state) => {
 	const adapterResult = createAdapter(integration.brand, config, integration.session)
 	if (adapterResult.isErr()) return
 
+	const adapter = adapterResult.value
+
 	// fire-and-forget — SSE already updated the dashboard, this forwards to the physical device
-	void adapterResult.value.setState(device.externalId, state).match(
+	void adapter.setState(device.externalId, state).match(
 		() => {
+			// persist session if adapter refreshed tokens during setState
+			const updatedSession = adapterSession(adapter)
+			if (updatedSession && updatedSession !== integration.session) {
+				db.update(integrations)
+					.set({ session: updatedSession, updatedAt: Date.now() })
+					.where(eq(integrations.id, integration.id))
+					.run()
+			}
+
 			// update DB state to match
 			const currentState = parseJson<Record<string, unknown>>(device.state).unwrapOr({})
 			const newState = { ...currentState, ...state }

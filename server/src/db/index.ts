@@ -3,6 +3,7 @@ import { drizzle } from 'drizzle-orm/bun-sqlite'
 import { mkdirSync } from 'node:fs'
 import path from 'path'
 
+import { env } from '../lib/env'
 import * as schema from './schema'
 
 // In a compiled Bun binary:
@@ -11,7 +12,7 @@ import * as schema from './schema'
 // Both indicate we're running from a compiled exe, not source.
 const isCompiledBinary = Bun.main.startsWith('$bunfs://') || Bun.main.includes('~BUN')
 const dbPath =
-	process.env.DB_PATH ??
+	env.DB_PATH ??
 	(isCompiledBinary
 		? path.join(path.dirname(process.execPath), 'data', 'jarvis.db')
 		: path.join(import.meta.dir, '../../data/jarvis.db'))

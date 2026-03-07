@@ -41,6 +41,7 @@ export function MediaCard({ device, variant = 'compact', onStateChange }: Readon
 	const [volume, setVolume] = useState(state.volume ?? 0)
 	const disabled = !device.online || !isOn
 
+	// eslint-disable-next-line react-hooks/set-state-in-effect -- sse state sync
 	useEffect(() => { setVolume(state.volume ?? 0) }, [state.volume])
 
 	const readoutText = isOn

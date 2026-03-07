@@ -1,4 +1,4 @@
-import type { DeviceState, DeviceType } from '../types'
+import type { CycleStatus, DeviceState, DeviceType } from '../types'
 import type { SmartHQDeviceDetail, SmartHQService } from './types'
 
 // ─── Device type classification ──────────────────────────────────────────────
@@ -23,7 +23,7 @@ function findServiceState<T>(services: SmartHQService[], typeFragment: string, k
 }
 
 /** extract cycle status from operational state service */
-function parseCycleStatus(services: SmartHQService[]): string | undefined {
+function parseCycleStatus(services: SmartHQService[]): CycleStatus | undefined {
 	const stateService = findService(services, '.state.') ?? findService(services, '.toggle.')
 	if (!stateService) return undefined
 

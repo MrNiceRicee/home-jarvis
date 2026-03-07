@@ -23,7 +23,9 @@ function parseFanSpeed(r: Record<string, unknown>): { mode?: string; fanSpeed?: 
 	if (mode === 'auto') return { mode, fanSpeed: 0 }
 	if (mode === 'sleep') return { mode, fanSpeed: 20 }
 
-	const level = typeof r.level === 'number' ? r.level : (typeof r.fan_level === 'number' ? r.fan_level : undefined)
+	let level: number | undefined
+	if (typeof r.level === 'number') level = r.level
+	else if (typeof r.fan_level === 'number') level = r.fan_level
 	const fanSpeed = level !== undefined ? (level + 1) * 20 : undefined
 	return { mode, fanSpeed }
 }

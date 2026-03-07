@@ -41,16 +41,6 @@ export function tempToColor(kelvin: number): string {
 	return `rgb(${r} ${g} ${b})`
 }
 
-// ─── Mired ↔ Kelvin ───────────────────────────────────────────────────────────
-
-export function miredToKelvin(mired: number): number {
-	return Math.round(1_000_000 / mired)
-}
-
-export function kelvinToMired(kelvin: number): number {
-	return Math.round(1_000_000 / kelvin)
-}
-
 // ─── Card accent ──────────────────────────────────────────────────────────────
 
 /**

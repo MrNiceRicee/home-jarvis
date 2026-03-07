@@ -42,6 +42,7 @@ logs/
 # Docs — internal brainstorms, plans, research (keep solutions for compounded knowledge)
 docs/*
 !docs/solutions/
+!docs/review/
 
 # Claude Code — user-specific operational data
 # (settings.json and CLAUDE.md are intentionally committable for team sharing)

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
 import { useScramble } from 'use-scramble'
 
+import { useReducedMotion } from '../../hooks/useReducedMotion'
 import { cn } from '../../lib/cn'
 
 interface ScrambleTextProps {
@@ -12,16 +12,7 @@ interface ScrambleTextProps {
 }
 
 export function ScrambleText({ value, className, visible = true, range }: Readonly<ScrambleTextProps>) {
-	const [reducedMotion, setReducedMotion] = useState(
-		() => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-	)
-
-	useEffect(() => {
-		const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-		const handler = (e: MediaQueryListEvent) => setReducedMotion(e.matches)
-		mq.addEventListener('change', handler)
-		return () => mq.removeEventListener('change', handler)
-	}, [])
+	const reducedMotion = useReducedMotion()
 
 	const shouldAnimate = visible && !reducedMotion
 

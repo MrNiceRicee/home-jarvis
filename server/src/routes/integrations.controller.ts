@@ -9,14 +9,14 @@ import { integrations } from '../db/schema'
 import { startPolling, stopPolling } from '../discovery/cloud-poller'
 import { discoverHueBridges, createHueApiKey } from '../integrations/hue/adapter'
 import { INTEGRATION_META, createAdapter, getOAuthConfig } from '../integrations/registry'
+import { env } from '../lib/env'
+import { toErrorMessage } from '../lib/error-utils'
 import { log } from '../lib/logger'
 import { isPrivateIp } from '../lib/validate-ip'
 
-// signing key for OAuth state CSRF tokens — separate from consumer secrets
-const STATE_SIGNING_KEY = process.env.OAUTH_STATE_SECRET ?? randomBytes(32).toString('hex')
+const STATE_SIGNING_KEY = env.OAUTH_STATE_SECRET
 const STATE_MAX_AGE_MS = 10 * 60 * 1000 // 10 minutes
 const TOKEN_TIMEOUT = 15_000
-const CLIENT_BASE = 'http://localhost:5173'
 
 function signState(payload: string): string {
 	const sig = createHmac('sha256', STATE_SIGNING_KEY).update(payload).digest('base64url')
@@ -52,6 +52,54 @@ function stripSensitive({ config: _config, session: _session, ...safe }: Integra
 	return safe
 }
 
+/** exchange an OAuth authorization code for tokens */
+async function exchangeOAuthCode(
+	oauth: ReturnType<typeof getOAuthConfig> & object,
+	code: string,
+	callbackUri: string,
+): Promise<{ session: string } | { error: string }> {
+	const useBodyAuth = oauth.tokenAuthMethod === 'body'
+	const headers: Record<string, string> = { 'Content-Type': 'application/x-www-form-urlencoded' }
+	if (!useBodyAuth) {
+		const credentials = oauth.clientId + ':' + oauth.clientSecret
+		headers.Authorization = `Basic ${Buffer.from(credentials).toString('base64')}`
+	}
+
+	const params: Record<string, string> = { grant_type: 'authorization_code', code, redirect_uri: callbackUri }
+	if (useBodyAuth) {
+		params.client_id = oauth.clientId
+		params.client_secret = oauth.clientSecret
+	}
+
+	let tokenRes: Response
+	try {
+		tokenRes = await fetch(oauth.tokenUrl, {
+			method: 'POST',
+			headers,
+			body: new URLSearchParams(params),
+			signal: AbortSignal.timeout(TOKEN_TIMEOUT),
+		})
+	} catch (e) {
+		return { error: toErrorMessage(e) }
+	}
+
+	if (!tokenRes.ok) {
+		const body = await tokenRes.text()
+		return { error: body.includes('invalid_grant') ? 'code_expired' : 'exchange_failed' }
+	}
+
+	const tokenData = (await tokenRes.json()) as { access_token: string; refresh_token: string; expires_in: number | string }
+	const expiresIn = typeof tokenData.expires_in === 'string' ? Number.parseInt(tokenData.expires_in, 10) : tokenData.expires_in
+
+	return {
+		session: JSON.stringify({
+			accessToken: tokenData.access_token,
+			refreshToken: tokenData.refresh_token,
+			expiresAt: Date.now() + expiresIn * 1000,
+		}),
+	}
+}
+
 export const integrationsController = new Elysia({ prefix: '/api/integrations' })
 	.decorate('db', db)
 
@@ -74,6 +122,14 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 			if (!meta) {
 				log.warn('addIntegration unknown brand', { brand })
 				return status(400, { error: `Unknown brand: ${brand}` })
+			}
+
+			// SSRF prevention: validate IPs are private before making any requests
+			if (brand === 'hue' && config.bridgeIp && !isPrivateIp(config.bridgeIp)) {
+				return status(400, { error: 'Bridge IP must be a private network address' })
+			}
+			if (brand === 'elgato' && config.ip && !isPrivateIp(config.ip)) {
+				return status(400, { error: 'Device IP must be a private network address' })
 			}
 
 			// Skip validation for OAuth brands (LG) and discovery-only brands (Elgato)
@@ -103,10 +159,11 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 					.where(eq(integrations.brand, brand))
 					.run()
 
-				const updated = db.select().from(integrations).where(eq(integrations.brand, brand)).get()!
+				const updated = db.select().from(integrations).where(eq(integrations.brand, brand)).get()
+				if (!updated) return status(500, { error: 'Failed to read updated integration' })
 
 				// restart polling with new config (session cleared)
-				stopPolling(existing.id)
+				stopPolling(existing.id, brand)
 				startPolling(db, updated)
 
 				log.info('addIntegration updated', { brand, integrationId: existing.id })
@@ -125,7 +182,8 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 				})
 				.run()
 
-			const inserted = db.select().from(integrations).where(eq(integrations.id, id)).get()!
+			const inserted = db.select().from(integrations).where(eq(integrations.id, id)).get()
+			if (!inserted) return status(500, { error: 'Failed to read created integration' })
 
 			// Start polling
 			startPolling(db, inserted)
@@ -150,7 +208,7 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 		}
 
 		log.info('removeIntegration', { brand: integration.brand, integrationId: params.id })
-		stopPolling(params.id)
+		stopPolling(params.id, integration.brand)
 
 		// cascade delete handles device rows; integration removal is sufficient
 		db.delete(integrations).where(eq(integrations.id, params.id)).run()
@@ -210,7 +268,7 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 		const payload = JSON.stringify({ brand, ts: Date.now(), nonce })
 		const state = signState(payload)
 
-		const callbackUri = `http://localhost:3001/api/integrations/${brand}/oauth/callback`
+		const callbackUri = `${env.SERVER_URL}/api/integrations/${brand}/oauth/callback`
 		const url = new URL(oauth.authorizeUrl)
 		url.searchParams.set('response_type', 'code')
 		url.searchParams.set('client_id', oauth.clientId)
@@ -233,7 +291,7 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 	.get('/:id/oauth/callback', async ({ params, query, db, redirect }) => {
 		const brand = params.id
 		const errorUrl = (error: string) =>
-			`${CLIENT_BASE}/integrations?oauth=error&brand=${brand}&error=${error}`
+			`${env.CLIENT_URL}/integrations?oauth=error&brand=${encodeURIComponent(brand)}&error=${encodeURIComponent(error)}`
 
 		// user denied consent
 		if (query.error) {
@@ -273,62 +331,15 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 		}
 
 		// exchange code for tokens
-		const callbackUri = `http://localhost:3001/api/integrations/${brand}/oauth/callback`
+		const callbackUri = `${env.SERVER_URL}/api/integrations/${brand}/oauth/callback`
+		const tokenResult = await exchangeOAuthCode(oauth, code, callbackUri)
 
-		let tokenRes: Response
-		try {
-			const useBodyAuth = oauth.tokenAuthMethod === 'body'
-			const headers: Record<string, string> = {
-				'Content-Type': 'application/x-www-form-urlencoded',
-			}
-			if (!useBodyAuth) {
-				const credentials = `${oauth.clientId}:${oauth.clientSecret}`
-				headers.Authorization = `Basic ${Buffer.from(credentials).toString('base64')}`
-			}
-
-			const params: Record<string, string> = {
-				grant_type: 'authorization_code',
-				code,
-				redirect_uri: callbackUri,
-			}
-			if (useBodyAuth) {
-				params.client_id = oauth.clientId
-				params.client_secret = oauth.clientSecret
-			}
-
-			tokenRes = await fetch(oauth.tokenUrl, {
-				method: 'POST',
-				headers,
-				body: new URLSearchParams(params),
-				signal: AbortSignal.timeout(TOKEN_TIMEOUT),
-			})
-		} catch (e) {
-			log.error('oauth callback: token exchange network error', { brand, error: (e as Error).message })
-			return redirect(errorUrl('exchange_failed'))
+		if ('error' in tokenResult) {
+			log.error('oauth callback: token exchange failed', { brand, error: tokenResult.error })
+			return redirect(errorUrl(tokenResult.error))
 		}
 
-		if (!tokenRes.ok) {
-			const body = await tokenRes.text()
-			log.error('oauth callback: token exchange failed', { brand, status: tokenRes.status, body })
-			return redirect(errorUrl(body.includes('invalid_grant') ? 'code_expired' : 'exchange_failed'))
-		}
-
-		const tokenData = (await tokenRes.json()) as {
-			access_token: string
-			refresh_token: string
-			expires_in: number | string
-		}
-
-		const expiresIn =
-			typeof tokenData.expires_in === 'string'
-				? Number.parseInt(tokenData.expires_in, 10)
-				: tokenData.expires_in
-
-		const session = JSON.stringify({
-			accessToken: tokenData.access_token,
-			refreshToken: tokenData.refresh_token,
-			expiresAt: Date.now() + expiresIn * 1000,
-		})
+		const { session } = tokenResult
 
 		// upsert integration row
 		const now = Date.now()
@@ -340,9 +351,9 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 				.where(eq(integrations.brand, brand))
 				.run()
 
-			stopPolling(existing.id)
-			const updated = db.select().from(integrations).where(eq(integrations.brand, brand)).get()!
-			startPolling(db, updated)
+			stopPolling(existing.id, brand)
+			const updated = db.select().from(integrations).where(eq(integrations.brand, brand)).get()
+			if (updated) startPolling(db, updated)
 
 			log.info('oauth callback: integration updated', { brand, integrationId: existing.id })
 		} else {
@@ -359,11 +370,11 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 				})
 				.run()
 
-			const inserted = db.select().from(integrations).where(eq(integrations.id, id)).get()!
-			startPolling(db, inserted)
+			const inserted = db.select().from(integrations).where(eq(integrations.id, id)).get()
+			if (inserted) startPolling(db, inserted)
 
 			log.info('oauth callback: integration created', { brand, integrationId: id })
 		}
 
-		return redirect(`${CLIENT_BASE}/integrations?oauth=success&brand=${brand}`)
+		return redirect(`${env.CLIENT_URL}/integrations?oauth=success&brand=${encodeURIComponent(brand)}`)
 	})

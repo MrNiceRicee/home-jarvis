@@ -3,7 +3,10 @@ import { ResultAsync, errAsync, okAsync } from 'neverthrow'
 import type { DeviceAdapter, DeviceState, DiscoveredDevice } from '../types'
 import type { SmartHQDeviceDetail, SmartHQDeviceListResponse, SmartHQSession } from './types'
 
+import { env } from '../../lib/env'
+import { toErrorMessage } from '../../lib/error-utils'
 import { log } from '../../lib/logger'
+import { parseJson } from '../../lib/parse-json'
 import { mapSmartHQDeviceType, parseSmartHQDeviceState } from './parsers'
 
 const API_BASE = 'https://client.mysmarthq.com'
@@ -56,7 +59,7 @@ export class SmartHQAdapter implements DeviceAdapter {
 	private fetchDevices(): ResultAsync<DiscoveredDevice[], Error> {
 		return ResultAsync.fromPromise(
 			this.apiFetch<SmartHQDeviceListResponse>('/v2/device?perpage=100'),
-			(e) => new Error(`SmartHQ device list failed: ${(e as Error).message}`),
+			(e) => new Error(`SmartHQ device list failed: ${toErrorMessage(e)}`),
 		).andThen((response) => {
 			const discovered: DiscoveredDevice[] = []
 			for (const d of response.devices) {
@@ -83,7 +86,7 @@ export class SmartHQAdapter implements DeviceAdapter {
 	private fetchDeviceDetail(externalId: string): ResultAsync<DeviceState, Error> {
 		return ResultAsync.fromPromise(
 			this.apiFetch<SmartHQDeviceDetail>(`/v2/device/${externalId}`),
-			(e) => new Error(`SmartHQ device detail failed: ${(e as Error).message}`),
+			(e) => new Error(`SmartHQ device detail failed: ${toErrorMessage(e)}`),
 		).map((detail) => parseSmartHQDeviceState(detail))
 	}
 
@@ -91,13 +94,11 @@ export class SmartHQAdapter implements DeviceAdapter {
 
 	private parseSession(raw: string | null): SmartHQSession | null {
 		if (!raw) return null
-		try {
-			const parsed = JSON.parse(raw) as SmartHQSession
-			if (!parsed.accessToken || !parsed.refreshToken || !parsed.expiresAt) return null
-			return parsed
-		} catch {
-			return null
-		}
+		const result = parseJson<SmartHQSession>(raw)
+		if (result.isErr()) return null
+		const parsed = result.value
+		if (!parsed.accessToken || !parsed.refreshToken || !parsed.expiresAt) return null
+		return parsed
 	}
 
 	private ensureValidToken(): ResultAsync<void, Error> {
@@ -128,8 +129,8 @@ export class SmartHQAdapter implements DeviceAdapter {
 		const session = this._session
 		if (!session) throw new Error('No session to refresh')
 
-		const clientId = process.env.SMARTHQ_CLIENT_ID
-		const clientSecret = process.env.SMARTHQ_CLIENT_SECRET
+		const clientId = env.SMARTHQ_CLIENT_ID
+		const clientSecret = env.SMARTHQ_CLIENT_SECRET
 		if (!clientId || !clientSecret) {
 			throw new Error('SMARTHQ_CLIENT_ID and SMARTHQ_CLIENT_SECRET must be set')
 		}

@@ -2,6 +2,7 @@ import { type Result, err, ok } from 'neverthrow'
 
 import type { DeviceAdapter, IntegrationMeta } from './types'
 
+import { env } from '../lib/env'
 import { ElgatoAdapter } from './elgato/adapter'
 import { GoveeAdapter } from './govee/adapter'
 import { HueAdapter } from './hue/adapter'
@@ -117,8 +118,8 @@ export interface OAuthConfig {
 export function getOAuthConfig(brand: string): OAuthConfig | null {
 	switch (brand) {
 		case 'resideo': {
-			const clientId = process.env.RESIDEO_CONSUMER_KEY
-			const clientSecret = process.env.RESIDEO_CONSUMER_SECRET
+			const clientId = env.RESIDEO_CONSUMER_KEY
+			const clientSecret = env.RESIDEO_CONSUMER_SECRET
 			if (!clientId || !clientSecret) return null
 			return {
 				authorizeUrl: 'https://api.honeywellhome.com/oauth2/authorize',
@@ -128,8 +129,8 @@ export function getOAuthConfig(brand: string): OAuthConfig | null {
 			}
 		}
 		case 'ge': {
-			const clientId = process.env.SMARTHQ_CLIENT_ID
-			const clientSecret = process.env.SMARTHQ_CLIENT_SECRET
+			const clientId = env.SMARTHQ_CLIENT_ID
+			const clientSecret = env.SMARTHQ_CLIENT_SECRET
 			if (!clientId || !clientSecret) return null
 			return {
 				authorizeUrl: 'https://accounts.brillion.geappliances.com/oauth2/auth',

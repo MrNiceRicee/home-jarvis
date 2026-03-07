@@ -2,9 +2,11 @@ import { ResultAsync, okAsync } from 'neverthrow'
 
 import type { DeviceAdapter, DeviceState, DiscoveredDevice } from '../types'
 
+import { toErrorMessage } from '../../lib/error-utils'
 import { log } from '../../lib/logger'
 import { parseJson } from '../../lib/parse-json'
 import { apiToCelsius, celsiusToApi, type TemperatureUnit } from '../../lib/unit-conversions'
+import { HttpError, TokenExpiredError } from '../errors'
 import { getOAuthConfig } from '../registry'
 
 const DATA_TIMEOUT = 10_000
@@ -63,21 +65,6 @@ type ResideoDeviceClass = 'tcc' | 'lcc' | 'unknown'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-class TokenExpiredError extends Error {
-	constructor(message = 'Resideo refresh token invalid — re-authorization required') {
-		super(message)
-		this.name = 'TokenExpiredError'
-	}
-}
-
-class HttpError extends Error {
-	status: number
-	constructor(status: number, message?: string) {
-		super(message ?? `HTTP ${status}`)
-		this.name = 'HttpError'
-		this.status = status
-	}
-}
 
 function classifyDevice(deviceModel: string): ResideoDeviceClass {
 	switch (deviceModel) {
@@ -127,14 +114,14 @@ export class ResideoAdapter implements DeviceAdapter {
 	discover(): ResultAsync<DiscoveredDevice[], Error> {
 		return ResultAsync.fromPromise(
 			this.fetchDevices(),
-			(e) => new Error(`Resideo discovery failed: ${(e as Error).message}`),
+			(e) => new Error(`Resideo discovery failed: ${toErrorMessage(e)}`),
 		)
 	}
 
 	getState(externalId: string): ResultAsync<DeviceState, Error> {
 		return ResultAsync.fromPromise(
 			this.fetchDeviceState(externalId),
-			(e) => new Error(`Resideo state error: ${(e as Error).message}`),
+			(e) => new Error(`Resideo state error: ${toErrorMessage(e)}`),
 		)
 	}
 
@@ -145,7 +132,7 @@ export class ResideoAdapter implements DeviceAdapter {
 				if (e instanceof TokenExpiredError) {
 					return new Error(`resideo:auth_error:${e.message}`)
 				}
-				return new Error(`Resideo control error: ${(e as Error).message}`)
+				return new Error(`Resideo control error: ${toErrorMessage(e)}`)
 			},
 		)
 	}
@@ -290,7 +277,7 @@ export class ResideoAdapter implements DeviceAdapter {
 				for (const device of location.devices) {
 					if (device.deviceClass !== 'Thermostat') continue
 
-					const units = (device.units ?? 'Fahrenheit') as TemperatureUnit
+					const units: TemperatureUnit = device.units === 'Celsius' ? 'Celsius' : 'Fahrenheit'
 					const mode = device.changeableValues?.mode?.toLowerCase() ?? 'off'
 
 					// pick the right setpoint based on mode
@@ -345,7 +332,7 @@ export class ResideoAdapter implements DeviceAdapter {
 			if (!res.ok) throw new Error(`Resideo device state error: ${res.status}`)
 
 			const device = (await res.json()) as ResideoDevice
-			const units = (device.units ?? 'Fahrenheit') as TemperatureUnit
+			const units: TemperatureUnit = device.units === 'Celsius' ? 'Celsius' : 'Fahrenheit'
 			const mode = device.changeableValues?.mode?.toLowerCase() ?? 'off'
 
 			let targetRaw: number
@@ -382,7 +369,7 @@ export class ResideoAdapter implements DeviceAdapter {
 			if (!getRes.ok) throw new Error(`Resideo GET state error: ${getRes.status}`)
 
 			const device = (await getRes.json()) as ResideoDevice
-			const units = (device.units ?? 'Fahrenheit') as TemperatureUnit
+			const units: TemperatureUnit = device.units === 'Celsius' ? 'Celsius' : 'Fahrenheit'
 			const cv = device.changeableValues
 			const deviceClass = classifyDevice(device.deviceModel)
 

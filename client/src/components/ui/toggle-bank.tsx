@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react'
+
 import { Radio, RadioGroup } from 'react-aria-components'
 
 import { cn } from '../../lib/cn'
@@ -66,6 +68,23 @@ export function ToggleBank({ label, options, value, onChange, mode, disabled }: 
 	)
 }
 
+function getToggleLedStyle(isActive: boolean, ledColor?: string): CSSProperties | undefined {
+	if (isActive) {
+		const c = ledColor ?? 'rgb(52,211,153)'
+		return {
+			backgroundColor: c,
+			boxShadow: `0 0 4px ${c}, 0 0 8px color-mix(in srgb, ${c} 40%, transparent)`,
+		}
+	}
+	if (ledColor) {
+		return {
+			backgroundColor: `color-mix(in srgb, ${ledColor} 60%, #78716c)`,
+			boxShadow: `0 0 2px color-mix(in srgb, ${ledColor} 30%, transparent)`,
+		}
+	}
+	return undefined
+}
+
 function ToggleBankItem({ label, ledColor, isActive, disabled }: Readonly<{
 	label: string
 	ledColor?: string
@@ -88,13 +107,7 @@ function ToggleBankItem({ label, ledColor, isActive, disabled }: Readonly<{
 			>
 				<span
 					className={cn('absolute top-1 right-1 w-1.5 h-1.5 rounded-full', !isActive && !ledColor && 'bg-stone-400/30')}
-					style={isActive ? {
-						backgroundColor: ledColor ?? 'rgb(52,211,153)',
-						boxShadow: `0 0 4px ${ledColor ?? 'rgb(52,211,153)'}, 0 0 8px color-mix(in srgb, ${ledColor ?? 'rgb(52,211,153)'} 40%, transparent)`,
-					} : ledColor ? {
-						backgroundColor: `color-mix(in srgb, ${ledColor} 60%, #78716c)`,
-						boxShadow: `0 0 2px color-mix(in srgb, ${ledColor} 30%, transparent)`,
-					} : undefined}
+					style={getToggleLedStyle(isActive, ledColor)}
 				/>
 			</div>
 			<span className="font-michroma text-2xs uppercase tracking-wider text-stone-400">{label}</span>
