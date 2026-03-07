@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
 
 import type { DetectedDevice, IntegrationsResponse } from '../types'
 
@@ -12,7 +13,20 @@ import { useScanStream } from '../hooks/useScanStream'
 import { api } from '../lib/api'
 import { useDeviceStore } from '../stores/device-store'
 
-export const Route = createFileRoute('/integrations')({ component: Integrations })
+interface IntegrationSearchParams {
+	oauth?: string
+	brand?: string
+	error?: string
+}
+
+export const Route = createFileRoute('/integrations')({
+	component: Integrations,
+	validateSearch: (search: Record<string, unknown>): IntegrationSearchParams => ({
+		oauth: typeof search.oauth === 'string' ? search.oauth : undefined,
+		brand: typeof search.brand === 'string' ? search.brand : undefined,
+		error: typeof search.error === 'string' ? search.error : undefined,
+	}),
+})
 
 function extractErrorMessage(value: unknown, fallback: string): string {
 	if (typeof value === 'object' && value !== null && 'message' in value) {
@@ -33,6 +47,32 @@ async function fetchIntegrations(): Promise<IntegrationsResponse> {
 
 function Integrations() {
 	const queryClient = useQueryClient()
+	const navigate = useNavigate()
+	const { oauth, brand: oauthBrand, error: oauthError } = Route.useSearch()
+	const oauthHandled = useRef(false)
+
+	// handle OAuth return — show toast and clean up URL params
+	useEffect(() => {
+		if (!oauth || oauthHandled.current) return
+		oauthHandled.current = true
+
+		if (oauth === 'success') {
+			toast.success(`${oauthBrand ?? 'Integration'} connected successfully`)
+			void queryClient.invalidateQueries({ queryKey: ['integrations'] })
+		} else if (oauth === 'error') {
+			const messages: Record<string, string> = {
+				access_denied: 'Authorization was denied',
+				invalid_state: 'Invalid or expired authorization link',
+				brand_mismatch: 'Authorization mismatch — please try again',
+				missing_code: 'No authorization code received',
+				exchange_failed: 'Token exchange failed — please try again',
+				code_expired: 'Authorization code expired — please try again',
+			}
+			toast.error(messages[oauthError ?? ''] ?? 'Authorization failed')
+		}
+
+		void navigate({ to: '/integrations', search: {}, replace: true })
+	}, [oauth, oauthBrand, oauthError, queryClient, navigate])
 
 	const { data, isLoading, isError, error } = useQuery({
 		queryKey: ['integrations'],

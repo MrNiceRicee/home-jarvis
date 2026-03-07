@@ -5,6 +5,7 @@ import type { DeviceAdapter, IntegrationMeta } from './types'
 import { ElgatoAdapter } from './elgato/adapter'
 import { GoveeAdapter } from './govee/adapter'
 import { HueAdapter } from './hue/adapter'
+import { ResideoAdapter } from './resideo/adapter'
 import { VeSyncAdapter } from './vesync/adapter'
 
 /** All supported integrations and their credential form metadata */
@@ -93,20 +94,8 @@ export const INTEGRATION_META: Record<string, IntegrationMeta> = {
 	resideo: {
 		brand: 'resideo',
 		displayName: 'Resideo (Honeywell Home)',
-		fields: [
-			{
-				key: 'apiKey',
-				label: 'API Key',
-				type: 'password',
-				placeholder: 'From developer.resideo.com',
-			},
-			{
-				key: 'accessToken',
-				label: 'OAuth Access Token',
-				type: 'password',
-				placeholder: 'From Resideo OAuth flow',
-			},
-		],
+		fields: [],
+		oauthFlow: true,
 	},
 	elgato: {
 		brand: 'elgato',
@@ -114,6 +103,31 @@ export const INTEGRATION_META: Record<string, IntegrationMeta> = {
 		fields: [],
 		discoveryOnly: true,
 	},
+}
+
+export interface OAuthConfig {
+	authorizeUrl: string
+	tokenUrl: string
+	clientId: string
+	clientSecret: string
+}
+
+export function getOAuthConfig(brand: string): OAuthConfig | null {
+	switch (brand) {
+		case 'resideo': {
+			const clientId = process.env.RESIDEO_CONSUMER_KEY
+			const clientSecret = process.env.RESIDEO_CONSUMER_SECRET
+			if (!clientId || !clientSecret) return null
+			return {
+				authorizeUrl: 'https://api.honeywellhome.com/oauth2/authorize',
+				tokenUrl: 'https://api.honeywellhome.com/oauth2/token',
+				clientId,
+				clientSecret,
+			}
+		}
+		default:
+			return null
+	}
 }
 
 /** Create an adapter instance from a brand + config stored in DB */
@@ -125,6 +139,8 @@ export function createAdapter(brand: string, config: Record<string, string>, ses
 			return ok(new GoveeAdapter(config))
 		case 'hue':
 			return ok(new HueAdapter(config))
+		case 'resideo':
+			return ok(new ResideoAdapter(config, session))
 		case 'vesync':
 			return ok(new VeSyncAdapter(config, session))
 		default:

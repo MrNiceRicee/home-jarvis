@@ -45,7 +45,7 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 		Promise.all(
 			enabled.map(async (integration) => {
 				const config = parseJson<Record<string, string>>(integration.config).unwrapOr({})
-				const adapterResult = createAdapter(integration.brand, config)
+				const adapterResult = createAdapter(integration.brand, config, integration.session)
 				if (adapterResult.isErr()) {
 					log.warn('discover adapter unavailable', { brand: integration.brand })
 					return
@@ -184,7 +184,7 @@ export const devicesController = new Elysia({ prefix: '/api/devices' })
 
 			const config = parseJson<Record<string, string>>(integration.config).unwrapOr({})
 
-			const adapterResult = createAdapter(integration.brand, config)
+			const adapterResult = createAdapter(integration.brand, config, integration.session)
 			if (adapterResult.isErr()) {
 				log.error('setState adapter error', { brand: integration.brand, error: adapterResult.error.message })
 				return status(500, { error: adapterResult.error.message })

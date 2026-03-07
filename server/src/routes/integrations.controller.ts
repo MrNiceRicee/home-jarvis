@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto'
+import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'crypto'
 import { eq } from 'drizzle-orm'
 import Elysia, { status, t } from 'elysia'
 
@@ -8,9 +8,44 @@ import { db } from '../db'
 import { integrations } from '../db/schema'
 import { startPolling, stopPolling } from '../discovery/cloud-poller'
 import { discoverHueBridges, createHueApiKey } from '../integrations/hue/adapter'
-import { INTEGRATION_META, createAdapter } from '../integrations/registry'
+import { INTEGRATION_META, createAdapter, getOAuthConfig } from '../integrations/registry'
 import { log } from '../lib/logger'
 import { isPrivateIp } from '../lib/validate-ip'
+
+// signing key for OAuth state CSRF tokens — separate from consumer secrets
+const STATE_SIGNING_KEY = process.env.OAUTH_STATE_SECRET ?? randomBytes(32).toString('hex')
+const STATE_MAX_AGE_MS = 10 * 60 * 1000 // 10 minutes
+const TOKEN_TIMEOUT = 15_000
+const CLIENT_BASE = 'http://localhost:5173'
+
+function signState(payload: string): string {
+	const sig = createHmac('sha256', STATE_SIGNING_KEY).update(payload).digest('base64url')
+	return `${Buffer.from(payload).toString('base64url')}.${sig}`
+}
+
+function verifyState(state: string): { brand: string; ts: number; nonce: string } | null {
+	const dotIdx = state.indexOf('.')
+	if (dotIdx === -1) return null
+
+	const payloadB64 = state.slice(0, dotIdx)
+	const sig = state.slice(dotIdx + 1)
+
+	const payload = Buffer.from(payloadB64, 'base64url').toString()
+	const expected = createHmac('sha256', STATE_SIGNING_KEY).update(payload).digest('base64url')
+
+	// constant-time comparison to prevent timing attacks
+	const sigBuf = Buffer.from(sig)
+	const expectedBuf = Buffer.from(expected)
+	if (sigBuf.length !== expectedBuf.length || !timingSafeEqual(sigBuf, expectedBuf)) return null
+
+	try {
+		const data = JSON.parse(payload) as { brand: string; ts: number; nonce: string }
+		if (Date.now() - data.ts > STATE_MAX_AGE_MS) return null
+		return data
+	} catch {
+		return null
+	}
+}
 
 /** strip sensitive fields (config contains credentials, session contains auth tokens) */
 function stripSensitive({ config: _config, session: _session, ...safe }: Integration): Omit<Integration, 'config' | 'session'> {
@@ -160,3 +195,158 @@ export const integrationsController = new Elysia({ prefix: '/api/integrations' }
 			body: t.Object({ bridgeIp: t.String() }),
 		},
 	)
+
+	/** OAuth: start authorization flow — returns the redirect URL.
+	 *  Uses `:id` param (brand name) to share the dynamic segment with DELETE /:id */
+	.get('/:id/oauth/start', ({ params, redirect }) => {
+		const brand = params.id
+		const oauth = getOAuthConfig(brand)
+		if (!oauth) {
+			log.warn('oauth start: no config', { brand })
+			return status(400, { error: `OAuth not configured for ${brand}` })
+		}
+
+		const nonce = randomBytes(8).toString('hex')
+		const payload = JSON.stringify({ brand, ts: Date.now(), nonce })
+		const state = signState(payload)
+
+		const callbackUri = `http://localhost:3001/api/integrations/${brand}/oauth/callback`
+		const url = new URL(oauth.authorizeUrl)
+		url.searchParams.set('response_type', 'code')
+		url.searchParams.set('client_id', oauth.clientId)
+		url.searchParams.set('redirect_uri', callbackUri)
+		url.searchParams.set('state', state)
+
+		log.info('oauth start', { brand })
+		return redirect(url.toString())
+	})
+
+	/** OAuth: callback from provider — exchanges code for tokens, upserts integration, redirects to client.
+	 *  This is a GET that mutates state (required by OAuth spec — the provider redirects the browser here).
+	 *  Uses `:id` param (brand name) to share the dynamic segment with DELETE /:id */
+	.get('/:id/oauth/callback', async ({ params, query, db, redirect }) => {
+		const brand = params.id
+		const errorUrl = (error: string) =>
+			`${CLIENT_BASE}/integrations?oauth=error&brand=${brand}&error=${error}`
+
+		// user denied consent
+		if (query.error) {
+			log.warn('oauth callback: user denied', { brand, error: query.error })
+			return redirect(errorUrl('access_denied'))
+		}
+
+		// verify state CSRF token
+		const stateParam = query.state
+		if (!stateParam || typeof stateParam !== 'string') {
+			log.warn('oauth callback: missing state', { brand })
+			return redirect(errorUrl('invalid_state'))
+		}
+
+		const stateData = verifyState(stateParam)
+		if (!stateData) {
+			log.warn('oauth callback: invalid or expired state', { brand })
+			return redirect(errorUrl('invalid_state'))
+		}
+
+		if (stateData.brand !== brand) {
+			log.warn('oauth callback: brand mismatch', { expected: brand, got: stateData.brand })
+			return redirect(errorUrl('brand_mismatch'))
+		}
+
+		// extract authorization code
+		const code = query.code
+		if (!code || typeof code !== 'string') {
+			log.warn('oauth callback: missing code', { brand })
+			return redirect(errorUrl('missing_code'))
+		}
+
+		const oauth = getOAuthConfig(brand)
+		if (!oauth) {
+			log.error('oauth callback: config disappeared', { brand })
+			return redirect(errorUrl('exchange_failed'))
+		}
+
+		// exchange code for tokens
+		const callbackUri = `http://localhost:3001/api/integrations/${brand}/oauth/callback`
+		const basicAuth = Buffer.from(`${oauth.clientId}:${oauth.clientSecret}`).toString('base64')
+
+		let tokenRes: Response
+		try {
+			tokenRes = await fetch(oauth.tokenUrl, {
+				method: 'POST',
+				headers: {
+					Authorization: `Basic ${basicAuth}`,
+					'Content-Type': 'application/x-www-form-urlencoded',
+				},
+				body: new URLSearchParams({
+					grant_type: 'authorization_code',
+					code,
+					redirect_uri: callbackUri,
+				}),
+				signal: AbortSignal.timeout(TOKEN_TIMEOUT),
+			})
+		} catch (e) {
+			log.error('oauth callback: token exchange network error', { brand, error: (e as Error).message })
+			return redirect(errorUrl('exchange_failed'))
+		}
+
+		if (!tokenRes.ok) {
+			const body = await tokenRes.text()
+			log.error('oauth callback: token exchange failed', { brand, status: tokenRes.status, body })
+			return redirect(errorUrl(body.includes('invalid_grant') ? 'code_expired' : 'exchange_failed'))
+		}
+
+		const tokenData = (await tokenRes.json()) as {
+			access_token: string
+			refresh_token: string
+			expires_in: number | string
+		}
+
+		const expiresIn =
+			typeof tokenData.expires_in === 'string'
+				? Number.parseInt(tokenData.expires_in, 10)
+				: tokenData.expires_in
+
+		const session = JSON.stringify({
+			accessToken: tokenData.access_token,
+			refreshToken: tokenData.refresh_token,
+			expiresAt: Date.now() + expiresIn * 1000,
+		})
+
+		// upsert integration row
+		const now = Date.now()
+		const existing = db.select().from(integrations).where(eq(integrations.brand, brand)).get()
+
+		if (existing) {
+			db.update(integrations)
+				.set({ session, authError: null, enabled: true, updatedAt: now })
+				.where(eq(integrations.brand, brand))
+				.run()
+
+			stopPolling(existing.id)
+			const updated = db.select().from(integrations).where(eq(integrations.brand, brand)).get()!
+			startPolling(db, updated)
+
+			log.info('oauth callback: integration updated', { brand, integrationId: existing.id })
+		} else {
+			const id = randomUUID()
+			db.insert(integrations)
+				.values({
+					id,
+					brand,
+					config: '{}',
+					session,
+					enabled: true,
+					createdAt: now,
+					updatedAt: now,
+				})
+				.run()
+
+			const inserted = db.select().from(integrations).where(eq(integrations.id, id)).get()!
+			startPolling(db, inserted)
+
+			log.info('oauth callback: integration created', { brand, integrationId: id })
+		}
+
+		return redirect(`${CLIENT_BASE}/integrations?oauth=success&brand=${brand}`)
+	})
