@@ -71,29 +71,38 @@ function packRgb(color: { r: number; g: number; b: number }): number {
 	return (color.r << 16) | (color.g << 8) | color.b
 }
 
+/** some govee devices return 0-254 brightness despite declaring 0-100 range */
+function normalizeBrightness(v: number): number {
+	return v > 100 ? Math.round(v / 2.54) : v
+}
+
+function applyCapability(state: DeviceState, instance: string, v: unknown): boolean | undefined {
+	switch (instance) {
+		case 'powerSwitch':
+			state.on = v === 1
+			return undefined
+		case 'brightness':
+			if (typeof v === 'number') state.brightness = normalizeBrightness(v)
+			return undefined
+		case 'colorRgb':
+			if (typeof v === 'number') state.color = unpackRgb(v)
+			return undefined
+		case 'colorTemperatureK':
+			// 0 means device is in RGB mode — use neutral default so UI knows CCT is supported
+			if (typeof v === 'number') state.colorTemp = v > 0 ? v : 4000
+			return undefined
+		case 'online':
+			return v === true || v === 1
+	}
+}
+
 function parseCapabilityStates(capabilities: GoveeCapabilityState[]): { state: DeviceState; online: boolean } {
 	const state: DeviceState = {}
 	let online = true
 
 	for (const cap of capabilities) {
-		const v = cap.state?.value
-		switch (cap.instance) {
-			case 'powerSwitch':
-				state.on = v === 1
-				break
-			case 'brightness':
-				if (typeof v === 'number') state.brightness = v
-				break
-			case 'colorRgb':
-				if (typeof v === 'number') state.color = unpackRgb(v)
-				break
-			case 'colorTemperatureK':
-				if (typeof v === 'number') state.colorTemp = v
-				break
-			case 'online':
-				online = v === true || v === 1
-				break
-		}
+		const result = applyCapability(state, cap.instance, cap.state?.value)
+		if (result !== undefined) online = result
 	}
 
 	return { state, online }
