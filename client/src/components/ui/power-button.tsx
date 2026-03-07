@@ -25,7 +25,7 @@ export function PowerButton({ isOn, isDisabled, isToggling, onToggle }: Readonly
 				'transition-all duration-100',
 				'shadow-[0_1px_2px_rgba(0,0,0,0.1),_inset_0_1px_0_rgba(255,255,255,0.6)]',
 				'pressed:shadow-[inset_0_1px_3px_rgba(0,0,0,0.15)]',
-				'disabled:opacity-40',
+				'disabled:opacity-60 disabled:cursor-default',
 				'outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-1',
 				isToggling && 'animate-pulse',
 			)}

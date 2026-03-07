@@ -151,8 +151,8 @@ export function SteppedRadialDial({
 							key={i}
 							x1={t.inner.x} y1={t.inner.y}
 							x2={t.outer.x} y2={t.outer.y}
-							stroke={t.active ? accentColor : 'rgba(255,255,255,0.3)'}
-							strokeWidth={t.active ? 2 : 1}
+							stroke={t.active && !disabled ? accentColor : 'rgba(255,255,255,0.3)'}
+							strokeWidth={t.active && !disabled ? 2 : 1}
 							strokeLinecap="round"
 						/>
 					))}
@@ -186,10 +186,10 @@ export function SteppedRadialDial({
 						style={{
 							top: 5,
 							left: `calc(50% - 1px)`,
-							backgroundColor: accentColor,
+							backgroundColor: disabled ? '#78716c' : accentColor,
 							transformOrigin: `center ${(KNOB_SIZE + 4) / 2 - 5}px`,
 							transform: `rotate(${markerAngle}deg)`,
-							boxShadow: `0 0 6px ${accentColor}`,
+							boxShadow: disabled ? 'none' : `0 0 6px ${accentColor}`,
 						}}
 					/>
 				</div>
@@ -217,7 +217,7 @@ export function SteppedRadialDial({
 						>
 							<span
 								className="font-michroma text-2xs uppercase tracking-wider transition-all duration-200"
-								style={isActive ? {
+								style={isActive && !disabled ? {
 									color: accentColor,
 									textShadow: `0 0 8px ${accentColor}, 0 0 16px color-mix(in srgb, ${accentColor} 40%, transparent)`,
 								} : {

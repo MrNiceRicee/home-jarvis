@@ -23,11 +23,11 @@ export function Card({ children, className, accent, glowShadow, muted, selected 
 	return (
 		<div
 			className={cn(
-				'relative rounded-md overflow-hidden',
+				'relative isolate rounded-md overflow-hidden',
 				'bg-surface-warm',
 				'border border-[rgba(168,151,125,0.12)]',
 				'transition-all duration-200',
-				muted && 'opacity-60',
+				muted && 'saturate-75',
 				selected && 'ring-2 ring-amber-500/70 ring-offset-1',
 				className,
 			)}

@@ -102,9 +102,6 @@ export function AirPurifierCard({ device, variant = 'compact', onStateChange }: 
 
 	const readoutLabel = buildReadoutLabel(state.pm25, aqi?.label, isOn)
 
-	const hasMeterData = state.airQuality !== undefined || state.filterLife !== undefined
-	const hasFanControl = state.fanSpeed !== undefined && device.online
-
 	return (
 		<div className="space-y-3">
 			{/* ── PM2.5 readout with AQI label ────────────────────────── */}
@@ -125,22 +122,20 @@ export function AirPurifierCard({ device, variant = 'compact', onStateChange }: 
 				)}
 			</ReadoutDisplay>
 
-			{/* ── Meter panel — matte instrument faceplate ── */}
-			{(hasMeterData || hasFanControl) && (
-				<MeterPanel
-					litAqi={litSegments}
-					filterLit={filterLit}
-					filterLife={state.filterLife}
-					aqi={aqi}
-					hasAqi={state.airQuality !== undefined}
-					hasFilter={state.filterLife !== undefined}
-					hasFan={hasFanControl}
-					activeFanValue={activeFanValue}
-					isFull={isFull}
-					onFanChange={(key) => { void onStateChange?.(device.id, { fanSpeed: Number(key) }) }}
-					disabled={!device.online}
-				/>
-			)}
+			{/* ── Meter panel — always visible, dimmed when off ── */}
+			<MeterPanel
+				litAqi={litSegments}
+				filterLit={filterLit}
+				filterLife={state.filterLife}
+				aqi={aqi}
+				hasAqi
+				hasFilter
+				hasFan
+				activeFanValue={activeFanValue}
+				isFull={isFull}
+				onFanChange={(key) => { void onStateChange?.(device.id, { fanSpeed: Number(key) }) }}
+				disabled={!device.online || !isOn}
+			/>
 		</div>
 	)
 }
@@ -166,6 +161,8 @@ function MeterPanel({
 	hasAqi, hasFilter, hasFan,
 	activeFanValue, isFull, onFanChange, disabled,
 }: Readonly<MeterPanelProps>) {
+	const isOff = disabled
+
 	return (
 		<div
 			className="rounded-lg overflow-hidden px-3 py-3"
@@ -184,14 +181,17 @@ function MeterPanel({
 							segments={AQI_SEGMENT_COLORS.length}
 							lit={litAqi}
 							getColor={(i) => AQI_SEGMENT_COLORS[i]}
+							off={isOff}
 						/>
-						{aqi && (
+						{aqi && !isOff ? (
 							<span
 								className="font-michroma text-[8px] uppercase tracking-wider"
 								style={{ color: aqi.css, textShadow: `0 0 6px ${aqi.css}` }}
 							>
 								{aqi.label}
 							</span>
+						) : (
+							<span className="font-michroma text-[8px] uppercase tracking-wider text-display-text/20">&nbsp;</span>
 						)}
 					</div>
 				)}
@@ -217,9 +217,10 @@ function MeterPanel({
 							segments={FILTER_SEGMENT_COUNT}
 							lit={filterLit}
 							getColor={(i) => FILTER_GRADIENT[i]}
+							off={isOff}
 						/>
 						<span className="font-ioskeley text-[10px] text-display-text/60">
-							{filterLife}%
+							{isOff ? '%' : `${filterLife}%`}
 						</span>
 					</div>
 				)}
@@ -236,21 +237,24 @@ interface SegmentColor {
 	dim: string
 }
 
+const UNLIT_DIM = 'rgba(255,255,255,0.06)'
+
 interface VerticalMeterProps {
 	segments: number
 	lit: number
 	getColor: (segIndex: number, totalLit: number) => SegmentColor
+	off?: boolean
 }
 
-function VerticalMeter({ segments, lit, getColor }: Readonly<VerticalMeterProps>) {
+function VerticalMeter({ segments, lit, getColor, off }: Readonly<VerticalMeterProps>) {
 	// render top-to-bottom, lit fills from bottom
 	const segArray = Array.from({ length: segments }, (_, i) => {
 		const bottomIndex = segments - 1 - i
-		return { isLit: bottomIndex < lit, colorIndex: bottomIndex }
+		return { isLit: !off && bottomIndex < lit, colorIndex: bottomIndex }
 	})
 
 	return (
-		<div className="flex flex-col gap-[2px]" role="meter" aria-valuemin={0} aria-valuemax={segments} aria-valuenow={lit}>
+		<div className="flex flex-col gap-[2px]" role="meter" aria-valuemin={0} aria-valuemax={segments} aria-valuenow={off ? 0 : lit}>
 			{segArray.map((seg, i) => {
 				const { color, glow, dim } = getColor(seg.colorIndex, lit)
 				return (
@@ -261,7 +265,7 @@ function VerticalMeter({ segments, lit, getColor }: Readonly<VerticalMeterProps>
 							background: color,
 							boxShadow: `0 0 4px ${glow}, 0 0 1px ${glow}`,
 						} : {
-							background: dim,
+							background: off ? UNLIT_DIM : dim,
 							boxShadow: 'inset 0 0.5px 1px rgba(0,0,0,0.3)',
 						}}
 					/>

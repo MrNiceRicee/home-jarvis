@@ -99,7 +99,8 @@ function CardShell({
 	const [matterLoading, setMatterLoading] = useState(false)
 	const [powerToggling, setPowerToggling] = useState(false)
 
-	const hasPower = device.state.on !== undefined
+	const POWER_TYPES = ['light', 'switch', 'thermostat', 'air_purifier', 'vacuum', 'washer_dryer', 'dishwasher', 'oven', 'tv', 'media_player']
+	const hasPower = device.state.on !== undefined || POWER_TYPES.includes(device.type)
 	const isNativeMatter = NATIVE_MATTER_BRANDS.has(device.brand)
 
 	async function handleMatterToggle(enabled: boolean) {
@@ -186,7 +187,7 @@ function CardShell({
 
 			<CardFooter>
 				<div className="px-3 py-2 flex items-center justify-between">
-					{hasPower && device.online ? (
+					{hasPower ? (
 						<PowerButton
 							isOn={device.state.on ?? false}
 							isDisabled={!device.online}
@@ -238,39 +239,47 @@ function CardShell({
 	)
 }
 
-// top-edge status strip — shows connectivity + light state at a glance
-function StatusBar({ device }: Readonly<{ device: Device }>) {
+// thermostat mode → status bar color
+const THERMOSTAT_MODE_BAR: Record<string, string> = {
+	heat: 'rgb(249,115,22)',
+	cool: 'rgb(59,130,246)',
+	auto: 'rgb(52,211,153)',
+}
+
+function statusBarColors(device: Device): { barColor: string; glowColor: string | undefined } {
 	const { state } = device
 	const isOn = state.on ?? false
-	const brightness = (state.brightness ?? 100) / 100
 
-	let barColor: string
-	let glowColor: string | undefined
+	if (!device.online) return { barColor: '#c8c4be', glowColor: undefined }
 
-	if (!device.online) {
-		// offline — flat muted bar, no glow
-		barColor = '#c8c4be'
-		glowColor = undefined
-	} else if (isOn && device.type === 'light') {
-		// light on — prefer colorTemp (pure hue) since RGB values have brightness baked in
-		if (state.colorTemp !== undefined) {
-			barColor = tempToColor(state.colorTemp)
-		} else if (state.color) {
-			const { r, g, b } = state.color
-			barColor = `rgb(${r} ${g} ${b})`
-		} else {
-			barColor = '#fbbf24'
-		}
-		glowColor = barColor
-	} else if (isOn) {
-		// non-light device on — emerald
-		barColor = '#34d399'
-		glowColor = barColor
-	} else {
-		// online but off — subtle warm idle
-		barColor = '#d6d3cd'
-		glowColor = undefined
+	if (isOn && device.type === 'light') {
+		const barColor = lightBarColor(state)
+		return { barColor, glowColor: barColor }
 	}
+
+	if (isOn && device.type === 'thermostat') {
+		const mode = state.mode ?? 'off'
+		const barColor = THERMOSTAT_MODE_BAR[mode] ?? '#d6d3cd'
+		return { barColor, glowColor: mode !== 'off' ? barColor : undefined }
+	}
+
+	if (isOn) return { barColor: '#34d399', glowColor: '#34d399' }
+	return { barColor: '#d6d3cd', glowColor: undefined }
+}
+
+function lightBarColor(state: DeviceState): string {
+	if (state.colorTemp !== undefined) return tempToColor(state.colorTemp)
+	if (state.color) {
+		const { r, g, b } = state.color
+		return `rgb(${r} ${g} ${b})`
+	}
+	return '#fbbf24'
+}
+
+// top-edge status strip — shows connectivity + light state at a glance
+function StatusBar({ device }: Readonly<{ device: Device }>) {
+	const brightness = (device.state.brightness ?? 100) / 100
+	const { barColor, glowColor } = statusBarColors(device)
 
 	return (
 		<div className="px-3 pt-2">
