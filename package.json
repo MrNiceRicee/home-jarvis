@@ -19,8 +19,7 @@
 		"db:studio": "turbo db:studio",
 		"system:check": "turbo lint typecheck",
 		"gen:client": "bun run scripts/gen-client-manifest.ts",
-		"build:prod": "turbo build --filter=client && bun run gen:client && bun build --compile --minify server/src/index.ts --outfile dist/jarvis",
-		"build:win": "turbo build --filter=client && bun run gen:client && bun build --compile --minify --target=bun-windows-x64 server/src/index.ts --outfile dist/jarvis.exe"
+		"build:prod": "turbo build --filter=client && bun run gen:client && bun build --compile --minify server/src/index.ts --outfile dist/jarvis"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.4",

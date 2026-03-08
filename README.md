@@ -45,7 +45,15 @@ bun run db:push          # create SQLite schema
 bun run dev              # server :3001 + client :5173 concurrently
 ```
 
-Open `http://localhost:3001` (production) or `http://localhost:5173` (dev with hot reload).
+Open `http://localhost:5173` (dev with hot reload) or `http://localhost:3001` (production).
+
+To use different ports (e.g. if 3001/5173 are taken), copy `.env.example` and edit:
+
+```bash
+cp .env.example .env
+# edit PORT, CLIENT_PORT, SERVER_URL, CLIENT_URL to taste
+bun run dev
+```
 
 ### Commands
 
@@ -150,7 +158,11 @@ The `data/` directory and database are auto-created next to the binary on first 
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PORT` | `3001` | HTTP port |
+| `PORT` | `3001` | Server HTTP port |
+| `CLIENT_PORT` | `5173` | Vite dev server port |
+| `SERVER_URL` | `http://localhost:3001` | Public server URL (used in OAuth callbacks) |
+| `CLIENT_URL` | `http://localhost:5173` | Client URL (used for OAuth redirects) |
+| `CORS_ORIGINS` | `http://localhost:5173,http://localhost:3001` | Allowed CORS origins (comma-separated) |
 | `DB_PATH` | auto (see below) | Absolute path to SQLite database file |
 
 **DB path resolution:**
@@ -235,7 +247,7 @@ DB_PATH=~/Applications/jarvis/data/jarvis.db bun run db:push
 | SmartThings | Manual | Personal Access Token | Working |
 | SmartHQ (GE) | Manual | Email + password | Working |
 
-> **Note:** mDNS/UDP auto-detection works on macOS (Bonjour built-in) and Linux (avahi). It does not work inside WSL2 due to multicast limitations — run from a native host or enter the device IP manually.
+> **Note:** mDNS/UDP auto-detection works on macOS (Bonjour built-in) and Linux (avahi).
 
 ### Adding an integration
 
