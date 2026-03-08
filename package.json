@@ -9,6 +9,7 @@
 	],
 	"scripts": {
 		"dev": "turbo dev db:studio",
+		"dev:app": "turbo dev --filter=home-jarvis-server --filter=client",
 		"build": "turbo build",
 		"lint": "turbo lint",
 		"lint:fix": "turbo lint:fix",
