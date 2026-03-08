@@ -214,6 +214,7 @@ function MeterPanel({
 							AQI
 						</span>
 						<VerticalMeter
+							label="Air quality"
 							segments={AQI_SEGMENT_COLORS.length}
 							lit={litAqi}
 							getColor={(i) => AQI_SEGMENT_COLORS[i]}
@@ -254,6 +255,7 @@ function MeterPanel({
 							FLTR
 						</span>
 						<VerticalMeter
+							label="Filter life"
 							segments={FILTER_SEGMENT_COUNT}
 							lit={filterLit}
 							getColor={(i) => FILTER_GRADIENT[i]}
@@ -280,13 +282,14 @@ interface SegmentColor {
 const UNLIT_DIM = 'rgba(255,255,255,0.06)'
 
 interface VerticalMeterProps {
+	label: string
 	segments: number
 	lit: number
 	getColor: (segIndex: number, totalLit: number) => SegmentColor
 	off?: boolean
 }
 
-function VerticalMeter({ segments, lit, getColor, off }: Readonly<VerticalMeterProps>) {
+function VerticalMeter({ label, segments, lit, getColor, off }: Readonly<VerticalMeterProps>) {
 	// render top-to-bottom, lit fills from bottom
 	const segArray = Array.from({ length: segments }, (_, i) => {
 		const bottomIndex = segments - 1 - i
@@ -300,6 +303,7 @@ function VerticalMeter({ segments, lit, getColor, off }: Readonly<VerticalMeterP
 			aria-valuemin={0}
 			aria-valuemax={segments}
 			aria-valuenow={off ? 0 : lit}
+			aria-label={label}
 		>
 			{segArray.map((seg, i) => {
 				const { color, glow, dim } = getColor(seg.colorIndex, lit)

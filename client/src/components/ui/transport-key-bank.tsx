@@ -14,6 +14,7 @@ interface TransportKeyBankProps {
 	value: string
 	onChange: (key: string) => void
 	disabled?: boolean
+	hideLabel?: boolean
 }
 
 export function TransportKeyBank({
@@ -22,12 +23,15 @@ export function TransportKeyBank({
 	value,
 	onChange,
 	disabled,
+	hideLabel,
 }: Readonly<TransportKeyBankProps>) {
 	return (
 		<div>
-			<span className="font-michroma text-2xs uppercase tracking-widest text-stone-400 mb-1.5 block">
-				{label}
-			</span>
+			{!hideLabel && (
+				<span className="font-michroma text-2xs uppercase tracking-widest text-stone-400 mb-1.5 block">
+					{label}
+				</span>
+			)}
 			<RadioGroup
 				value={value}
 				onChange={onChange}

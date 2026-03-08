@@ -178,7 +178,8 @@ function ThermostatCompact({
 				{!isOffline && (
 					<div className="flex items-center gap-2">
 						<TransportKeyBank
-							label=""
+							label="Mode"
+							hideLabel
 							options={MODE_OPTIONS}
 							value={activeMode}
 							onChange={setMode}
