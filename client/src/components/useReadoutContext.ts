@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useMatch } from '@tanstack/react-router'
 import { useEffect } from 'react'
 
+import { api } from '../lib/api'
 import { useDeviceStore } from '../stores/device-store'
 import { useReadoutStore } from '../stores/readout-store'
 import { useScanStore } from '../stores/scan-store'
@@ -23,9 +24,15 @@ export function useReadoutContext() {
 
 	const scanStatus = useScanStore((s) => s.status)
 
-	const { data: bridge } = useQuery<{ status: string; paired: boolean; deviceCount: number }>({
+	const { data: bridge } = useQuery({
 		queryKey: ['matter'],
-		enabled: false,
+		queryFn: async () => {
+			const { data, error } = await api.api.matter.get()
+			if (error) throw error
+			return data
+		},
+		enabled: !!isMatter,
+		refetchInterval: isMatter ? 10_000 : false,
 	})
 
 	const setSlot1 = useReadoutStore((s) => s.setSlot1)
