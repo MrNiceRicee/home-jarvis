@@ -9,7 +9,6 @@ import type { App } from 'home-jarvis-server'
  *   const { data, error } = await api.api.devices.get()
  *   const { data, error } = await api.api.integrations.post({ body: { brand, config } })
  */
-// in dev, proxy handles /api routing — use current page host (works with any port)
-// in prod, client is served from the same Elysia server
-const apiHost = ''
+// use current page host — in dev Vite proxies /api to the server, in prod same origin
+const apiHost = typeof window !== 'undefined' ? window.location.host : 'localhost:3001'
 export const api = treaty<App>(apiHost)
