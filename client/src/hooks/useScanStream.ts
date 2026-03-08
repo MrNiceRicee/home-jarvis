@@ -30,7 +30,7 @@ export function useScanStream() {
 			brandResults: [],
 		}))
 
-		const sseUrl = import.meta.env.DEV ? 'http://localhost:3001/api/scan' : '/api/scan'
+		const sseUrl = '/api/scan'
 		const es = new EventSource(sseUrl)
 		esRef.current = es
 

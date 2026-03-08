@@ -19,7 +19,7 @@ export function useDeviceStream() {
 			if (!aliveRef.current) return
 			if (esRef.current) esRef.current.close()
 
-			const sseUrl = import.meta.env.DEV ? 'http://localhost:3001/api/events' : '/api/events'
+			const sseUrl = '/api/events'
 			const es = new EventSource(sseUrl)
 			esRef.current = es
 
